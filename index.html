@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>PalmWatch AP Portal</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" onload="window.dispatchEvent(new Event('leafletready'))"></script>
   <style>
     *{box-sizing:border-box}
     html,body{margin:0;min-height:100%}
@@ -77,16 +79,22 @@
     .msub{font-size:12px;color:var(--mfg)}
     .tone-ok{color:var(--healthy)}.tone-risk{color:var(--risk)}.tone-bad{color:var(--bad)}
     .mapwrap{display:grid;grid-template-columns:1.7fr 1fr;gap:18px;align-items:stretch;min-height:520px}
-    .map{position:relative;background:var(--card2);background-image:radial-gradient(oklch(0.85 0.05 328 / .5) 1px,transparent 1px);background-size:26px 26px;border:1px solid var(--bord2);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);min-height:520px}
-    .ap-svg{position:absolute;inset:0;width:100%;height:100%}
-    .ap-shape{fill:oklch(0.93 0.035 332);stroke:var(--border);stroke-width:1.4}
-    .maptag{position:absolute;top:14px;left:16px;font:600 11px var(--font-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--mfg);background:oklch(1 0 0 / .78);padding:5px 10px;border-radius:7px;backdrop-filter:blur(4px)}
+    .map{position:relative;background:var(--card2);border:1px solid var(--bord2);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);min-height:520px}
+    .leaflet-map{height:100%;min-height:520px;background:oklch(0.95 0.014 244)}
+    .maptag{position:absolute;z-index:500;top:14px;left:52px;font:600 11px var(--font-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--fg);background:oklch(1 0 0 / .92);padding:6px 10px;border-radius:7px;box-shadow:var(--shadow);pointer-events:none}
+    .map-fallback{height:100%;min-height:520px;display:grid;place-items:center;padding:32px;text-align:center;background:linear-gradient(145deg,oklch(0.96 0.018 244),oklch(0.985 0.008 326))}
+    .map-fallback strong{display:block;font-size:16px;margin-bottom:7px}.map-fallback span{display:block;max-width:52ch;color:var(--mfg);font-size:13px;line-height:1.5}
+    .geo-pin-wrap{background:transparent;border:0}.geo-pin{display:flex;align-items:center;gap:7px;white-space:nowrap;transform:translate(-7px,-7px)}
+    .geo-dot{width:15px;height:15px;border:3px solid #fff;border-radius:50%;background:var(--c);box-shadow:0 1px 3px oklch(0.2 0.03 325 / .35);flex:none}
+    .geo-label{padding:5px 8px;border-radius:7px;background:oklch(1 0 0 / .94);border:1px solid var(--bord2);box-shadow:var(--shadow);color:var(--fg);font:700 11px var(--font-sans)}
+    .leaflet-container{font-family:var(--font-sans);color:var(--fg)}
+    .leaflet-control-attribution{font-size:10px!important}.leaflet-control-zoom a{color:var(--fg)!important}
     .blob{position:absolute;transform:translate(-50%,-50%);background:var(--card);border:1px solid var(--border);border-left:3px solid var(--c);border-radius:11px;padding:9px 12px;display:flex;flex-direction:column;gap:3px;box-shadow:var(--shadow);min-width:116px;text-align:left;transition:transform .12s,border-color .12s}
     .blob:hover{border-color:var(--primary);transform:translate(-50%,-50%) scale(1.04);z-index:5}
     .h-ok{--c:var(--healthy);--cb:var(--healthy-bg)}.h-risk{--c:var(--risk);--cb:var(--risk-bg)}.h-bad{--c:var(--bad);--cb:var(--bad-bg)}.h-empty{--c:var(--empty);--cb:oklch(0.91 0.01 325)}
     .blobtop{display:flex;align-items:center;gap:7px}.blobname{font-weight:700;font-size:13px}.blobn{font:11px var(--font-mono);color:var(--mfg)}.blobinf{font:11px var(--font-mono);color:var(--c);font-weight:700}
     .dot{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}.dot.big{width:11px;height:11px}
-    .legend{position:absolute;bottom:14px;left:16px;display:flex;gap:14px;background:oklch(1 0 0 / .84);padding:8px 12px;border-radius:8px;backdrop-filter:blur(4px);flex-wrap:wrap}
+    .legend{position:absolute;z-index:500;bottom:26px;left:16px;display:flex;gap:14px;background:oklch(1 0 0 / .92);padding:8px 12px;border-radius:8px;box-shadow:var(--shadow);flex-wrap:wrap;pointer-events:none}
     .legend span{display:flex;align-items:center;gap:6px;font:600 11px var(--font-mono);color:var(--fg)}
     .rail{display:flex;flex-direction:column;gap:9px;overflow:auto;max-height:640px}
     .railhd{font:600 11px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mfg);padding:2px}
@@ -119,16 +127,44 @@
     .trend{display:flex;align-items:flex-end;gap:9px;height:150px;margin-top:6px}.trendcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end}.tbarwrap{width:100%;flex:1;display:flex;align-items:flex-end;justify-content:center}.tbar{width:66%;background:var(--primary);border-radius:5px 5px 0 0;min-height:3px}.tbar.hot{background:var(--bad)}.tlab{font:10.5px var(--font-mono);color:var(--mfg)}
     .tree-hero{display:grid;grid-template-columns:320px 1fr;gap:22px}
     .ph{background:repeating-linear-gradient(45deg,var(--muted),var(--muted) 11px,transparent 11px,transparent 22px);border:1px dashed var(--border);border-radius:var(--r);display:flex;align-items:center;justify-content:center;color:var(--mfg);font-family:var(--font-mono);font-size:12px;text-align:center;padding:20px}
+    .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+    .evidence{padding:0;overflow:hidden}.evidence-head{padding:16px 18px 0}.evidence-stage{position:relative;aspect-ratio:4/3;background:var(--muted);display:grid;place-items:center;overflow:hidden}.evidence-stage img{width:100%;height:100%;object-fit:cover;display:block;opacity:0}.evidence-stage.is-ready img{opacity:1}.evidence-loading,.evidence-error{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--mfg);font:600 12px var(--font-mono);background:var(--muted)}.evidence-tabs{display:flex;gap:5px;padding:10px 12px;overflow-x:auto;border-top:1px solid var(--bord2)}.evidence-tab{border:1px solid var(--bord2);background:var(--card);color:var(--mfg);border-radius:7px;padding:7px 10px;font-size:11px;font-weight:700;white-space:nowrap}.evidence-tab[aria-selected="true"]{border-color:var(--primary);background:var(--primsoft);color:var(--primary)}.evidence-tab:focus-visible,.help:focus-visible{outline:3px solid color-mix(in oklch,var(--primary) 42%,transparent);outline-offset:2px}.evidence-caption{padding:0 18px 16px}.evidence-caption b{display:block;font-size:13px}.evidence-caption span{display:block;color:var(--mfg);font-size:11.5px;line-height:1.45;margin-top:3px}.evidence-notice{margin:0 18px 16px;padding:11px 12px;background:var(--card2);border:1px solid var(--bord2);border-radius:9px;color:var(--mfg);font-size:11.5px;line-height:1.45}
     .tdetail{display:grid;grid-template-columns:1fr 1fr;gap:2px 26px}.tdrow{display:flex;flex-direction:column;gap:3px;padding:12px 0;border-bottom:1px solid var(--bord2)}.tdk{font:600 10.5px var(--font-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mfg)}.tdv{font-size:16px;font-weight:700}
     .gauge{height:9px;border-radius:6px;background:var(--muted);overflow:hidden;margin-top:5px}.gaugefill{height:100%;background:var(--c);border-radius:6px}
-    .metricline{display:grid;grid-template-columns:130px 1fr 70px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--bord2)}.metricline:last-child{border-bottom:none}
-    .metricbar{height:9px;background:var(--muted);border-radius:99px;overflow:hidden}.metricfill{height:100%;background:var(--c)}
-    .help{border:1px solid var(--border);background:var(--card2);color:var(--mfg);width:18px;height:18px;border-radius:50%;font:700 11px var(--font-mono)}
+    .indicator-list{display:flex;flex-direction:column;gap:15px}.indicator{padding-bottom:14px;border-bottom:1px solid var(--bord2)}.indicator:last-child{padding-bottom:0;border-bottom:0}.indicator-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.indicator-title{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700}.indicator-value{display:flex;align-items:center;gap:8px;font:800 12px var(--font-mono)}.indicator-value .badge{font-size:9px;padding:3px 7px}.indicator-scale{position:relative;display:flex;height:12px;margin:9px 0 7px;border-radius:99px;overflow:visible;background:var(--muted)}.indicator-segment{height:100%;background:var(--c)}.indicator-segment:first-child{border-radius:99px 0 0 99px}.indicator-segment:nth-last-child(2){border-radius:0 99px 99px 0}.indicator-marker{position:absolute;top:-4px;width:3px;height:20px;border-radius:2px;background:var(--fg);box-shadow:0 0 0 2px var(--card);transform:translateX(-50%)}.indicator-ranges{display:flex;gap:8px;justify-content:space-between;color:var(--mfg);font:9.5px var(--font-mono);line-height:1.3}.indicator-ranges span{display:flex;align-items:center;gap:4px}.indicator-ranges i{width:7px;height:7px;border-radius:50%;background:var(--c);flex:none}.help{border:1px solid var(--border);background:var(--card2);color:var(--mfg);width:19px;height:19px;border-radius:50%;font:700 11px var(--font-mono);padding:0;display:inline-grid;place-items:center}
     .formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field label{display:block;font:600 11px var(--font-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mfg);margin-bottom:7px}.field input,.field select{width:100%}
+    .farm-builder{display:grid;grid-template-columns:minmax(310px,.8fr) minmax(420px,1.2fr);gap:18px;align-items:start}.farm-builder-stack{display:flex;flex-direction:column;gap:18px}.acre-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.acre-nav{display:flex;align-items:center;gap:8px}.acre-pills{display:flex;gap:6px;overflow-x:auto;padding:2px}.acre-pill{border:1px solid var(--bord2);background:var(--card);color:var(--mfg);border-radius:8px;padding:7px 10px;font:700 11px var(--font-mono);white-space:nowrap}.acre-pill[aria-current="true"]{border-color:var(--primary);background:var(--primsoft);color:var(--primary)}.grid-counter{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.count-chip{border:1px solid var(--bord2);background:var(--card2);border-radius:8px;padding:8px 10px;font:700 11px var(--font-mono);color:var(--mfg)}.count-chip strong{color:var(--fg)}.builder-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.field-help{display:block;color:var(--mfg);font-size:11px;line-height:1.4;margin-top:5px}.form-error{color:var(--bad);font-size:12px;font-weight:650;margin:12px 0 0}.preview-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--border);background:var(--primsoft);border-radius:10px;margin-bottom:14px}.preview-banner b,.preview-banner span{display:block}.preview-banner span{color:var(--mfg);font-size:11.5px;margin-top:2px}.preview-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px;margin-bottom:14px}.preview-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.tcell.is-editable[aria-pressed="false"]{background:var(--empty);color:#fff}.tcell.is-editable:focus-visible,.acre-pill:focus-visible{outline:3px solid color-mix(in oklch,var(--primary) 42%,transparent);outline-offset:2px}.save-note{font-size:11.5px;color:var(--mfg);line-height:1.45;margin-top:9px}.save-note strong{color:var(--fg)}
     .notice{border:1px solid var(--bord2);background:var(--card2);border-radius:var(--r);padding:14px 16px;color:var(--mfg);font-size:13px;line-height:1.45}
+    .filters{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+    .filter{display:flex;flex-direction:column;gap:6px;font:600 10.5px var(--font-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mfg)}
+    .filter select{min-width:150px;border:1px solid var(--border);background:var(--card);border-radius:9px;padding:8px 34px 8px 11px;color:var(--fg)}
+    .watchlist{display:flex;flex-direction:column}
+    .alertrow{display:grid;grid-template-columns:minmax(220px,1.7fr) minmax(160px,1fr) .75fr .75fr auto;align-items:center;gap:16px;padding:14px 18px;border-bottom:1px solid var(--bord2)}
+    .alertrow:last-child{border-bottom:none}.alertrow:hover{background:var(--card2)}.alertrow.is-read{opacity:.76}
+    .alertmain{display:flex;align-items:center;gap:11px;min-width:0}.alertcopy{min-width:0}.alertcopy b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.alertcopy small{display:block;color:var(--mfg);font-size:12px;margin-top:3px}
+    .alertmeta{font:12px var(--font-mono);color:var(--mfg)}.alertmeta strong{display:block;color:var(--fg);font-size:13px;margin-bottom:2px}
+    .alertactions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}.alertactions .btn-ghost{padding:7px 10px;font-size:12px}
+    .statusline{min-height:20px;color:var(--mfg);font-size:12px;margin:8px 0 0}.h-neutral{--c:oklch(0.51 0.018 325);--cb:oklch(0.93 0.008 325)}
+    .empty-state{padding:36px 20px;text-align:center}.empty-state strong{display:block;font-size:15px;margin-bottom:6px}.empty-state span{color:var(--mfg);font-size:13px}
+    .report-list{display:flex;flex-direction:column;gap:10px}
+    .report-item{display:grid;grid-template-columns:44px minmax(220px,1fr) auto;gap:14px;align-items:center;padding:16px 18px;background:var(--card);border:1px solid var(--bord2);border-radius:var(--r);box-shadow:var(--shadow)}
+    .report-icon{width:40px;height:40px;border-radius:10px;background:var(--primsoft);color:var(--primary);display:grid;place-items:center;font-weight:800}
+    .report-copy b{display:block;font-size:14px}.report-copy span{display:block;color:var(--mfg);font-size:12.5px;line-height:1.45;margin-top:3px;max-width:70ch}
+    .report-meta{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}.report-count{font:700 11px var(--font-mono);color:var(--mfg);white-space:nowrap}
+    .history-table{width:100%;border-collapse:collapse;font-size:13px}.history-table th,.history-table td{padding:11px 16px;border-bottom:1px solid var(--bord2);text-align:left}.history-table th{font:600 10.5px var(--font-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mfg);background:var(--card2)}.history-table td:last-child,.history-table th:last-child{text-align:right}.history-table tr:last-child td{border-bottom:0}
+    .print-report{max-width:1050px;margin:0 auto}.print-title{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:20px}.print-mark{font:800 13px var(--font-mono);color:var(--primary)}
+    .tabs{display:flex;gap:4px;padding:4px;background:var(--muted);border-radius:10px;width:max-content;margin-bottom:18px}.tab{border:0;background:transparent;color:var(--mfg);padding:8px 16px;border-radius:7px;font-weight:700}.tab[aria-selected="true"]{background:var(--card);color:var(--fg);box-shadow:var(--shadow)}
+    .workgrid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(290px,.85fr);gap:18px;align-items:start}.workmain{display:flex;flex-direction:column;gap:16px;min-width:0}.workside{position:sticky;top:0}.searchfield{min-width:240px;border:1px solid var(--border);background:var(--card);border-radius:9px;padding:8px 11px;color:var(--fg)}
+    .attention{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 10px}.attention-item{min-width:230px;max-width:280px;text-align:left;border:1px solid var(--bord2);background:var(--card);border-radius:10px;padding:12px;color:var(--fg)}.attention-item:hover,.attention-item[aria-current="true"]{border-color:var(--primary);background:var(--card2)}.attention-item b,.attention-item span{display:block}.attention-item span{font-size:12px;color:var(--mfg);margin-top:4px}
+    .data-scroll{overflow-x:auto}.data-table{width:100%;border-collapse:collapse;font-size:13px}.data-table th,.data-table td{padding:11px 14px;border-bottom:1px solid var(--bord2);text-align:left;vertical-align:middle}.data-table th{font:600 10.5px var(--font-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mfg);background:var(--card2)}.data-table tr:last-child td{border-bottom:0}.data-table tbody tr:hover,.data-table tbody tr.is-selected{background:var(--card2)}.data-table .num{text-align:right}.rowaction{border:0;background:none;color:var(--primary);font-weight:700;padding:6px 0}.rowaction:hover{text-decoration:underline}
+    .detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.detail-id{font:700 11px var(--font-mono);color:var(--mfg)}.detail-list{margin:0}.detail-pair{display:grid;grid-template-columns:110px 1fr;gap:12px;padding:9px 0;border-bottom:1px solid var(--bord2)}.detail-pair:last-child{border-bottom:0}.detail-pair dt{font:600 10.5px var(--font-mono);text-transform:uppercase;letter-spacing:.04em;color:var(--mfg)}.detail-pair dd{margin:0;font-size:13px;font-weight:600;overflow-wrap:anywhere}.detail-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.outcome-box,.assessment-form{margin-top:14px}.outcome-box label,.assessment-form label{display:block;font:600 10.5px var(--font-mono);text-transform:uppercase;letter-spacing:.04em;color:var(--mfg);margin-bottom:6px}.outcome-box textarea,.assessment-form textarea,.assessment-form select{width:100%;border:1px solid var(--border);border-radius:9px;padding:10px;color:var(--fg);background:var(--card)}.outcome-box textarea,.assessment-form textarea{min-height:86px;resize:vertical}.assessment-form{padding-top:14px;border-top:1px solid var(--bord2)}.assessment-form h4,.case-timeline h4{font-size:13px;margin:0 0 10px}.assessment-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.assessment-fields .wide{grid-column:1/-1}.field-error{min-height:18px;color:var(--bad);font-size:11.5px;font-weight:700;margin:8px 0 0}.case-timeline{margin-top:18px;padding-top:14px;border-top:1px solid var(--bord2)}.timeline-list{list-style:none;margin:0;padding:0}.timeline-entry{padding:10px 0;border-bottom:1px solid var(--bord2)}.timeline-entry:last-child{border-bottom:0}.timeline-entry-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.timeline-entry b{font-size:12.5px}.timeline-entry p{font-size:12px;line-height:1.45;margin:6px 0;color:var(--fg)}.timeline-entry small{display:block;color:var(--mfg);font-size:10.5px;line-height:1.4}
+    .admin-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,.85fr);gap:18px;align-items:start}.admin-stack{display:flex;flex-direction:column;gap:18px;min-width:0}.user-row{display:grid;grid-template-columns:minmax(190px,1.4fr) minmax(150px,1fr) minmax(180px,1.2fr) auto;gap:14px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--bord2)}.user-row:last-child{border-bottom:0}.user-row.is-inactive{opacity:.68}.user-main{display:flex;align-items:center;gap:11px;min-width:0}.user-main .avatar{width:32px;height:32px}.user-main b,.user-main small{display:block}.user-main small{color:var(--mfg);font-size:11px;margin-top:2px}.user-actions{display:flex;gap:7px;justify-content:flex-end;flex-wrap:wrap}.user-actions .btn-ghost{font-size:11px;padding:7px 9px}.scope-select{width:100%;min-width:0;border:1px solid var(--border);background:var(--card);border-radius:8px;padding:8px 10px;color:var(--fg);font-size:12px}.role-matrix{display:grid;grid-template-columns:minmax(160px,1.2fr) repeat(4,minmax(70px,.7fr));font-size:12px;overflow-x:auto}.matrix-cell{padding:10px 12px;border-bottom:1px solid var(--bord2);min-width:70px}.matrix-head{font:600 10px var(--font-mono);text-transform:uppercase;letter-spacing:.04em;color:var(--mfg);background:var(--card2)}.matrix-yes{color:var(--healthy);font-weight:800}.matrix-no{color:var(--mfg)}.activity-list{list-style:none;margin:0;padding:0}.activity-item{padding:12px 0;border-bottom:1px solid var(--bord2)}.activity-item:last-child{border-bottom:0}.activity-item b,.activity-item span{display:block}.activity-item b{font-size:12.5px}.activity-item span{font-size:11.5px;color:var(--mfg);margin-top:3px}.settings-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.8fr);gap:18px;align-items:start}.choice-group{display:flex;gap:9px;flex-wrap:wrap}.choice{display:flex;align-items:flex-start;gap:9px;border:1px solid var(--bord2);background:var(--card);border-radius:10px;padding:11px 13px;min-width:180px}.choice:has(input:checked){border-color:var(--primary);background:var(--card2)}.choice input{margin-top:2px;accent-color:var(--primary)}.choice b,.choice span{display:block}.choice span{font-size:11.5px;color:var(--mfg);margin-top:2px}.danger-zone{border-color:color-mix(in oklch,var(--bad) 35%,var(--bord2));background:var(--bad-bg)}.confirm-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}.profile-wrap{position:relative}.profile-menu{position:absolute;right:0;top:44px;width:270px;background:var(--card);border:1px solid var(--bord2);border-radius:12px;box-shadow:0 16px 40px oklch(0.25 0.06 325 / .18);padding:10px;z-index:20}.profile-summary{padding:9px 10px 12px;border-bottom:1px solid var(--bord2);margin-bottom:6px}.profile-summary b,.profile-summary span{display:block}.profile-summary span{color:var(--mfg);font-size:11.5px;margin-top:3px}.profile-action{display:block;width:100%;border:0;background:none;color:var(--fg);text-align:left;padding:9px 10px;border-radius:7px;font-weight:600}.profile-action:hover,.profile-action:focus-visible{background:var(--muted)}.signed-out{min-height:55vh;display:grid;place-items:center}.signed-out .card{max-width:460px;text-align:center}.signed-out .avatar{margin:0 auto 12px;width:44px;height:44px}.storage-note{font-size:11.5px;color:var(--mfg);margin-top:10px}.density-compact .content{padding-top:18px}.density-compact .mcard,.density-compact .card{padding:14px}.density-compact .user-row,.density-compact .data-table th,.density-compact .data-table td{padding-top:8px;padding-bottom:8px}
     .hidden{display:none!important}
-    @media(max-width:980px){.app{grid-template-columns:82px 1fr}.logotext,.logosub,.navitem span:not(.nico),.sidefoot span:not(.avatar),.navlabel{display:none}.side{padding:16px 10px}.navitem{justify-content:center}.mapwrap,.grid2,.tree-hero{grid-template-columns:1fr}.mrow,.mrow5{grid-template-columns:repeat(2,1fr)}.htr{grid-template-columns:1.4fr .8fr .8fr .8fr .8fr}}
-    @media(max-width:620px){.app{display:block;height:auto}.side{position:sticky;top:0;z-index:5;display:flex;flex-direction:row;overflow:auto;border-right:0;border-bottom:1px solid var(--bord2)}.logo,.sidefoot,.navlabel{display:none}.main{min-height:100vh}.topbar{height:auto;min-height:64px;padding:12px;align-items:flex-start;gap:12px}.tb-right{flex-wrap:wrap;justify-content:flex-end}.content{padding:18px 14px 40px}.mrow,.mrow5,.formgrid{grid-template-columns:1fr}.map{min-height:420px}.htr{grid-template-columns:1fr;gap:6px;padding:12px 14px}.num{text-align:left}.treegrid{gap:4px}.tdetail{grid-template-columns:1fr}}
+    @media(max-width:980px){.app{grid-template-columns:82px 1fr}.logotext,.logosub,.navitem span:not(.nico),.sidefoot span:not(.avatar),.navlabel{display:none}.side{padding:16px 10px}.navitem{justify-content:center}.mapwrap,.grid2,.tree-hero,.workgrid,.admin-grid,.settings-grid,.farm-builder{grid-template-columns:1fr}.workside{position:static}.mrow,.mrow5{grid-template-columns:repeat(2,1fr)}.htr{grid-template-columns:1.4fr .8fr .8fr .8fr .8fr}.user-row{grid-template-columns:minmax(190px,1.3fr) minmax(150px,1fr) auto}.user-row .scope-cell{grid-column:1/-1}}
+    @media(max-width:980px){.alertrow{grid-template-columns:minmax(210px,1.5fr) 1fr .7fr auto}.alertrow .alert-date{display:none}}
+    @media(max-width:620px){.app{display:block;height:auto}.side{position:sticky;top:0;z-index:5;display:flex;flex-direction:row;overflow:auto;border-right:0;border-bottom:1px solid var(--bord2)}.logo,.sidefoot,.navlabel{display:none}.main{min-height:100vh}.topbar{height:auto;min-height:64px;padding:12px;align-items:flex-start;gap:12px}.tb-right{flex-wrap:wrap;justify-content:flex-end}.content{padding:18px 14px 40px}.mrow,.mrow5,.formgrid,.preview-meta,.assessment-fields{grid-template-columns:1fr}.assessment-fields .wide{grid-column:auto}.map{min-height:420px}.htr{grid-template-columns:1fr;gap:6px;padding:12px 14px}.num{text-align:left}.treegrid{gap:4px}.tdetail{grid-template-columns:1fr}.indicator-ranges{flex-direction:column;gap:4px}.alertrow{grid-template-columns:1fr;gap:10px;padding:14px}.alertrow .alert-date{display:block}.alertactions{justify-content:flex-start}.filters{align-items:stretch}.filter,.filter select,.searchfield{width:100%;min-width:0}.report-item{grid-template-columns:40px 1fr}.report-meta{grid-column:1/-1;justify-content:flex-start}.history-table{display:block;overflow-x:auto}.tabs{width:100%}.tab{flex:1;padding-inline:8px}.detail-pair{grid-template-columns:90px 1fr}.user-row{grid-template-columns:1fr}.user-actions{justify-content:flex-start}.user-row .scope-cell{grid-column:auto}.role-matrix{grid-template-columns:150px repeat(4,74px)}.profile-menu{position:fixed;top:66px;right:12px;left:12px;width:auto}.acre-nav{width:100%;justify-content:space-between}.builder-actions>*{flex:1}.preview-banner{align-items:flex-start;flex-direction:column}}
+    @page{size:A4;margin:14mm}
+    @media print{body{background:#fff}.side,.topbar,.no-print{display:none!important}.app{display:block;height:auto}.main,.content{display:block;overflow:visible;padding:0}.print-report{max-width:none}.card,.mcard,.panel{box-shadow:none;break-inside:avoid}.mrow{grid-template-columns:repeat(4,1fr)}.history-table{font-size:10pt}}
   </style>
 </head>
 <body>
@@ -149,7 +185,7 @@
         <div class="tb-right">
           <div class="toggle" id="viewToggle"><button class="tg on" data-view="map">Map</button><button class="tg" data-view="table">Table</button></div>
           <select class="csel" id="roleSelect" aria-label="Select demo role"></select>
-          <button class="avatar" id="profileBtn" title="Settings and sign out">SA</button>
+          <div class="profile-wrap"><button class="avatar" id="profileBtn" title="Settings and sign out" aria-haspopup="menu" aria-expanded="false">SA</button><div class="profile-menu hidden" id="profileMenu" role="menu"></div></div>
         </div>
       </header>
       <section class="content" id="content" aria-live="polite"></section>
@@ -157,14 +193,48 @@
   </div>
   <script>
     const roles = {
-      admin:{name:"System Administrator",initials:"SA",districts:"all",nav:["Overview","New Farm","Alerts","Reports","Cases & Treatments","Disease Analytics","Administration","Settings"]},
-      ceo:{name:"CEO / General Manager",initials:"GM",districts:"all",nav:["Overview","New Farm","Alerts","Reports","Cases & Treatments","Disease Analytics","Administration","Settings"]},
-      head:{name:"Plantation Head",initials:"PH",districts:["Eluru","East Godavari"],nav:["Overview","Alerts","Reports","Cases & Treatments","Disease Analytics","Settings"]},
-      manager:{name:"Area Manager",initials:"AM",districts:["Eluru"],mandals:["Pedavegi"],nav:["Overview","Alerts","Cases & Treatments","Settings"]},
+      admin:{name:"System Administrator",initials:"SA",districts:"all",nav:["Overview","New Farm","Alerts","Reports","Cases & Treatments","Administration","Settings"]},
+      ceo:{name:"CEO / General Manager",initials:"GM",districts:"all",nav:["Overview","New Farm","Alerts","Reports","Cases & Treatments","Administration","Settings"]},
+      head:{name:"Plantation Head",initials:"PH",districts:["Eluru","East Godavari"],nav:["Overview","Alerts","Reports","Cases & Treatments","Settings"]},
+      manager:{name:"Area Manager",initials:"AM",districts:["Eluru"],mandals:["Pedavegi"],nav:["Overview","Alerts","Reports","Cases & Treatments","Settings"]},
       staff:{name:"Field Staff",initials:"FS",farmIds:["FRM-AP-ELR-0004"],nav:["Overview","Alerts","Cases & Treatments","Settings"]}
     };
-    const navIcons = {"Overview":"M","New Farm":"+","Alerts":"!","Reports":"R","Cases & Treatments":"C","Disease Analytics":"D","Administration":"A","Settings":"S"};
-    const publicFacts = {farmers:"around 65,000",hectares:"more than 75,000",source:"Godrej Agrovet Oil Palm Business public page"};
+    const navIcons = {"Overview":"M","New Farm":"+","Alerts":"!","Reports":"R","Cases & Treatments":"C","Administration":"A","Settings":"S"};
+    const publicFacts = {
+      farmers:"around 65,000",
+      hectares:"more than 75,000",
+      source:"Godrej Agrovet Oil Palm Business public page",
+      sourceUrl:"https://www.godrejagrovet.com/businesses/oil-palm-business",
+      states:"six",
+      apHorticulture:{coveredHectares:226528,potentialHectares:476913,districts:24,kakinadaCovered:18134,ntrCovered:11519,source:"Andhra Pradesh Horticulture Department Oil Palm page",sourceUrl:"https://horticulture.ap.nic.in/OIL%20PALM.html"}
+    };
+    const EVIDENCE_TREE_ID = "FRM-AP-ELR-0004-T001";
+    const TREE_EVIDENCE_MANIFEST = {
+      classification:"demo",
+      captureDate:"2026-06-20",
+      captureId:"DJI_20260620095527_0011",
+      notice:"Real demonstration survey context only. These captures are not evidence for the selected simulated tree, proof of farm ownership, or the source of the displayed readings.",
+      views:[
+        {id:"rgb",label:"RGB",band:"Visible RGB",src:"assets/tree-evidence/rgb.webp",alt:"Privacy-cropped visible-light demonstration view of oil palms and the plantation floor."},
+        {id:"false-colour",label:"False colour",band:"Camera false-colour",src:"assets/tree-evidence/false-colour.webp",alt:"Privacy-cropped camera false-colour demonstration view of an oil-palm trunk and plantation floor."},
+        {id:"green",label:"Green",band:"Green",src:"assets/tree-evidence/green.webp",alt:"Independently stretched green-band demonstration preview of an oil-palm survey capture."},
+        {id:"red",label:"Red",band:"Red",src:"assets/tree-evidence/red.webp",alt:"Independently stretched red-band demonstration preview of an oil-palm survey capture."},
+        {id:"red-edge",label:"Red-edge",band:"Red-edge",src:"assets/tree-evidence/red-edge.webp",alt:"Independently stretched red-edge-band demonstration preview of an oil-palm survey capture."},
+        {id:"near-infrared",label:"Near-infrared",band:"Near-infrared",src:"assets/tree-evidence/near-infrared.webp",alt:"Independently stretched near-infrared-band demonstration preview of an oil-palm survey capture."}
+      ]
+    };
+    const TREE_OBSERVATION = {
+      treeId:EVIDENCE_TREE_ID,
+      values:{ndvi:.43,ndre:.32,ganodermaConfidence:18,canopyTemperature:30.8,recentRiskTrend:.03},
+      disclosure:"Demo interpretation bands and simulated readings only. No NDVI, NDRE, diagnosis, Ganoderma confidence, canopy temperature, or recent trend is derived from the supplied images."
+    };
+    const GANODERMA_INDICATORS = [
+      {id:"ndvi",label:"NDVI",value:.43,display:"0.43",min:0,max:1,help:"Normalized Difference Vegetation Index is a general vegetation-vigor signal. It is not a Ganoderma diagnosis.",ranges:[{label:"Danger",text:"< 0.45",from:0,to:.45,status:"bad"},{label:"Suspected",text:"0.45-0.65",from:.45,to:.65,status:"risk"},{label:"Okay",text:"> 0.65",from:.65,to:1,status:"ok"}]},
+      {id:"ndre",label:"NDRE",value:.32,display:"0.32",min:0,max:1,help:"Normalized Difference Red Edge can help describe chlorophyll-related canopy stress in mature vegetation. It is not diagnostic on its own.",ranges:[{label:"Danger",text:"< 0.25",from:0,to:.25,status:"bad"},{label:"Suspected",text:"0.25-0.40",from:.25,to:.40,status:"risk"},{label:"Okay",text:"> 0.40",from:.40,to:1,status:"ok"}]},
+      {id:"ganodermaConfidence",label:"Ganoderma confidence",value:18,display:"18%",min:0,max:100,help:"A simulated model-confidence score for workflow demonstration. It was not calculated from the supplied captures.",ranges:[{label:"Okay",text:"< 35%",from:0,to:35,status:"ok"},{label:"Suspected",text:"35-65%",from:35,to:65,status:"risk"},{label:"Danger",text:"> 65%",from:65,to:100,status:"bad"}]},
+      {id:"canopyTemperature",label:"Canopy temperature",value:30.8,display:"30.8\u00b0C",min:20,max:45,help:"A simulated canopy-temperature observation in degrees Celsius. Higher values can indicate heat or water stress but are not specific to Ganoderma.",ranges:[{label:"Okay",text:"<= 32\u00b0C",from:20,to:32,status:"ok"},{label:"Suspected",text:"> 32-35\u00b0C",from:32,to:35,status:"risk"},{label:"Danger",text:"> 35\u00b0C",from:35,to:45,status:"bad"}]},
+      {id:"recentRiskTrend",label:"Recent risk trend",value:.03,display:"+0.03",min:-.10,max:.25,help:"The simulated change in composite risk across recent observations. Positive movement means risk increased.",ranges:[{label:"Okay",text:"<= +0.05",from:-.10,to:.05,status:"ok"},{label:"Suspected",text:"> +0.05-0.15",from:.05,to:.15,status:"risk"},{label:"Danger",text:"> +0.15",from:.15,to:.25,status:"bad"}]}
+    ];
     const districts = [
       {name:"Eluru",lat:16.7107,lon:81.0952,mandals:[
         {name:"Pedavegi",lat:16.8296,lon:81.1056,villages:[
@@ -181,28 +251,289 @@
         {name:"Pentapadu",lat:16.8083,lon:81.5271,villages:[{name:"Ravipadu",lat:16.7984,lon:81.5483,farms:[farm("FRM-AP-WGD-0207","Ravipadu Palm Estate",16.7988,81.5511,11,55,.036)]}]},
         {name:"Tanuku",lat:16.7530,lon:81.6840,villages:[{name:"Velpuru",lat:16.7423,lon:81.7045,farms:[farm("FRM-AP-WGD-0215","Velpuru Demo Farm",16.7456,81.7072,8,52,.091)]}]}
       ]},
-      {name:"Krishna",lat:16.5062,lon:80.6480,mandals:[
-        {name:"Agiripalli",lat:16.6854,lon:80.7812,villages:[{name:"Kanuru",lat:16.6476,lon:80.7793,farms:[farm("FRM-AP-KRI-0302","Kanuru Trial Farm",16.6492,80.7831,7,54,.028)]}]},
-        {name:"Nuzvid",lat:16.7881,lon:80.8465,villages:[{name:"Tukkuluru",lat:16.7628,lon:80.8931,farms:[farm("FRM-AP-KRI-0318","Nuzvid Palm Linkage",16.7664,80.8952,6,57,.058)]}]}
+      {name:"Krishna",lat:16.1875,lon:81.1389,mandals:[
+        {name:"Pamarru",lat:16.3270,lon:80.9610,villages:[{name:"Pasumarru",lat:16.3504,lon:80.9828,farms:[farm("FRM-AP-KRI-0302","Pasumarru Demonstration Block",16.3520,80.9860,7,54,.028)]}]},
+        {name:"Guduru",lat:16.2475,lon:81.0837,villages:[{name:"Guduru",lat:16.2490,lon:81.0870,farms:[farm("FRM-AP-KRI-0318","Guduru Palm Linkage",16.2458,81.0913,6,57,.058)]}]}
+      ]},
+      {name:"Kakinada",lat:16.9891,lon:82.2475,mandals:[
+        {name:"Peddapuram",lat:17.0770,lon:82.1380,villages:[{name:"Kandrakota",lat:17.166187,lon:82.118812,farms:[
+          farm("FRM-AP-KAK-0401","Kandrakota North Demo Block",17.1674,82.1201,7,52,.029,{surveyed:331,infected:11,suspected:24,pending:8,lastSurvey:"2026-08-01"}),
+          farm("FRM-AP-KAK-0402","Peddapuram Field Demo",17.1649,82.1168,9,53,.061,{surveyed:419,infected:29,suspected:46,pending:15,lastSurvey:"2026-07-29"})
+        ]}]},
+        {name:"Jaggampeta",lat:17.1795,lon:82.0548,villages:[{name:"Gurrappalem",lat:17.208118,lon:82.062042,farms:[
+          farm("FRM-AP-KAK-0413","Gurrappalem Survey Demo",17.2095,82.0634,8,54,.018,{surveyed:395,infected:8,suspected:20,pending:7,lastSurvey:"2026-08-05"}),
+          farm("FRM-AP-KAK-0421","Jaggampeta Linkage Demo",17.2067,82.0608,10,55,.074,{surveyed:468,infected:41,suspected:62,pending:20,lastSurvey:"2026-07-31"})
+        ]}]}
+      ]},
+      {name:"NTR",lat:16.5062,lon:80.6480,mandals:[
+        {name:"Mylavaram",lat:16.7630,lon:80.6377,villages:[{name:"Velvadam",lat:16.762213,lon:80.663593,farms:[
+          farm("FRM-AP-NTR-0501","Velvadam Oil Palm Demo",16.7635,80.6650,6,56,.027,{surveyed:302,infected:9,suspected:21,pending:8,lastSurvey:"2026-08-02"}),
+          farm("FRM-AP-NTR-0510","Mylavaram Survey Demo Block",16.7609,80.6619,8,57,.049,{surveyed:414,infected:22,suspected:38,pending:12,lastSurvey:"2026-08-06"})
+        ]}]},
+        {name:"Tiruvuru",lat:17.1056,lon:80.6100,villages:[{name:"Mustikuntla",lat:17.061054,lon:80.555219,farms:[
+          farm("FRM-AP-NTR-0522","Mustikuntla Field Demo",17.0624,80.5567,9,52,.083,{surveyed:381,infected:39,suspected:58,pending:22,lastSurvey:"2026-07-27"}),
+          farm("FRM-AP-NTR-0530","Tiruvuru Linkage Demo",17.0597,80.5538,7,54,.016,{surveyed:352,infected:6,suspected:16,pending:5,lastSurvey:"2026-08-07"})
+        ]}]}
       ]}
     ];
-    function farm(id,name,lat,lon,acres,density,risk){
+    function farm(id,name,lat,lon,acres,density,risk,observations={}){
       const trees = acres * density;
-      return {id,name,lat,lon,acres,density,trees,surveyed:Math.round(trees*.88),infected:Math.round(trees*risk),suspected:Math.round(trees*(risk+.04)),pending:Math.max(2,Math.round(trees*(.03+risk/2))),risk};
+      const seed = [...id].reduce((sum,char)=>sum+char.charCodeAt(0),0);
+      const surveyRate = .82 + (seed % 13) / 100;
+      const infected = Number.isInteger(observations.infected)?observations.infected:Math.round(trees*risk);
+      const suspected = Number.isInteger(observations.suspected)?observations.suspected:Math.max(infected,Math.round(trees*(risk+.035)));
+      const surveyed = Number.isInteger(observations.surveyed)?observations.surveyed:Math.round(trees*surveyRate);
+      const pending = Number.isInteger(observations.pending)?observations.pending:Math.max(2,Math.round(trees*(.015+risk*.25)));
+      return {id,name,lat,lon,acres,density,trees,surveyed,infected,suspected,pending,risk,lastSurvey:observations.lastSurvey||"2026-08-01",source:"deterministic-demo",ownershipClaim:false};
     }
-    let state = {role:"admin",page:"Overview",view:"map",path:[],farmId:null,treeId:null,newFarmPreview:null};
+    const alertRecords = [
+      {id:"ALT-AP-001",farmId:"FRM-AP-WGD-0215",severity:"danger",affected:52,date:"2026-08-08",summary:"Recorded infection rate requires treatment review"},
+      {id:"ALT-AP-002",farmId:"FRM-AP-ELR-0023",severity:"danger",affected:62,date:"2026-08-07",summary:"Field confirmation and containment action are due"},
+      {id:"ALT-AP-003",farmId:"FRM-AP-EGD-0112",severity:"suspected",affected:45,date:"2026-08-06",summary:"Suspected palms increased in the latest demo survey"},
+      {id:"ALT-AP-004",farmId:"FRM-AP-KRI-0318",severity:"suspected",affected:32,date:"2026-08-04",summary:"Follow-up collar and canopy inspection recommended"},
+      {id:"ALT-AP-005",farmId:"FRM-AP-ELR-0004",severity:"suspected",affected:42,date:"2026-08-03",summary:"Assigned field inspection remains open"},
+      {id:"ALT-AP-006",farmId:"FRM-AP-EGD-0129",severity:"suspected",affected:21,date:"2026-08-02",summary:"Emerging risk signal needs a repeat observation"},
+      {id:"ALT-AP-007",farmId:"FRM-AP-WGD-0207",severity:"suspected",affected:43,date:"2026-07-30",summary:"Monitor the recorded suspected-palm cluster"},
+      {id:"ALT-AP-008",farmId:"FRM-AP-ELR-0011",severity:"okay",affected:21,date:"2026-07-28",summary:"Monitoring watch retained after routine survey"},
+      {id:"ALT-AP-009",farmId:"FRM-AP-ELR-0037",severity:"no-reading",affected:0,date:"2026-07-26",summary:"Current-cycle reading has not been recorded"},
+      {id:"ALT-AP-010",farmId:"FRM-AP-EGD-0104",severity:"okay",affected:34,date:"2026-07-24",summary:"No escalation; continue scheduled monitoring"},
+      {id:"ALT-AP-011",farmId:"FRM-AP-KRI-0302",severity:"okay",affected:24,date:"2026-07-22",summary:"No escalation; continue scheduled monitoring"}
+    ];
+    const inspectionRecords = [
+      {id:"INSP-AP-001",farmId:"FRM-AP-ELR-0004",assignee:"Anil Kumar",dueDate:"2026-08-12",status:"Open",type:"Ganoderma follow-up"},
+      {id:"INSP-AP-002",farmId:"FRM-AP-ELR-0011",assignee:"S. Lakshmi",dueDate:"2026-08-18",status:"Scheduled",type:"Routine palm health"},
+      {id:"INSP-AP-003",farmId:"FRM-AP-ELR-0023",assignee:"Ravi Teja",dueDate:"2026-08-11",status:"Overdue",type:"Containment verification"},
+      {id:"INSP-AP-004",farmId:"FRM-AP-ELR-0037",assignee:"S. Lakshmi",dueDate:"2026-08-20",status:"Open",type:"Survey coverage"},
+      {id:"INSP-AP-005",farmId:"FRM-AP-EGD-0104",assignee:"M. Prasad",dueDate:"2026-08-24",status:"Scheduled",type:"Routine palm health"},
+      {id:"INSP-AP-006",farmId:"FRM-AP-EGD-0112",assignee:"M. Prasad",dueDate:"2026-08-13",status:"Open",type:"Suspected palm review"},
+      {id:"INSP-AP-007",farmId:"FRM-AP-EGD-0129",assignee:"K. Devi",dueDate:"2026-08-16",status:"Open",type:"Repeat observation"},
+      {id:"INSP-AP-008",farmId:"FRM-AP-WGD-0207",assignee:"P. Srinu",dueDate:"2026-08-19",status:"Scheduled",type:"Cluster monitoring"},
+      {id:"INSP-AP-009",farmId:"FRM-AP-WGD-0215",assignee:"P. Srinu",dueDate:"2026-08-10",status:"Overdue",type:"Treatment review"},
+      {id:"INSP-AP-010",farmId:"FRM-AP-KRI-0302",assignee:"V. Nagesh",dueDate:"2026-08-26",status:"Scheduled",type:"Routine palm health"},
+      {id:"INSP-AP-011",farmId:"FRM-AP-KRI-0318",assignee:"V. Nagesh",dueDate:"2026-08-15",status:"Open",type:"Collar inspection"}
+    ];
+    const caseRecords = [
+      {id:"CASE-AP-001",farmId:"FRM-AP-ELR-0004",treeId:"FRM-AP-ELR-0004-T001",status:"Under assessment",opened:"2026-08-03",affectedPalms:25,owner:"Anil Kumar",observation:"Basal symptoms recorded during the assigned field follow-up."},
+      {id:"CASE-AP-002",farmId:"FRM-AP-ELR-0023",treeId:"FRM-AP-ELR-0023-T001",status:"Confirmed",opened:"2026-08-01",affectedPalms:43,owner:"Ravi Teja",observation:"Field confirmation completed; area response approval is pending."},
+      {id:"CASE-AP-003",farmId:"FRM-AP-EGD-0112",treeId:"FRM-AP-EGD-0112-T001",status:"Under assessment",opened:"2026-08-06",affectedPalms:29,owner:"M. Prasad",observation:"Repeat collar inspection requested for the suspected cluster."},
+      {id:"CASE-AP-004",farmId:"FRM-AP-EGD-0129",treeId:"FRM-AP-EGD-0129-T001",status:"Monitoring",opened:"2026-07-28",affectedPalms:11,owner:"K. Devi",observation:"No escalation recorded after the latest repeat observation."},
+      {id:"CASE-AP-005",farmId:"FRM-AP-WGD-0207",treeId:"FRM-AP-WGD-0207-T001",status:"Monitoring",opened:"2026-07-25",affectedPalms:22,owner:"P. Srinu",observation:"Cluster remains under scheduled sanitation-response monitoring."},
+      {id:"CASE-AP-006",farmId:"FRM-AP-WGD-0215",treeId:"FRM-AP-WGD-0215-T001",status:"Treatment active",opened:"2026-07-21",affectedPalms:38,owner:"P. Srinu",observation:"Containment activity is underway for the priority workflow."},
+      {id:"CASE-AP-007",farmId:"FRM-AP-KRI-0318",treeId:"FRM-AP-KRI-0318-T001",status:"Confirmed",opened:"2026-08-04",affectedPalms:20,owner:"V. Nagesh",observation:"Field evidence recorded; area-manager action is required."},
+      {id:"CASE-AP-008",farmId:"FRM-AP-EGD-0104",treeId:"FRM-AP-EGD-0104-T001",status:"Closed",opened:"2026-06-18",affectedPalms:9,owner:"M. Prasad",observation:"Monitoring cycle completed without further escalation."}
+    ];
+    const treatmentRecords = [
+      {id:"TRT-AP-001",caseId:"CASE-AP-001",farmId:"FRM-AP-ELR-0004",status:"Recommended",progress:0,owner:"Anil Kumar",treatment:"Field sanitation and monitoring",recommendation:"Remove loose infected debris and repeat the collar observation within seven days.",outcome:""},
+      {id:"TRT-AP-002",caseId:"CASE-AP-002",farmId:"FRM-AP-ELR-0023",status:"In progress",progress:55,owner:"Ravi Teja",treatment:"Isolation trench and sanitation",recommendation:"Complete sanitation around confirmed palms and verify the isolation boundary.",outcome:""},
+      {id:"TRT-AP-003",caseId:"CASE-AP-003",farmId:"FRM-AP-EGD-0112",status:"Planned",progress:20,owner:"M. Prasad",treatment:"Confirmatory inspection protocol",recommendation:"Complete a field confirmation before starting a sanitation response.",outcome:""},
+      {id:"TRT-AP-004",caseId:"CASE-AP-005",farmId:"FRM-AP-WGD-0207",status:"Completed",progress:100,owner:"P. Srinu",treatment:"Sanitation response monitoring",recommendation:"Document the response after the final monitoring visit.",outcome:"Monitoring cycle completed; no additional affected palms recorded."},
+      {id:"TRT-AP-005",caseId:"CASE-AP-006",farmId:"FRM-AP-WGD-0215",status:"In progress",progress:65,owner:"P. Srinu",treatment:"Priority containment workflow",recommendation:"Continue the approved containment workflow and record the next inspection outcome.",outcome:""},
+      {id:"TRT-AP-006",caseId:"CASE-AP-007",farmId:"FRM-AP-KRI-0318",status:"Planned",progress:5,owner:"V. Nagesh",treatment:"Field confirmation and sanitation",recommendation:"Confirm symptoms and schedule sanitation for affected palms.",outcome:""}
+    ];
+    const reportDefinitions = [
+      {id:"executive",title:"Printable executive report",format:"printable",icon:"P",description:"A4-ready AP operational summary with reconciled portfolio metrics and farm health rows."},
+      {id:"survey-coverage",title:"Survey coverage by plantation area",format:"csv",icon:"S",description:"Farm-level planted area, surveyed palms, and coverage for the signed-in role scope."},
+      {id:"suspected-quarter",title:"Suspected palms by quarter",format:"csv",icon:"Q",description:"Deterministic quarterly suspected-palm observations for authorized AP farms."},
+      {id:"open-inspections",title:"Open inspections by assignee",format:"csv",icon:"I",description:"Outstanding and scheduled field inspections grouped through their authorized farm records."},
+      {id:"infected-cases",title:"Infected case status",format:"csv",icon:"C",description:"Active and closed Ganoderma workflow cases linked to farms in the current AP assignment."},
+      {id:"treatment-progress",title:"Treatment progress",format:"csv",icon:"T",description:"Treatment ownership and progress for cases attached to authorized farms."}
+    ];
+    const managedUsers = [
+      {id:"usr-admin",roleId:"admin",name:"Sowmya Rao",email:"sowmya.rao@palmwatch.demo",scope:"ap-all",active:true,protected:true},
+      {id:"usr-ceo",roleId:"ceo",name:"Arvind Menon",email:"arvind.menon@palmwatch.demo",scope:"ap-all",active:true,protected:false},
+      {id:"usr-head",roleId:"head",name:"Kavitha Reddy",email:"kavitha.reddy@palmwatch.demo",scope:"eluru-east-godavari",active:true,protected:false},
+      {id:"usr-head-west",roleId:"head",name:"Suresh Babu",email:"suresh.babu@palmwatch.demo",scope:"west-godavari-krishna",active:true,protected:false},
+      {id:"usr-manager",roleId:"manager",name:"Ramesh Naidu",email:"ramesh.naidu@palmwatch.demo",scope:"pedavegi",active:true,protected:false},
+      {id:"usr-manager-east",roleId:"manager",name:"Priya Devi",email:"priya.devi@palmwatch.demo",scope:"rajanagaram",active:true,protected:false},
+      {id:"usr-staff",roleId:"staff",name:"Anil Kumar",email:"anil.kumar@palmwatch.demo",scope:"FRM-AP-ELR-0004",assignedFarmIds:["FRM-AP-ELR-0004"],active:true,protected:false},
+      {id:"usr-staff-ravi",roleId:"staff",name:"Ravi Teja",email:"ravi.teja@palmwatch.demo",scope:"FRM-AP-ELR-0023",assignedFarmIds:["FRM-AP-ELR-0023"],active:true,protected:false},
+      {id:"usr-staff-prasad",roleId:"staff",name:"M. Prasad",email:"m.prasad@palmwatch.demo",scope:"FRM-AP-EGD-0104",assignedFarmIds:["FRM-AP-EGD-0104","FRM-AP-EGD-0112"],active:true,protected:false},
+      {id:"usr-staff-devi",roleId:"staff",name:"K. Devi",email:"k.devi@palmwatch.demo",scope:"FRM-AP-EGD-0129",assignedFarmIds:["FRM-AP-EGD-0129"],active:true,protected:false},
+      {id:"usr-staff-srinu",roleId:"staff",name:"P. Srinu",email:"p.srinu@palmwatch.demo",scope:"FRM-AP-WGD-0207",assignedFarmIds:["FRM-AP-WGD-0207","FRM-AP-WGD-0215"],active:true,protected:false},
+      {id:"usr-staff-nagesh",roleId:"staff",name:"V. Nagesh",email:"v.nagesh@palmwatch.demo",scope:"FRM-AP-KRI-0318",assignedFarmIds:["FRM-AP-KRI-0318"],active:true,protected:false}
+    ];
+    const CURRENT_USER_BY_ROLE = {admin:"usr-admin",ceo:"usr-ceo",head:"usr-head",manager:"usr-manager",staff:"usr-staff"};
+    const ADMIN_SCOPE_OPTIONS = {
+      admin:[{id:"ap-all",label:"All Andhra Pradesh"}],
+      ceo:[{id:"ap-all",label:"All Andhra Pradesh"}],
+      head:[{id:"eluru-east-godavari",label:"Eluru + East Godavari"},{id:"west-godavari-krishna",label:"West Godavari + Krishna"},{id:"kakinada-ntr",label:"Kakinada + NTR"}],
+      manager:[{id:"pedavegi",label:"Eluru / Pedavegi"},{id:"rajanagaram",label:"East Godavari / Rajanagaram"},{id:"pentapadu",label:"West Godavari / Pentapadu"},{id:"pamarru",label:"Krishna / Pamarru"},{id:"peddapuram",label:"Kakinada / Peddapuram"},{id:"jaggampeta",label:"Kakinada / Jaggampeta"},{id:"mylavaram",label:"NTR / Mylavaram"},{id:"tiruvuru",label:"NTR / Tiruvuru"}],
+      staff:districts.flatMap(district=>district.mandals.flatMap(mandal=>mandal.villages.flatMap(village=>village.farms.map(item=>({id:item.id,label:`${item.name} (${village.name})`})))))
+    };
+    const ROLE_ACCESS_MATRIX = [
+      {roleId:"admin",overview:true,exports:true,caseActions:true,treatmentActions:true,administration:true},
+      {roleId:"ceo",overview:true,exports:true,caseActions:true,treatmentActions:false,administration:true},
+      {roleId:"head",overview:true,exports:true,caseActions:true,treatmentActions:false,administration:false},
+      {roleId:"manager",overview:true,exports:true,caseActions:true,treatmentActions:true,administration:false},
+      {roleId:"staff",overview:true,exports:false,caseActions:true,treatmentActions:false,administration:false}
+    ];
+    const activityEvents = [
+      {id:"EVT-AP-001",at:"2026-08-09T10:18:00+05:30",actor:"Sowmya Rao",summary:"Reviewed AP account access matrix",type:"security"},
+      {id:"EVT-AP-002",at:"2026-08-09T09:42:00+05:30",actor:"Ramesh Naidu",summary:"Advanced treatment TRT-AP-002",type:"operations"},
+      {id:"EVT-AP-003",at:"2026-08-08T17:20:00+05:30",actor:"Anil Kumar",summary:"Recorded field assessment CASE-AP-001",type:"operations"},
+      {id:"EVT-AP-004",at:"2026-08-08T15:05:00+05:30",actor:"Sowmya Rao",summary:"Verified protected administrator access",type:"security"}
+    ];
+    const CASE_ACTIONS_BY_ROLE = {
+      admin:["field-assessment","area-action","reopen"],
+      ceo:["reopen"],
+      head:["reopen"],
+      manager:["area-action"],
+      staff:["field-assessment"]
+    };
+    const CASE_TRANSITIONS = {
+      "field-assessment":{from:"Under assessment",to:"Confirmed"},
+      "area-action":{from:"Confirmed",to:"Treatment active"},
+      reopen:{from:"Closed",to:"Monitoring"}
+    };
+    const CASE_ACTION_LABELS = {"field-assessment":"Record field assessment","area-action":"Take area-manager action",reopen:"Reopen case"};
+    const TREATMENT_TRANSITIONS = {Recommended:"Planned",Planned:"In progress","In progress":"Completed"};
+    const TREATMENT_PROGRESS = {Recommended:0,Planned:20,"In progress":60,Completed:100};
+    const ALERT_STATE_KEY = "palmwatch.ap.v1.demoState";
+    const DEMO_STATE_VERSION = 2;
+    const DEFAULT_FARM_DRAFT = Object.freeze({name:"",district:"Eluru",mandal:"Pedavegi",village:"Munduru",lat:16.8792,lon:81.1471,acres:1,headUserId:"usr-head",managerUserId:"usr-manager",staffUserId:"usr-staff"});
+    function createDefaultAcreLayout(acre,target=54){
+      const safeAcre=Math.max(1,Math.trunc(Number(acre)||1)), safeTarget=Math.max(50,Math.min(57,Math.trunc(Number(target)||54)));
+      const emptyOrder=[5,14,23,31,39,46,55,63,8,17,26,35,44,53];
+      const empty=new Set(emptyOrder.slice(0,64-safeTarget));
+      return {acre:safeAcre,target:safeTarget,cells:Array.from({length:64},(_,index)=>({acre:safeAcre,row:Math.floor(index/8)+1,column:index%8+1,occupied:!empty.has(index)}))};
+    }
+    function normalizeNewFarmDraft(input){
+      input=input||{};
+      const acres=Math.max(1,Math.min(24,Math.trunc(Number(input.acres)||1)));
+      const sourceLayouts=Array.isArray(input.layouts)?input.layouts:[];
+      const layouts=Array.from({length:acres},(_,index)=>{
+        const source=sourceLayouts[index]||{}, target=Math.max(50,Math.min(57,Math.trunc(Number(source.target)||54)));
+        const fallback=createDefaultAcreLayout(index+1,target);
+        if(!Array.isArray(source.cells)||source.cells.length!==64)return fallback;
+        return {acre:index+1,target,cells:source.cells.map((cell,cellIndex)=>({acre:index+1,row:Math.floor(cellIndex/8)+1,column:cellIndex%8+1,occupied:Boolean(cell?.occupied)}))};
+      });
+      return {...DEFAULT_FARM_DRAFT,...input,name:String(input.name||"").trim(),district:String(input.district||DEFAULT_FARM_DRAFT.district),mandal:String(input.mandal||"").trim(),village:String(input.village||"").trim(),lat:Number(input.lat),lon:Number(input.lon),acres,layouts};
+    }
+    function validateNewFarmDraft(input){
+      const draft=normalizeNewFarmDraft(input),errors=[];
+      if(!draft.name)errors.push("Enter a farm name.");
+      const approvedDistrict=districts.find(item=>item.name===draft.district),approvedMandal=approvedDistrict?.mandals.find(item=>item.name===draft.mandal),approvedVillage=approvedMandal?.villages.find(item=>item.name===draft.village);
+      if(!approvedDistrict)errors.push("Choose an approved Andhra Pradesh district.");
+      else if(!approvedMandal)errors.push("Choose a mandal within the selected district.");
+      else if(!approvedVillage)errors.push("Choose a village within the selected mandal.");
+      if(!Number.isFinite(draft.lat)||draft.lat<12.55||draft.lat>19.25)errors.push("Enter an Andhra Pradesh latitude between 12.55 and 19.25.");
+      if(!Number.isFinite(draft.lon)||draft.lon<76.70||draft.lon>84.85)errors.push("Enter an Andhra Pradesh longitude between 76.70 and 84.85.");
+      if(draft.acres<1||draft.acres>24)errors.push("Number of acres must be between 1 and 24.");
+      const targetTotal=draft.layouts.reduce((sum,layout)=>sum+layout.target,0),totalSelected=draft.layouts.reduce((sum,layout)=>sum+layout.cells.filter(cell=>cell.occupied).length,0);
+      draft.layouts.forEach(layout=>{const selected=layout.cells.filter(cell=>cell.occupied).length,coordinates=new Set(layout.cells.map(cell=>`${cell.acre}:${cell.row}:${cell.column}`));if(layout.cells.length!==64||coordinates.size!==64||layout.cells.some(cell=>cell.acre!==layout.acre||cell.row<1||cell.row>8||cell.column<1||cell.column>8))errors.push(`Acre ${layout.acre} must contain 64 unique row and column coordinates.`);if(layout.target<50||layout.target>57)errors.push(`Acre ${layout.acre} target must be between 50 and 57.`);if(selected!==layout.target)errors.push(`Acre ${layout.acre} has ${selected}/${layout.target} palms plotted.`);});
+      if(!managedUsers.some(user=>user.id===draft.headUserId&&user.roleId==="head"&&effectiveManagedUser(user).active))errors.push("Choose an active Plantation Head.");
+      if(!managedUsers.some(user=>user.id===draft.managerUserId&&user.roleId==="manager"&&effectiveManagedUser(user).active))errors.push("Choose an active Area Manager.");
+      if(!managedUsers.some(user=>user.id===draft.staffUserId&&user.roleId==="staff"&&effectiveManagedUser(user).active))errors.push("Choose active Field Staff.");
+      return {valid:errors.length===0,errors,draft,totalSelected,targetTotal};
+    }
+    function generatePreviewFarmId(draft,existingIds=new Set(flatFarms(mergedDistricts()).map(farm=>farm.id))){
+      const districtCode={Eluru:"ELR","East Godavari":"EGD","West Godavari":"WGD",Krishna:"KRI",Kakinada:"KAK",NTR:"NTR"}[draft.district]||"AP";
+      let token="";
+      do{token=(globalThis.crypto?.randomUUID?.().replaceAll("-","").slice(0,8)||`${Date.now().toString(36)}${Math.random().toString(36).slice(2,6)}`).toUpperCase();}while(existingIds.has(`FRM-AP-${districtCode}-${token}`));
+      return `FRM-AP-${districtCode}-${token}`;
+    }
+    function generatePreviewTreeIds(farmId,layouts){
+      return layouts.map(layout=>({...layout,cells:layout.cells.map(cell=>{
+        if(!cell.occupied){const empty={acre:cell.acre,row:cell.row,column:cell.column,occupied:false};delete empty.treeId;return empty;}
+        return {...cell,treeId:`${farmId}-A${String(layout.acre).padStart(2,"0")}-R${String(cell.row).padStart(2,"0")}-C${String(cell.column).padStart(2,"0")}`};
+      })}));
+    }
+    function defaultPreferences(){return Object.fromEntries(Object.keys(roles).map(id=>[id,{notifications:true,density:"comfortable"}]));}
+    function defaultDemoState(){
+      return {version:DEMO_STATE_VERSION,accounts:Object.fromEntries(Object.keys(roles).map(id=>[id,{readAlertIds:[]}])) ,cases:{},caseActions:[],treatments:{},administration:{users:{},events:[]},reportHistory:[],preferences:defaultPreferences(),localFarms:[]};
+    }
+    function migrateDemoState(saved){
+      const fallback=defaultDemoState();
+      if(!saved||typeof saved!=="object")return fallback;
+      const migrated={...fallback,...saved,version:DEMO_STATE_VERSION,localFarms:Array.isArray(saved.localFarms)?saved.localFarms.filter(farm=>farm&&farm.source==="local-user"):[]};
+      migrated.accounts=saved.accounts&&typeof saved.accounts==="object"?saved.accounts:{};
+      Object.keys(roles).forEach(id=>{const account=migrated.accounts[id]&&typeof migrated.accounts[id]==="object"?migrated.accounts[id]:{};account.readAlertIds=Array.isArray(account.readAlertIds)?account.readAlertIds.filter(value=>typeof value==="string"):[];migrated.accounts[id]=account;});
+      migrated.cases=saved.cases&&typeof saved.cases==="object"?saved.cases:{};
+      migrated.caseActions=Array.isArray(saved.caseActions)?saved.caseActions.filter(entry=>entry&&typeof entry==="object"&&typeof entry.caseId==="string"&&typeof entry.farmId==="string"):[];
+      migrated.treatments=saved.treatments&&typeof saved.treatments==="object"?saved.treatments:{};
+      migrated.administration=saved.administration&&typeof saved.administration==="object"?saved.administration:{};
+      migrated.administration.users=migrated.administration.users&&typeof migrated.administration.users==="object"?migrated.administration.users:{};
+      migrated.administration.events=Array.isArray(migrated.administration.events)?migrated.administration.events:[];
+      migrated.reportHistory=Array.isArray(saved.reportHistory)?saved.reportHistory:[];
+      migrated.preferences=saved.preferences&&typeof saved.preferences==="object"?saved.preferences:{};
+      Object.keys(roles).forEach(id=>{const pref=migrated.preferences[id]&&typeof migrated.preferences[id]==="object"?migrated.preferences[id]:{};migrated.preferences[id]={notifications:pref.notifications!==false,density:pref.density==="compact"?"compact":"comfortable"};});
+      return migrated;
+    }
+    function loadDemoState(){
+      try{
+        const saved=JSON.parse(localStorage.getItem(ALERT_STATE_KEY)||"null");
+        return migrateDemoState(saved);
+      }catch{return defaultDemoState();}
+    }
+    function saveDemoState(){
+      try{localStorage.setItem(ALERT_STATE_KEY,JSON.stringify(demoState));return true;}catch{return false;}
+    }
+    function saveNewFarmPreview(preview){
+      if(!["admin","ceo"].includes(state.role))return {saved:false,error:"Only System Administrator and CEO / General Manager can save a new farm."};
+      if(!preview?.id||!preview?.draft)return {saved:false,error:"Create and review the exact farm preview before saving."};
+      const validation=validateNewFarmDraft(preview.draft);
+      if(!validation.valid)return {saved:false,error:validation.errors[0]||"The farm layout is incomplete."};
+      const allExistingIds=new Set(flatFarms(mergedDistricts("admin")).map(farm=>farm.id));
+      const collisionSafeId=generatePreviewFarmId(validation.draft,allExistingIds),farmId=allExistingIds.has(preview.id)?collisionSafeId:preview.id;
+      const layouts=generatePreviewTreeIds(farmId,validation.draft.layouts),treeIds=layouts.flatMap(layout=>layout.cells.filter(cell=>cell.occupied).map(cell=>cell.treeId));
+      if(new Set(treeIds).size!==treeIds.length)return {saved:false,error:"Duplicate Tree IDs were detected. Create a fresh preview and try again."};
+      const farm={id:farmId,name:validation.draft.name,district:validation.draft.district,mandal:validation.draft.mandal,village:validation.draft.village,lat:validation.draft.lat,lon:validation.draft.lon,acres:validation.draft.acres,density:Math.round(validation.totalSelected/validation.draft.acres),trees:validation.totalSelected,surveyed:0,infected:0,suspected:0,pending:validation.totalSelected,risk:0,source:"local-user",createdAt:new Date().toISOString(),createdByRole:state.role,assignments:{headUserId:validation.draft.headUserId,managerUserId:validation.draft.managerUserId,staffUserId:validation.draft.staffUserId},layouts};
+      const previous=demoState,next={...demoState,localFarms:[...(demoState.localFarms||[]),farm]};
+      try{localStorage.setItem(ALERT_STATE_KEY,JSON.stringify(next));demoState=next;return {saved:true,farm};}
+      catch{return {saved:false,error:"The browser could not save the farm. No farm or tree records were changed.",rollback:previous};}
+    }
+    function resetDemoState(){
+      demoState=defaultDemoState();
+      try{localStorage.removeItem(ALERT_STATE_KEY);}catch{}
+      state.statusMessage="Demo changes were reset to their deterministic defaults.";
+      return demoState;
+    }
+    let demoState = loadDemoState();
+    let state = {role:"admin",page:"Overview",view:"map",path:[],farmId:null,treeId:null,evidenceView:"rgb",farmAcre:1,newFarmDraft:normalizeNewFarmDraft(DEFAULT_FARM_DRAFT),newFarmAcre:1,newFarmPreview:null,newFarmErrors:[],alertRead:"all",alertSeverity:"all",reportView:null,caseTab:"cases",caseStatus:"all",caseSearch:"",selectedCaseId:null,treatmentStatus:"all",treatmentSearch:"",selectedTreatmentId:null,statusMessage:"",profileOpen:false,signedOut:false,resetConfirm:false,customRolePreview:null};
+    const AP_BOUNDS = [[12.55,76.70],[19.25,84.85]];
+    let activeMap = null;
     const content = document.getElementById("content");
     const nav = document.getElementById("nav");
     const crumbs = document.getElementById("crumbs");
     const backBtn = document.getElementById("backBtn");
     const pageTitle = document.getElementById("pageTitle");
+    function localFarmVisibleForRole(farm,roleId){
+      if(!farm||farm.source!=="local-user")return false;
+      if(roleId==="admin"||roleId==="ceo")return true;
+      const currentId=CURRENT_USER_BY_ROLE[roleId];
+      if(roleId==="head")return farm.assignments?.headUserId===currentId;
+      if(roleId==="manager")return farm.assignments?.managerUserId===currentId;
+      if(roleId==="staff")return farm.assignments?.staffUserId===currentId;
+      return false;
+    }
+    function mergedDistricts(roleId=state.role){
+      const role=roles[roleId];
+      if(!role)return [];
+      const all=JSON.parse(JSON.stringify(districts));
+      if(role.districts==="all"){
+        // Explicit portfolio-wide AP assignment; no district filter is needed.
+      }else if(Array.isArray(role.districts)){
+        all.splice(0,all.length,...all.filter(d=>role.districts.includes(d.name)));
+      }else if(!Array.isArray(role.farmIds))return [];
+      if(Array.isArray(role.mandals))all.forEach(d=>d.mandals=d.mandals.filter(m=>role.mandals.includes(m.name)));
+      if(Array.isArray(role.farmIds))all.forEach(d=>d.mandals.forEach(m=>m.villages.forEach(v=>v.farms=v.farms.filter(f=>role.farmIds.includes(f.id)))));
+      const localFarms=(demoState?.localFarms||[]).filter(farm=>farm.assignments&&localFarmVisibleForRole(farm,roleId));
+      localFarms.forEach(farm=>{
+        const canonical=districts.find(item=>item.name===farm.district);
+        let district=all.find(item=>item.name===farm.district);
+        if(!district){district={name:farm.district,lat:canonical?.lat||farm.lat,lon:canonical?.lon||farm.lon,mandals:[]};all.push(district);}
+        let mandal=district.mandals.find(item=>item.name===farm.mandal);
+        if(!mandal){const canonicalMandal=canonical?.mandals.find(item=>item.name===farm.mandal);mandal={name:farm.mandal,lat:canonicalMandal?.lat||farm.lat,lon:canonicalMandal?.lon||farm.lon,villages:[]};district.mandals.push(mandal);}
+        let village=mandal.villages.find(item=>item.name===farm.village);
+        if(!village){village={name:farm.village,lat:farm.lat,lon:farm.lon,farms:[]};mandal.villages.push(village);}
+        if(!village.farms.some(item=>item.id===farm.id))village.farms.push({...farm});
+      });
+      return all.map(d=>({...d,mandals:d.mandals.map(m=>({...m,villages:m.villages.filter(v=>v.farms.length)})).filter(m=>m.villages.length)})).filter(d=>d.mandals.length);
+    }
     function scopedDistricts(){
       const role = roles[state.role];
-      const all = JSON.parse(JSON.stringify(districts));
-      if(role.districts !== "all") all.splice(0, all.length, ...all.filter(d=>role.districts.includes(d.name)));
-      if(role.mandals) all.forEach(d=>d.mandals = d.mandals.filter(m=>role.mandals.includes(m.name)));
-      if(role.farmIds) all.forEach(d=>d.mandals.forEach(m=>m.villages.forEach(v=>v.farms = v.farms.filter(f=>role.farmIds.includes(f.id)))));
-      return all.map(d=>({...d,mandals:d.mandals.map(m=>({...m,villages:m.villages.filter(v=>v.farms.length)})).filter(m=>m.villages.length)})).filter(d=>d.mandals.length);
+      if(!role) return [];
+      return mergedDistricts(state.role);
     }
     function flatFarms(ds=scopedDistricts()){
       return ds.flatMap(d=>d.mandals.flatMap(m=>m.villages.flatMap(v=>v.farms.map(f=>({...f,district:d.name,mandal:m.name,village:v.name})))));
@@ -220,11 +551,174 @@
     function pct(n){return (n*100).toFixed(1)+"%"}
     function hclass(rate){return rate<.035?"h-ok":rate<.075?"h-risk":"h-bad"}
     function hlabel(rate){return rate<.035?"Healthy":rate<.075?"At risk":"Infected"}
+    const reportDefinitionsWithRows = [
+      {id:"executive",title:"Printable executive report",format:"printable",icon:"P",description:"A4-ready AP operational summary with reconciled portfolio metrics and farm health rows.",rows:farms=>farms.map(f=>({"Farm ID":f.id,"Farm":f.name,"District":f.district,"Mandal":f.mandal,"Acres":f.acres,"Planted palms":f.trees,"Survey coverage":pct(f.surveyed/f.trees),"Suspected palms":f.suspected,"Pending work":f.pending}))},
+      {id:"survey-coverage",title:"Survey coverage by plantation area",format:"csv",icon:"S",description:"Farm-level planted area, surveyed palms, and coverage for the signed-in role scope.",rows:farms=>farms.map(f=>({"Farm ID":f.id,"Farm":f.name,"District":f.district,"Mandal":f.mandal,"Village":f.village,"Acres":f.acres,"Planted palms":f.trees,"Surveyed palms":f.surveyed,"Coverage":pct(f.surveyed/f.trees)}))},
+      {id:"suspected-quarter",title:"Suspected palms by quarter",format:"csv",icon:"Q",description:"Deterministic quarterly suspected-palm observations for authorized AP farms.",rows:farms=>farms.flatMap(f=>[1,2,3].map(q=>({"Farm ID":f.id,"Farm":f.name,"District":f.district,"Quarter":`2026 Q${q}`,"Suspected palms":Math.max(f.infected,Math.round(f.suspected*(.68+q*.11)))})))},
+      {id:"open-inspections",title:"Open inspections by assignee",format:"csv",icon:"I",description:"Outstanding and scheduled field inspections grouped through their authorized farm records.",rows:(farms,farmIds)=>inspectionRecords.filter(item=>farmIds.has(item.farmId)&&item.status!=="Completed").map(item=>{const farm=farms.find(f=>f.id===item.farmId);return {"Inspection ID":item.id,"Assignee":item.assignee,"Status":item.status,"Due date":item.dueDate,"Inspection type":item.type,"Farm ID":farm.id,"Farm":farm.name,"District":farm.district}})},
+      {id:"infected-cases",title:"Infected case status",format:"csv",icon:"C",description:"Active and closed Ganoderma workflow cases linked to farms in the current AP assignment.",rows:(farms,farmIds)=>caseRecords.filter(item=>farmIds.has(item.farmId)).map(item=>{const farm=farms.find(f=>f.id===item.farmId);return {"Case ID":item.id,"Status":item.status,"Opened":item.opened,"Affected palms":item.affectedPalms,"Owner":item.owner,"Farm ID":farm.id,"Farm":farm.name,"District":farm.district}})},
+      {id:"treatment-progress",title:"Treatment progress",format:"csv",icon:"T",description:"Treatment ownership and progress for cases attached to authorized farms.",rows:(farms,farmIds)=>treatmentRecords.filter(item=>farmIds.has(item.farmId)).map(item=>{const farm=farms.find(f=>f.id===item.farmId);return {"Treatment ID":item.id,"Case ID":item.caseId,"Status":item.status,"Progress":`${item.progress}%`,"Owner":item.owner,"Treatment":item.treatment,"Farm ID":farm.id,"Farm":farm.name,"District":farm.district}})}
+    ];
+    function scopedReportRows(reportId){
+      const farms=flatFarms(scopedDistricts());
+      const farmIds=new Set(farms.map(farm=>farm.id));
+      if(farms.filter(farm=>farmIds.has(farm.id)).length!==farms.length) return [];
+      const report=reportDefinitionsWithRows.find(item=>item.id===reportId);
+      return report?report.rows(farms,farmIds):[];
+    }
+    function escapeCsvCell(value){
+      const text=value==null?"":String(value);
+      const needsQuotes=text.includes(",")||text.includes("\r")||text.includes("\n")||text.includes('"');
+      return needsQuotes?`"${text.split('"').join('""')}"`:text;
+    }
+    function buildReportCsv(reportId,rows=scopedReportRows(reportId)){
+      const report=reportDefinitions.find(item=>item.id===reportId);
+      if(!report||!rows.length) return "";
+      const columns=Object.keys(rows[0]);
+      return `\uFEFF${columns.map(escapeCsvCell).join(",")}\r\n${rows.map(row=>columns.map(column=>escapeCsvCell(row[column])).join(",")).join("\r\n")}`;
+    }
+    function reportScopeLabel(){
+      const ds=scopedDistricts();
+      if(!ds.length) return "No assigned AP geography";
+      if(roles[state.role].districts==="all") return "Andhra Pradesh portfolio";
+      return ds.map(d=>d.name).join(", ");
+    }
+    function recordReportDownload(report,rowCount,format){
+      const entry={id:`EXP-${Date.now()}`,role:state.role,reportId:report.id,title:report.title,format,rowCount,scope:reportScopeLabel(),generatedAt:new Date().toISOString()};
+      demoState.reportHistory=Array.isArray(demoState.reportHistory)?demoState.reportHistory:[];
+      demoState.reportHistory.unshift(entry);
+      demoState.reportHistory=demoState.reportHistory.slice(0,30);
+      saveDemoState();
+      return entry;
+    }
+    function downloadReportCsv(reportId){
+      if(state.role==="staff"){state.statusMessage="CSV export is not available for Field Staff.";render();return false;}
+      const report=reportDefinitions.find(item=>item.id===reportId&&item.format==="csv");
+      const rows=scopedReportRows(reportId);
+      if(!report||!rows.length){state.statusMessage="No authorized AP records are available for this report.";render();return false;}
+      const csv=buildReportCsv(reportId,rows);
+      const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+      const url=URL.createObjectURL(blob);
+      const link=document.createElement("a");
+      link.href=url;link.download=`palmwatch-${report.id}-${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);
+      recordReportDownload(report,rows.length,"CSV");
+      state.statusMessage=`${report.title} downloaded with ${rows.length.toLocaleString("en-IN")} scoped rows.`;
+      render();return true;
+    }
+    function renderReports(){
+      if(state.role==="staff"){content.innerHTML=`<div class="empty-state"><strong>Reports are not available</strong><span>Your Field Staff assignment provides farm and task access without portfolio exports.</span></div>`;return;}
+      if(state.reportView==="executive") return renderPrintableExecutiveReport();
+      const farms=flatFarms(scopedDistricts());
+      const history=(Array.isArray(demoState.reportHistory)?demoState.reportHistory:[]).filter(entry=>entry.role===state.role).slice(0,8);
+      content.innerHTML=`<div class="pagehead"><div><h1 class="h1">Reports &amp; exports</h1><p class="sub">Generate operational reports from ${reportScopeLabel()}. Every row is derived only after applying the selected role's AP farm scope.</p></div><span class="badge h-neutral">${fmt(farms.length)} scoped farms</span></div>
+        <p class="statusline" role="status" aria-live="polite">${state.statusMessage}</p>
+        <div class="report-list">${reportDefinitions.map(report=>{const count=scopedReportRows(report.id).length;return `<article class="report-item"><span class="report-icon" aria-hidden="true">${report.icon}</span><span class="report-copy"><b>${report.title}</b><span>${report.description}</span></span><span class="report-meta"><span class="report-count">${fmt(count)} ${count===1?"row":"rows"}</span><button class="${report.format==="printable"?"btn":"btn-ghost"}" data-report-${report.format}="${report.id}" ${count?"":"disabled"}>${report.format==="printable"?"Open printable":"Generate CSV"}</button></span></article>`}).join("")}</div>
+        <div class="panel" style="margin-top:22px"><div class="paneltitle">Recent exports<span class="lvl">browser-local demo history</span></div>${history.length?`<table class="history-table"><thead><tr><th>Report</th><th>Scope</th><th>Generated</th><th>Rows</th><th>Format</th></tr></thead><tbody>${history.map(entry=>`<tr><td><strong>${entry.title}</strong></td><td>${entry.scope}</td><td>${new Date(entry.generatedAt).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"})}</td><td>${fmt(entry.rowCount)}</td><td class="num">${entry.format}</td></tr>`).join("")}</tbody></table>`:`<div class="empty-state"><strong>No reports generated yet</strong><span>Choose a report above. Its scoped export details will appear here on this device.</span></div>`}</div>
+        <div class="notice" style="margin-top:18px"><strong>Operational demo data:</strong> report totals reconcile with the farms visible to ${roles[state.role].name}. Public Godrej figures are intentionally excluded.</div>`;
+      content.querySelectorAll("[data-report-csv]").forEach(button=>button.addEventListener("click",()=>downloadReportCsv(button.dataset.reportCsv)));
+      content.querySelectorAll("[data-report-printable]").forEach(button=>button.addEventListener("click",()=>{state.reportView=button.dataset.reportPrintable;state.statusMessage="";render()}));
+    }
+    function renderPrintableExecutiveReport(){
+      const rows=scopedReportRows("executive"),farms=flatFarms(scopedDistricts()),m=metricsFor(farms),report=reportDefinitions[0];
+      content.innerHTML=`<article class="print-report"><div class="print-title"><div><span class="print-mark">PALMWATCH · AP OPERATIONS</span><h1 class="h1" style="margin-top:8px">Executive operational report</h1><p class="sub">${reportScopeLabel()} · ${roles[state.role].name} · deterministic demo data</p></div><div class="no-print" style="display:flex;gap:8px"><button class="btn-ghost" id="closePrintReport">Back to reports</button><button class="btn" id="printReport">Print / save PDF</button></div></div>
+        <div class="mrow"><div class="mcard"><span class="mlabel">Farms</span><span class="mval">${fmt(m.farms)}</span><span class="msub">role scoped</span></div><div class="mcard"><span class="mlabel">Planted area</span><span class="mval">${fmt(m.acres)}</span><span class="msub">acres</span></div><div class="mcard"><span class="mlabel">Planted palms</span><span class="mval">${fmt(m.totalTrees)}</span><span class="msub">demo records</span></div><div class="mcard"><span class="mlabel">Survey coverage</span><span class="mval">${pct(m.coverage)}</span><span class="msub">${fmt(m.surveyed)} surveyed</span></div></div>
+        <div class="panel"><div class="paneltitle">Farm health summary<span class="lvl">${rows.length} scoped rows</span></div>${rows.length?`<table class="history-table"><thead><tr><th>Farm</th><th>District / Mandal</th><th>Acres</th><th>Palms</th><th>Coverage</th><th>Suspected</th><th>Pending</th></tr></thead><tbody>${rows.map(row=>`<tr><td><strong>${row.Farm}</strong><br><span class="lvl">${row["Farm ID"]}</span></td><td>${row.District}<br><span class="lvl">${row.Mandal}</span></td><td>${fmt(row.Acres)}</td><td>${fmt(row["Planted palms"])}</td><td>${row["Survey coverage"]}</td><td>${fmt(row["Suspected palms"])}</td><td>${fmt(row["Pending work"])}</td></tr>`).join("")}</tbody></table>`:`<div class="empty-state"><strong>No farms in this assignment</strong><span>The report cannot broaden the current AP geography.</span></div>`}</div>
+        <p class="sub" style="margin-top:16px">Prepared from deterministic PalmWatch AP demo records. Public Godrej business figures are not included in these operational totals.</p></article>`;
+      document.getElementById("closePrintReport").addEventListener("click",()=>{state.reportView=null;state.statusMessage="";render()});
+      document.getElementById("printReport").addEventListener("click",()=>{recordReportDownload(report,rows.length,"Print/PDF");window.print()});
+    }
     function project(lat,lon){
       const minLat=13.9,maxLat=18.4,minLon=79.4,maxLon=84.9;
       return {x:10+((lon-minLon)/(maxLon-minLon))*80,y:88-((lat-minLat)/(maxLat-minLat))*76};
     }
+    function currentManagedUser(){return managedUsers.find(user=>user.id===CURRENT_USER_BY_ROLE[state.role])||null;}
+    function effectiveManagedUser(user){
+      const override=demoState.administration?.users?.[user.id]||{};
+      return {...user,active:typeof override.active==="boolean"?override.active:user.active,scope:typeof override.scope==="string"?override.scope:user.scope};
+    }
+    function scopeFarmIds(scope){
+      const farms=flatFarms(districts);
+      if(scope==="ap-all") return farms.map(farm=>farm.id);
+      if(scope==="eluru-east-godavari") return farms.filter(farm=>["Eluru","East Godavari"].includes(farm.district)).map(farm=>farm.id);
+      if(scope==="west-godavari-krishna") return farms.filter(farm=>["West Godavari","Krishna"].includes(farm.district)).map(farm=>farm.id);
+      if(scope==="kakinada-ntr") return farms.filter(farm=>["Kakinada","NTR"].includes(farm.district)).map(farm=>farm.id);
+      const mandalByScope={pedavegi:"Pedavegi",rajanagaram:"Rajanagaram",pentapadu:"Pentapadu",pamarru:"Pamarru",peddapuram:"Peddapuram",jaggampeta:"Jaggampeta",mylavaram:"Mylavaram",tiruvuru:"Tiruvuru"};
+      if(mandalByScope[scope]) return farms.filter(farm=>farm.mandal===mandalByScope[scope]).map(farm=>farm.id);
+      return farms.some(farm=>farm.id===scope)?[scope]:[];
+    }
+    function scopeLabel(user){return (ADMIN_SCOPE_OPTIONS[user.roleId]||[]).find(option=>option.id===user.scope)?.label||"No AP assignment";}
+    function scopedManagedUsers(){
+      if(!["admin","ceo"].includes(state.role)) return [];
+      const allowed=new Set(flatFarms(scopedDistricts()).map(farm=>farm.id));
+      return managedUsers.map(effectiveManagedUser).filter(user=>scopeFarmIds(user.scope).some(id=>allowed.has(id)));
+    }
+    function getManagedUser(userId){return scopedManagedUsers().find(user=>user.id===userId)||null;}
+    function appendAdminEvent(summary,type="security"){
+      demoState.administration.events.unshift({id:`LOCAL-${Date.now()}`,at:new Date().toISOString(),actor:currentManagedUser()?.name||roles[state.role].name,summary,type});
+      demoState.administration.events=demoState.administration.events.slice(0,30);
+    }
+    function updateManagedUserStatus(userId){
+      const user=getManagedUser(userId),current=currentManagedUser();
+      if(!user){state.statusMessage="That account is not available in your assigned AP scope.";return false;}
+      if(user.protected){state.statusMessage="The protected System Administrator account cannot be changed.";return false;}
+      if(user.id===current?.id&&user.active){state.statusMessage="You cannot deactivate the account currently signed in.";return false;}
+      demoState.administration.users[user.id]={...(demoState.administration.users[user.id]||{}),active:!user.active};
+      appendAdminEvent(`${user.active?"Deactivated":"Activated"} ${user.name}`);
+      state.statusMessage=`${user.name} was ${user.active?"deactivated":"activated"} in this browser demo.`;
+      if(!saveDemoState()) state.statusMessage+=" Browser storage was unavailable, so this change lasts only for this tab.";
+      return true;
+    }
+    function updateManagedUserScope(userId,scope){
+      const user=getManagedUser(userId),valid=(ADMIN_SCOPE_OPTIONS[user?.roleId]||[]).some(option=>option.id===scope);
+      if(!user||!valid){state.statusMessage="That AP assignment is not available.";return false;}
+      if(user.protected){state.statusMessage="The protected System Administrator assignment cannot be changed.";return false;}
+      demoState.administration.users[user.id]={...(demoState.administration.users[user.id]||{}),scope};
+      appendAdminEvent(`Changed ${user.name} assignment to ${scopeLabel({...user,scope})}`);
+      state.statusMessage=`${user.name}'s demo assignment is now ${scopeLabel({...user,scope})}.`;
+      if(!saveDemoState()) state.statusMessage+=" Browser storage was unavailable, so this change lasts only for this tab.";
+      return true;
+    }
+    function issuePasswordReset(userId){
+      const user=getManagedUser(userId);
+      if(!user){state.statusMessage="That account is not available in your assigned AP scope.";return false;}
+      if(user.protected){state.statusMessage="Password reset demonstrations are disabled for the protected System Administrator.";return false;}
+      demoState.administration.events.unshift({id:`LOCAL-${Date.now()}`,at:new Date().toISOString(),actor:currentManagedUser()?.name||roles[state.role].name,summary:`Issued a demo password-reset link for ${user.name}`,type:"security"});
+      demoState.administration.events=demoState.administration.events.slice(0,30);
+      state.statusMessage=`Demo password-reset link issued for ${user.name}; no email was sent.`;
+      if(!saveDemoState()) state.statusMessage+=" Browser storage was unavailable, so this event lasts only for this tab.";
+      return true;
+    }
+    function scopedActivityEvents(){
+      if(state.role!=="admin") return [];
+      return [...(demoState.administration?.events||[]),...activityEvents].sort((a,b)=>new Date(b.at)-new Date(a.at));
+    }
+    function previewCustomRole(input){
+      const name=String(input?.name||"").trim(),permission=String(input?.permission||""),scope=String(input?.scope||"");
+      const errors=[];
+      if(name.length<3) errors.push("Enter a role name with at least 3 characters.");
+      if(!["read","operations","export"].includes(permission)) errors.push("Choose a valid permission set.");
+      if(!["district","mandal","farm"].includes(scope)) errors.push("Choose a valid AP geography level.");
+      return {valid:errors.length===0,errors,preview:errors.length?null:{name,permission,scope,summary:`${name} can use ${permission} capabilities within an assigned AP ${scope}.`}};
+    }
+    function getPreferences(){
+      const pref=demoState.preferences?.[state.role]||{};
+      return {notifications:pref.notifications!==false,density:pref.density==="compact"?"compact":"comfortable"};
+    }
+    function applyPreferences(){document.body.classList.toggle("density-compact",getPreferences().density==="compact");}
+    function updatePreference(key,value){
+      const next=getPreferences();
+      if(key==="notifications") next.notifications=Boolean(value);
+      if(key==="density"&&["comfortable","compact"].includes(value)) next.density=value;
+      demoState.preferences[state.role]=next;
+      applyPreferences();
+      state.statusMessage="Settings saved for this demo account.";
+      if(!saveDemoState()) state.statusMessage="Browser storage was unavailable; the setting applies only for this tab.";
+    }
     function render(){
+      destroyMap();
+      if(state.signedOut) return renderSignedOut();
+      if(!roles[state.role].nav.includes(state.page)) state.page="Overview";
+      applyPreferences();
       renderNav(); renderRole(); renderCrumbs();
       document.getElementById("viewToggle").classList.toggle("hidden", state.page!=="Overview" || state.farmId || state.treeId);
       backBtn.classList.toggle("hidden", !canBack());
@@ -232,12 +726,18 @@
       pageTitle.textContent = state.page;
       if(state.page==="Overview") return state.treeId?renderTree():state.farmId?renderFarm():renderOverview();
       if(state.page==="New Farm") return renderNewFarm();
+      if(state.page==="Alerts") return renderAlerts();
+      if(state.page==="Reports") return renderReports();
+      if(state.page==="Cases & Treatments") return renderCasesTreatments();
+      if(state.page==="Administration") return renderAdministration();
+      if(state.page==="Settings") return renderSettings();
       return renderPlaceholder();
     }
     function renderNav(){
       const role = roles[state.role];
-      nav.innerHTML = role.nav.map(label=>`<button class="navitem ${state.page===label?"active":""}" data-nav="${label}"><span class="nico">${navIcons[label]}</span><span>${label}</span>${label==="Alerts"?'<em class="nbadge">6</em>':""}</button>`).join("");
-      nav.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>{state.page=b.dataset.nav;state.path=[];state.farmId=null;state.treeId=null;render()}));
+      const unread=scopedAlerts().filter(alert=>!isAlertRead(alert.id)).length;
+      nav.innerHTML = role.nav.map(label=>`<button class="navitem ${state.page===label?"active":""}" data-nav="${label}"><span class="nico">${navIcons[label]}</span><span>${label}</span>${label==="Alerts"&&unread?`<em class="nbadge" aria-label="${unread} unread alerts">${unread}</em>`:""}</button>`).join("");
+      nav.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>{state.page=b.dataset.nav;state.path=[];state.farmId=null;state.treeId=null;state.reportView=null;state.statusMessage="";render()}));
     }
     function renderRole(){
       const sel = document.getElementById("roleSelect");
@@ -247,6 +747,19 @@
       document.getElementById("userInitials").textContent = r.initials;
       document.getElementById("profileBtn").textContent = r.initials;
       document.getElementById("userName").textContent = r.name;
+      renderProfileMenu();
+    }
+    function renderProfileMenu(){
+      const menu=document.getElementById("profileMenu"),button=document.getElementById("profileBtn"),user=currentManagedUser();
+      menu.classList.toggle("hidden",!state.profileOpen);button.setAttribute("aria-expanded",String(state.profileOpen));
+      menu.innerHTML=`<div class="profile-summary"><b>${escapeHtml(user?.name||roles[state.role].name)}</b><span>${escapeHtml(roles[state.role].name)} · ${escapeHtml(user?scopeLabel(effectiveManagedUser(user)):"Andhra Pradesh")}</span></div><button class="profile-action" role="menuitem" data-profile-settings>Settings</button><button class="profile-action" role="menuitem" data-profile-signout>Sign out of demo</button>`;
+      menu.querySelector("[data-profile-settings]")?.addEventListener("click",()=>{state.profileOpen=false;state.page="Settings";state.path=[];state.farmId=null;state.treeId=null;state.statusMessage="";render()});
+      menu.querySelector("[data-profile-signout]")?.addEventListener("click",()=>{state.profileOpen=false;state.signedOut=true;render()});
+    }
+    function renderSignedOut(){
+      nav.innerHTML="";crumbs.innerHTML="";backBtn.classList.add("hidden");document.getElementById("viewToggle").classList.add("hidden");pageTitle.classList.add("hidden");document.getElementById("profileMenu").classList.add("hidden");document.getElementById("profileBtn").setAttribute("aria-expanded","false");
+      content.innerHTML=`<div class="signed-out"><section class="card"><span class="avatar">P</span><h1 class="h1">Signed out of the demo</h1><p class="sub">No operational record was changed. Return to the AP demo using the selected role.</p><button class="btn" id="returnToDemo" style="margin-top:18px">Return to sign in</button></section></div>`;
+      document.getElementById("returnToDemo").addEventListener("click",()=>{state.signedOut=false;state.page="Overview";state.statusMessage="";render()});
     }
     function renderCrumbs(){
       const items = ["Andhra Pradesh",...state.path.map(p=>p.name)];
@@ -263,8 +776,11 @@
       return nodes;
     }
     function canBack(){return state.treeId || state.farmId || state.path.length || state.page!=="Overview"}
-    backBtn.addEventListener("click",()=>{if(state.treeId){state.treeId=null}else if(state.farmId){state.farmId=null}else if(state.path.length){state.path.pop()}else{state.page="Overview"} render()});
-    document.getElementById("roleSelect").addEventListener("change",e=>{state.role=e.target.value;state.path=[];state.farmId=null;state.treeId=null;render()});
+    backBtn.addEventListener("click",()=>{if(state.reportView){state.reportView=null}else if(state.treeId){state.treeId=null}else if(state.farmId){state.farmId=null}else if(state.path.length){state.path.pop()}else{state.page="Overview"} render()});
+    document.getElementById("roleSelect").addEventListener("change",e=>{state.role=e.target.value;state.path=[];state.farmId=null;state.treeId=null;state.alertRead="all";state.alertSeverity="all";state.reportView=null;state.statusMessage="";state.profileOpen=false;state.resetConfirm=false;render()});
+    document.getElementById("profileBtn").addEventListener("click",event=>{event.stopPropagation();state.profileOpen=!state.profileOpen;renderProfileMenu();if(state.profileOpen) document.querySelector(".profile-action")?.focus()});
+    document.addEventListener("click",event=>{if(state.profileOpen&&!event.target.closest(".profile-wrap")){state.profileOpen=false;renderProfileMenu()}});
+    document.addEventListener("keydown",event=>{if(event.key==="Escape"&&state.profileOpen){state.profileOpen=false;renderProfileMenu();document.getElementById("profileBtn").focus()}});
     document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>{state.view=b.dataset.view;document.querySelectorAll("[data-view]").forEach(x=>x.classList.toggle("on",x.dataset.view===state.view));render()}));
     function renderOverview(){
       const nodes = levelData();
@@ -274,16 +790,18 @@
       content.innerHTML = `
         <div class="pagehead"><div><h1 class="h1">${state.path.at(-1)?.name || "Andhra Pradesh Portfolio"}</h1><p class="sub">AP-only deterministic demo data. Public Godrej context stays separate from role-scoped operational totals.</p></div><button class="btn-ghost" id="resetScope">Reset scope</button></div>
         ${metricStrip(m)}
-        <div class="notice" style="margin-bottom:18px">Public context: Godrej Agrovet says it works with ${publicFacts.farmers} farmers and more than ${publicFacts.hectares} hectares in its oil palm business. These figures are not restricted-role operational totals. Source: ${publicFacts.source}.</div>
+        <div class="notice" style="margin-bottom:10px"><strong>Operational data basis:</strong> 50–57 palms per acre equals approximately 124–141 palms per hectare. This is close to the recommended 9 m triangular reference of 143 palms per hectare. Farm points are approximate simulated locations near public villages; ownership, boundaries, health observations, and work counts are deterministic demo data. A public place name does not imply ownership. <a href="https://agritech.tnau.ac.in/agriculture/CropProduction/Oilseeds/oilseeds_oilpalm.html" target="_blank" rel="noreferrer">Planting-density reference</a>.</div>
+        <div class="notice" style="margin-bottom:18px"><strong>Public context:</strong> Separate from this demo portfolio, <a href="https://www.godrejagrovet.com/businesses/oil-palm-business" target="_blank" rel="noreferrer">Godrej Agrovet</a> says its oil palm business works with ${publicFacts.farmers} farmers and has developed ${publicFacts.hectares} hectares across six states. The <a href="https://horticulture.ap.nic.in/OIL%20PALM.html" target="_blank" rel="noreferrer">Andhra Pradesh Horticulture Department</a> reports 226,528 ha covered against 476,913 ha potential across 24 districts, including 18,134 ha in Kakinada and 11,519 ha in NTR. These official public figures describe industry and programme context only; they are not restricted-role operational totals, mapped-farm ownership, or evidence that any displayed farm is company-owned.</div>
         ${state.view==="map"?mapView(nodes,level):tableView(nodes,level)}
       `;
       document.getElementById("resetScope").addEventListener("click",()=>{state.path=[];state.farmId=null;state.treeId=null;render()});
       bindOpen(nodes);
+      if(state.view==="map") requestAnimationFrame(()=>initGeographicMap(nodes,level));
     }
     function metricStrip(m){
       return `<div class="mrow mrow5">
         <div class="mcard"><span class="mlabel">Farms</span><span class="mval">${fmt(m.farms)}</span><span class="msub">within role scope</span></div>
-        <div class="mcard"><span class="mlabel">Planted area</span><span class="mval">${fmt(m.acres)} ac</span><span class="msub">demo operational acreage</span></div>
+        <div class="mcard"><span class="mlabel">Planted area</span><span class="mval">${fmt(m.acres)} ac</span><span class="msub">${(m.acres*.404686).toFixed(1)} ha · reconciled demo area</span></div>
         <div class="mcard"><span class="mlabel">Planted palms</span><span class="mval">${fmt(m.totalTrees)}</span><span class="msub">from farm layouts</span></div>
         <div class="mcard"><span class="mlabel">Survey coverage</span><span class="mval tone-ok">${pct(m.coverage)}</span><span class="msub">${fmt(m.surveyed)} scanned</span></div>
         <div class="mcard"><span class="mlabel">Pending work</span><span class="mval tone-risk">${fmt(m.pending)}</span><span class="msub">inspections/actions</span></div>
@@ -295,15 +813,45 @@
     }
     function mapView(nodes,level){
       return `<div class="mapwrap"><div class="map" role="region" aria-label="Andhra Pradesh geographic map">
-        <svg class="ap-svg" viewBox="0 0 100 100" aria-hidden="true"><path class="ap-shape" d="M26 83 L34 76 L31 66 L38 56 L36 45 L45 35 L49 24 L61 18 L70 24 L76 35 L72 49 L80 58 L75 69 L66 76 L54 82 L40 88 Z"/></svg>
+        <div id="geoMap" class="leaflet-map" aria-label="Interactive Andhra Pradesh map with pan and zoom controls"><div class="map-fallback"><div><strong>Geographic map is unavailable</strong><span>The accessible region list remains available. Use Table view for the same role-scoped records while the map library or tiles are offline.</span></div></div></div>
         <span class="maptag">AP ${level} map</span>
-        ${nodes.map(n=>marker(n)).join("")}
         <div class="legend"><span><span class="dot h-ok"></span>Healthy</span><span><span class="dot h-risk"></span>Suspected</span><span><span class="dot h-bad"></span>Danger</span></div>
       </div><div class="rail"><div class="railhd">${level}s in scope</div>${nodes.map(n=>rail(n)).join("")}</div></div>`;
     }
-    function marker(n){
-      const p = project(n.lat,n.lon), mm = nodeMetrics(n), cls = hclass(mm.rate);
-      return `<button class="blob ${cls}" style="left:${p.x}%;top:${p.y}%" data-open="${n.name}"><span class="blobtop"><span class="dot big"></span><span class="blobname">${n.name}</span></span><span class="blobn">${fmt(mm.farms)} farms</span><span class="blobinf">${pct(mm.rate)} infection</span></button>`;
+    function destroyMap(){
+      if(activeMap){activeMap.remove();activeMap=null;}
+    }
+    function initGeographicMap(nodes,level){
+      const target=document.getElementById("geoMap");
+      if(!target || !window.L || activeMap) return;
+      target.innerHTML="";
+      activeMap=L.map(target,{zoomControl:true,keyboard:true,minZoom:6,maxZoom:18,maxBounds:AP_BOUNDS,maxBoundsViscosity:.82});
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+        maxZoom:19,
+        attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(activeMap);
+      const markerBounds=[];
+      nodes.forEach(node=>{
+        const mm=nodeMetrics(node), cls=hclass(mm.rate);
+        const icon=L.divIcon({className:"geo-pin-wrap",html:`<span class="geo-pin ${cls}"><span class="geo-dot"></span><span class="geo-label">${node.name}</span></span>`,iconSize:[150,30],iconAnchor:[8,8]});
+        const pin=L.marker([node.lat,node.lon],{icon,keyboard:true,title:`Open ${node.name}`}).addTo(activeMap);
+        pin.bindTooltip(`${node.name}: ${fmt(mm.farms)} farms, ${fmt(mm.totalTrees)} palms, ${pct(mm.rate)} recorded infection`,{direction:"top",offset:[0,-8]});
+        pin.on("click",()=>openNode(node));
+        markerBounds.push([node.lat,node.lon]);
+      });
+      if(markerBounds.length===1) activeMap.setView(markerBounds[0],level==="Farm"?14:11);
+      else if(markerBounds.length) activeMap.fitBounds(markerBounds,{padding:[58,58],maxZoom:level==="Farm"?14:11});
+      else activeMap.fitBounds(AP_BOUNDS,{padding:[24,24]});
+      setTimeout(()=>activeMap?.invalidateSize(),0);
+    }
+    window.addEventListener("leafletready",()=>{
+      if(state.page==="Overview" && state.view==="map" && !state.farmId && !state.treeId) initGeographicMap(levelData(),state.path.length===0?"District":state.path.length===1?"Mandal":state.path.length===2?"Village":"Farm");
+    });
+    function openNode(node){
+      if(!node)return;
+      if(node.id){state.farmId=node.id;state.farmAcre=1;}
+      else state.path.push({name:node.name});
+      render();
     }
     function rail(n){
       const mm = nodeMetrics(n), cls = hclass(mm.rate);
@@ -313,42 +861,438 @@
       return `<div class="panel"><div class="htr thead"><span>${level}</span><span class="num">Farms</span><span class="num">Planted palms</span><span class="num">Infected</span><span>Health</span></div>${nodes.map(n=>{const mm=nodeMetrics(n),cls=hclass(mm.rate);return `<button class="htr frow" data-open="${n.name}"><span class="hname"><span class="nm">${n.name}</span><span class="lvl">${level}</span></span><span class="num">${fmt(mm.farms)}</span><span class="num">${fmt(mm.totalTrees)}</span><span class="num">${fmt(mm.infected)}</span><span><em class="badge ${cls}">${hlabel(mm.rate)}</em></span></button>`}).join("")}</div>`;
     }
     function bindOpen(nodes){
-      content.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>{const node=nodes.find(n=>n.name===b.dataset.open); if(!node)return; if(node.id){state.farmId=node.id}else{state.path.push({name:node.name})} render()}));
+      content.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>openNode(nodes.find(n=>n.name===b.dataset.open))));
     }
-    function findFarm(id){return flatFarms(districts).find(f=>f.id===id)}
-    function cellsFor(farm){
+    function findFarm(id){return flatFarms(scopedDistricts()).find(f=>f.id===id)}
+    function cellsFor(farm,acre=1){
+      if(!farm)return [];
+      if(farm.source==="local-user"){
+        const layout=farm.layouts?.find(item=>item.acre===acre);
+        return layout?layout.cells.map((cell,index)=>({i:index,acre,row:cell.row,column:cell.column,occupied:cell.occupied,seq:cell.occupied?layout.cells.slice(0,index+1).filter(item=>item.occupied).length:0,status:cell.occupied?"neutral":"empty",id:cell.treeId||""})):[];
+      }
       const empty = [5,14,23,31,39,46,55,63,8,17].slice(0,64-farm.density);
       return Array.from({length:64},(_,i)=>{
         const occupied = !empty.includes(i);
         const seq = Array.from({length:i+1},(_,j)=>j).filter(j=>!empty.includes(j)).length;
         const seed = (seq * 31 + farm.infected * 7) % 100;
         const status = !occupied?"empty":seed < farm.risk*100?"bad":seed < farm.risk*100+9?"risk":"ok";
-        return {i,occupied,seq,status,id:occupied?`${farm.id}-T${String(seq).padStart(3,"0")}`:""};
+        const treeNumber=(acre-1)*farm.density+seq;
+        return {i,acre,row:Math.floor(i/8)+1,column:i%8+1,occupied,seq,status,id:occupied?`${farm.id}-T${String(treeNumber).padStart(3,"0")}`:""};
       });
     }
     function renderFarm(){
+      const farm=findFarm(state.farmId);
+      if(!farm){state.farmId=null;state.treeId=null;return renderOverview();}
+      state.farmAcre=Math.max(1,Math.min(farm.acres,Number(state.farmAcre)||1));
+      const cells=cellsFor(farm,state.farmAcre),m=metricsFor([farm]),isLocal=farm.source==="local-user";
+      const health=isLocal?`<div class="notice"><strong>Pending / no evidence yet.</strong> This browser-local farm has an exact saved layout, but no survey, case, or treatment records were invented for it.</div><div class="legrow"><span class="legL"><span class="dot h-neutral"></span>Pending / no data</span><span class="legN">${fmt(farm.trees)}</span></div>`:`<div class="hbar"><span class="hseg h-ok" style="width:${Math.max(20,100-(farm.suspected/farm.trees*100))}%"></span><span class="hseg h-risk" style="width:${farm.suspected/farm.trees*100}%"></span><span class="hseg h-bad" style="width:${farm.infected/farm.trees*100}%"></span></div>${["Healthy","Suspected","Danger"].map((label,index)=>`<div class="legrow"><span class="legL"><span class="dot ${["h-ok","h-risk","h-bad"][index]}"></span>${label}</span><span class="legN">${index===0?fmt(farm.trees-farm.suspected):index===1?fmt(farm.suspected-farm.infected):fmt(farm.infected)}</span></div>`).join("")}`;
+      const assignmentRows=farm.assignments?[["Plantation Head",farm.assignments.headUserId],["Area Manager",farm.assignments.managerUserId],["Field Staff",farm.assignments.staffUserId]].map(([label,userId])=>`<div class="legrow"><span>${label}</span><b>${escapeHtml(managedUsers.find(user=>user.id===userId)?.name||"Unassigned")}</b></div>`).join(""):`<p class="sub">Existing deterministic assignment follows the selected role scope.</p>`;
+      content.innerHTML=`<div class="pagehead"><div><h1 class="h1">${escapeHtml(farm.name)}</h1><p class="sub">${escapeHtml(farm.village)}, ${escapeHtml(farm.mandal)}, ${escapeHtml(farm.district)} · ${farm.id} · ${farm.acres} ${farm.acres===1?"acre":"acres"} · ${isLocal?"browser-local farm":"deterministic demo farm"}</p></div><em class="badge ${isLocal?"h-neutral":hclass(m.rate)}">${isLocal?"Pending / no data":hlabel(m.rate)}</em></div>${metricStrip(m)}
+      <div class="grid2"><div style="display:flex;flex-direction:column;gap:18px"><div class="card"><h3 class="cardt">Health breakdown</h3>${health}</div><div class="card"><h3 class="cardt">Assignments</h3>${assignmentRows}</div></div><div style="display:flex;flex-direction:column;gap:18px"><div class="card"><div class="acre-toolbar"><div><h3 class="cardt" style="margin:0">Tree layout · Acre ${state.farmAcre} of ${farm.acres}</h3><span class="lvl">${cells.filter(cell=>cell.occupied).length}/64 occupied · Black means no tree</span></div><div class="acre-nav"><button class="btn-ghost" id="farmPrevAcre" ${state.farmAcre===1?"disabled":""}>Previous</button><select class="csel" id="farmAcreSelect" aria-label="Farm layout acre">${Array.from({length:farm.acres},(_,index)=>`<option value="${index+1}" ${state.farmAcre===index+1?"selected":""}>Acre ${index+1}</option>`).join("")}</select><button class="btn-ghost" id="farmNextAcre" ${state.farmAcre===farm.acres?"disabled":""}>Next</button></div></div><div class="treegrid" role="grid" aria-label="Acre ${state.farmAcre} tree layout">${cells.map(cell=>`<button class="tcell ${cell.status==="empty"?"h-empty":cell.status==="bad"?"h-bad":cell.status==="risk"?"h-risk":cell.status==="neutral"?"h-neutral":"h-ok"}" ${cell.occupied?`data-tree="${cell.id}" title="${cell.id}" aria-label="${cell.id}, row ${cell.row}, column ${cell.column}, ${cell.status==="neutral"?"Pending, no data":cell.status}"`:`disabled title="No tree" aria-label="Acre ${state.farmAcre}, row ${cell.row}, column ${cell.column}: No tree"`}>${cell.occupied?cell.seq:""}</button>`).join("")}</div></div><div class="card"><h3 class="cardt">Accessible tree table · first 8 occupied cells</h3>${cells.filter(cell=>cell.occupied).slice(0,8).map(cell=>`<div class="legrow"><span>${cell.id}<br><small class="sub">Row ${cell.row}, column ${cell.column}</small></span><button class="btn-ghost" data-tree="${cell.id}">Open Tree Details</button></div>`).join("")}</div></div></div>`;
+      document.getElementById("farmPrevAcre").addEventListener("click",()=>{state.farmAcre--;render()});
+      document.getElementById("farmNextAcre").addEventListener("click",()=>{state.farmAcre++;render()});
+      document.getElementById("farmAcreSelect").addEventListener("change",event=>{state.farmAcre=Number(event.target.value);render()});
+      content.querySelectorAll("[data-tree]").forEach(button=>button.addEventListener("click",()=>{state.treeId=button.dataset.tree;state.evidenceView="rgb";render()}));
+    }
+    function renderTree(){
+      const farm=findFarm(state.farmId),cell=cellsFor(farm,state.farmAcre).find(item=>item.id===state.treeId);
+      if(!farm||!cell){state.treeId=null;return renderFarm();}
+      const isPending=cell.status==="neutral",risk=cell.status==="bad"?.82:cell.status==="risk"?.54:isPending?0:.18,observation=treeEvidenceFor(state.treeId);
+      const statusLabel=cell.status==="bad"?"Danger":cell.status==="risk"?"Suspected":isPending?"Pending / no data":"Okay",statusClass=cell.status==="bad"?"h-bad":cell.status==="risk"?"h-risk":isPending?"h-neutral":"h-ok";
+      content.innerHTML=`<div class="pagehead"><div><h1 class="h1">Palm ${state.treeId}</h1><p class="sub">${escapeHtml(farm.name)} · Acre ${state.farmAcre}, row ${cell.row}, column ${cell.column} · ${escapeHtml(farm.village)}, Andhra Pradesh</p></div><em class="badge ${statusClass}">${statusLabel}</em></div><div class="tree-hero"><div style="display:flex;flex-direction:column;gap:16px">${renderTreeEvidence(observation)}${renderGanodermaIndicators(observation)}</div><div style="display:flex;flex-direction:column;gap:16px"><div class="card"><div class="tdetail">${[["Tree ID",state.treeId],["Farm",farm.id],["Health",statusLabel],["Last scan",isPending?"No scan recorded":"20 Jun 2026"],["Recommendation",isPending?"Schedule the first survey":"Continue role-appropriate monitoring"],["RBAC","Actions depend on selected role"]].map(item=>`<div class="tdrow"><span class="tdk">${item[0]}</span><span class="tdv">${item[1]}</span></div>`).join("")}</div></div>${isPending?`<div class="card"><h3 class="cardt">Scan history</h3><div class="empty-state"><strong>No survey history recorded</strong><span>This saved browser-local tree has no invented evidence, case, or treatment history.</span></div></div>`:`<div class="card"><h3 class="cardt">Scan history</h3>${["20 Jun 2026","04 Jun 2026","18 May 2026","30 Apr 2026"].map((date,index)=>`<div class="legrow"><span><b>${date}</b><br><span class="sub">${index===0?"Current demo survey context":"Routine field observation"}</span></span><span class="num">${Math.round((risk-index*.07)*100)}%</span></div>`).join("")}</div>`}<div class="card ${statusClass}" style="border-color:var(--c)"><h3 class="cardt">Recommended action</h3><p class="sub" style="color:var(--fg)">${isPending?"Pending: schedule the first field survey. No diagnosis or confidence has been inferred.":cell.status==="bad"?"Danger: open a field case, inspect collar/trunk symptoms, and track treatment response.":cell.status==="risk"?"Suspected: schedule follow-up scan and field inspection.":"Okay: continue normal monitoring cadence."}</p></div></div></div>`;
+      bindTreeEvidence();
+    }
+    function renderFarmLegacy(){
       const farm=findFarm(state.farmId), cells=cellsFor(farm), m=metricsFor([farm]);
       content.innerHTML = `<div class="pagehead"><div><h1 class="h1">${farm.name}</h1><p class="sub">${farm.village}, ${farm.mandal}, ${farm.district} · ${farm.id} · ${farm.acres} acres · deterministic demo farm</p></div><em class="badge ${hclass(m.rate)}">${hlabel(m.rate)}</em></div>${metricStrip(m)}
       <div class="grid2"><div style="display:flex;flex-direction:column;gap:18px"><div class="card"><h3 class="cardt">Health breakdown</h3><div class="hbar"><span class="hseg h-ok" style="width:${Math.max(20,100-(farm.suspected/farm.trees*100))}%"></span><span class="hseg h-risk" style="width:${farm.suspected/farm.trees*100}%"></span><span class="hseg h-bad" style="width:${farm.infected/farm.trees*100}%"></span></div>${["Healthy","Suspected","Danger"].map((l,i)=>`<div class="legrow"><span class="legL"><span class="dot ${["h-ok","h-risk","h-bad"][i]}"></span>${l}</span><span class="legN">${i===0?fmt(farm.trees-farm.suspected):i===1?fmt(farm.suspected-farm.infected):fmt(farm.infected)}</span></div>`).join("")}</div><div class="card"><h3 class="cardt">Ganoderma infection trend</h3><div class="trend">${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug"].map((l,i)=>`<div class="trendcol"><div class="tbarwrap"><div class="tbar ${i>5?"hot":""}" style="height:${18+i*8+farm.risk*100}%"></div></div><span class="tlab">${l}</span></div>`).join("")}</div><p class="sub">Trend is simulated for demo review and not image-derived diagnosis.</p></div></div><div style="display:flex;flex-direction:column;gap:18px"><div class="card"><div class="pagehead" style="margin-bottom:14px"><h3 class="cardt" style="margin:0">Tree layout - 8 x 8 acre grid</h3><span class="lvl">Black means no tree</span></div><div class="treegrid">${cells.map(c=>`<button class="tcell ${c.status==="empty"?"h-empty":c.status==="bad"?"h-bad":c.status==="risk"?"h-risk":"h-ok"}" ${c.occupied?`data-tree="${c.id}" title="${c.id}"`:"disabled title='No tree'"}>${c.occupied?c.seq:""}</button>`).join("")}</div></div><div class="card"><h3 class="cardt">Accessible tree table</h3>${cells.filter(c=>c.occupied).slice(0,8).map(c=>`<div class="legrow"><span>${c.id}</span><button class="btn-ghost" data-tree="${c.id}">Open Tree Details</button></div>`).join("")}</div></div></div>`;
-      content.querySelectorAll("[data-tree]").forEach(b=>b.addEventListener("click",()=>{state.treeId=b.dataset.tree;render()}));
+      content.querySelectorAll("[data-tree]").forEach(b=>b.addEventListener("click",()=>{state.treeId=b.dataset.tree;state.evidenceView="rgb";render()}));
     }
-    function renderTree(){
+    function renderTreeLegacy(){
       const farm=findFarm(state.farmId), cell=cellsFor(farm).find(c=>c.id===state.treeId), risk=cell.status==="bad"?.82:cell.status==="risk"?.54:.18;
-      const indicators=[["NDVI",cell.status==="bad"?.43:cell.status==="risk"?.58:.74,"Vegetation vigor from simulated survey context. Higher is generally healthier."],["NDRE",cell.status==="bad"?.19:cell.status==="risk"?.32:.49,"Canopy stress indicator. Lower values can suggest stress in mature palms."],["Ganoderma confidence",risk,"Demo classifier confidence; not derived from supplied imagery."],["Canopy temperature",cell.status==="bad"?.77:cell.status==="risk"?.58:.36,"Relative heat stress scale, not absolute temperature."],["Recent trend",cell.status==="bad"?.69:cell.status==="risk"?.51:.22,"Recent movement in risk score across demo scan history."]];
+      const observation=treeEvidenceFor(state.treeId);
       content.innerHTML = `<div class="pagehead"><div><h1 class="h1">Palm ${state.treeId}</h1><p class="sub">${farm.name} · Row ${Math.floor(cell.i/8)+1}, Col ${(cell.i%8)+1} · ${farm.village}, Andhra Pradesh</p></div><em class="badge ${cell.status==="bad"?"h-bad":cell.status==="risk"?"h-risk":"h-ok"}">${cell.status==="bad"?"Danger":cell.status==="risk"?"Suspected":"Okay"}</em></div>
-      <div class="tree-hero"><div style="display:flex;flex-direction:column;gap:16px"><div class="ph" style="height:230px">demo survey gallery<br>RGB / false colour / Green / Red / Red-edge / NIR</div><div class="card"><h3 class="cardt">Ganoderma indicator widget</h3>${indicators.map(([k,v,h])=>indicator(k,v,h)).join("")}<p class="sub">Demo/simulated readings only. No NDVI, NDRE, diagnosis, or confidence is derived from the supplied images.</p></div></div><div style="display:flex;flex-direction:column;gap:16px"><div class="card"><div class="tdetail">${[["Tree ID",state.treeId],["Farm",farm.id],["Health",cell.status==="bad"?"Danger":cell.status==="risk"?"Suspected":"Okay"],["Last scan","20 Jun 2026"],["Recommendation",cell.status==="bad"?"Create case and prioritize treatment":"Continue scheduled monitoring"],["RBAC","Actions depend on selected role"]].map(d=>`<div class="tdrow"><span class="tdk">${d[0]}</span><span class="tdv">${d[1]}</span></div>`).join("")}</div></div><div class="card"><h3 class="cardt">Scan history</h3>${["20 Jun 2026","04 Jun 2026","18 May 2026","30 Apr 2026"].map((d,i)=>`<div class="legrow"><span><b>${d}</b><br><span class="sub">${i===0?"Current demo survey context":"Routine field observation"}</span></span><span class="num">${Math.round((risk-i*.07)*100)}%</span></div>`).join("")}</div><div class="card ${cell.status==="bad"?"h-bad":cell.status==="risk"?"h-risk":"h-ok"}" style="border-color:var(--c)"><h3 class="cardt">Recommended action</h3><p class="sub" style="color:var(--fg)">${cell.status==="bad"?"Danger: open a field case, inspect collar/trunk symptoms, and track treatment response.":cell.status==="risk"?"Suspected: schedule follow-up scan and field inspection.":"Okay: continue normal monitoring cadence."}</p></div></div></div>`;
+      <div class="tree-hero"><div style="display:flex;flex-direction:column;gap:16px">${renderTreeEvidence(observation)}${renderGanodermaIndicators(observation)}</div><div style="display:flex;flex-direction:column;gap:16px"><div class="card"><div class="tdetail">${[["Tree ID",state.treeId],["Farm",farm.id],["Health",cell.status==="bad"?"Danger":cell.status==="risk"?"Suspected":"Okay"],["Last scan","20 Jun 2026"],["Recommendation",cell.status==="bad"?"Create case and prioritize treatment":"Continue scheduled monitoring"],["RBAC","Actions depend on selected role"]].map(d=>`<div class="tdrow"><span class="tdk">${d[0]}</span><span class="tdv">${d[1]}</span></div>`).join("")}</div></div><div class="card"><h3 class="cardt">Scan history</h3>${["20 Jun 2026","04 Jun 2026","18 May 2026","30 Apr 2026"].map((d,i)=>`<div class="legrow"><span><b>${d}</b><br><span class="sub">${i===0?"Current demo survey context":"Routine field observation"}</span></span><span class="num">${Math.round((risk-i*.07)*100)}%</span></div>`).join("")}</div><div class="card ${cell.status==="bad"?"h-bad":cell.status==="risk"?"h-risk":"h-ok"}" style="border-color:var(--c)"><h3 class="cardt">Recommended action</h3><p class="sub" style="color:var(--fg)">${cell.status==="bad"?"Danger: open a field case, inspect collar/trunk symptoms, and track treatment response.":cell.status==="risk"?"Suspected: schedule follow-up scan and field inspection.":"Okay: continue normal monitoring cadence."}</p></div></div></div>`;
+      bindTreeEvidence();
     }
-    function indicator(k,v,h){
-      const cls=v>.66?"h-bad":v>.42?"h-risk":"h-ok";
-      const label=v>.66?"Danger":v>.42?"Suspected":"Okay";
-      return `<div class="metricline ${cls}"><span>${k} <button class="help" title="${h}" aria-label="${k} help">?</button></span><span class="metricbar"><span class="metricfill" style="width:${Math.round(v*100)}%"></span></span><span class="num">${label}</span></div>`;
+    function treeEvidenceFor(treeId){
+      return treeId===EVIDENCE_TREE_ID?{...TREE_OBSERVATION,manifest:TREE_EVIDENCE_MANIFEST}:null;
+    }
+    function renderTreeEvidence(observation){
+      if(!observation)return `<section class="card evidence" aria-labelledby="evidenceTitle"><div class="evidence-head"><h3 class="cardt" id="evidenceTitle">Survey evidence</h3></div><div class="empty-state"><strong>No survey imagery linked</strong><span>This simulated tree has no demonstration capture assigned. No image evidence has been inferred from its farm or neighbours.</span></div></section>`;
+      const selected=observation.manifest.views.find(view=>view.id===state.evidenceView)||observation.manifest.views[0];
+      return `<section class="card evidence" aria-labelledby="evidenceTitle"><div class="evidence-head"><h3 class="cardt" id="evidenceTitle">Survey evidence</h3></div><div class="evidence-stage" id="evidencePanel" role="tabpanel" aria-labelledby="evidence-tab-${selected.id}" aria-live="polite"><img id="evidenceImage" src="${selected.src}" alt="${selected.alt}" decoding="async"><div class="evidence-loading" id="evidenceLoading">Loading ${selected.label} preview...</div><div class="evidence-error hidden" id="evidenceError">This preview could not be loaded. Choose another survey view.</div></div><div class="evidence-tabs" role="tablist" aria-label="Survey image views">${observation.manifest.views.map(view=>`<button type="button" class="evidence-tab" id="evidence-tab-${view.id}" role="tab" aria-controls="evidencePanel" aria-selected="${view.id===selected.id}" tabindex="${view.id===selected.id?0:-1}" data-evidence-view="${view.id}">${view.label}</button>`).join("")}</div><div class="evidence-caption" id="evidenceCaption"><b>${selected.label} · ${selected.band}</b><span>Captured 20 Jun 2026 · real demonstration survey context · display derivative</span></div><p class="evidence-notice">${observation.manifest.notice} RGB and false-colour previews have identifying overlays cropped; individual spectral bands are independently display-stretched.</p></section>`;
+    }
+    function setEvidenceView(viewId,focusTab=false){
+      const view=TREE_EVIDENCE_MANIFEST.views.find(item=>item.id===viewId), stage=document.getElementById("evidencePanel"), image=document.getElementById("evidenceImage");
+      if(!view||!stage||!image)return false;
+      state.evidenceView=view.id;
+      content.querySelectorAll("[data-evidence-view]").forEach(tab=>{const selected=tab.dataset.evidenceView===view.id;tab.setAttribute("aria-selected",String(selected));tab.tabIndex=selected?0:-1;if(selected&&focusTab)tab.focus()});
+      stage.classList.remove("is-ready");stage.setAttribute("aria-labelledby",`evidence-tab-${view.id}`);
+      document.getElementById("evidenceLoading").classList.remove("hidden");document.getElementById("evidenceLoading").textContent=`Loading ${view.label} preview...`;
+      document.getElementById("evidenceError").classList.add("hidden");
+      image.alt=view.alt;image.src=view.src;
+      document.getElementById("evidenceCaption").innerHTML=`<b>${view.label} · ${view.band}</b><span>Captured 20 Jun 2026 · real demonstration survey context · display derivative</span>`;
+      if(image.complete)image.naturalWidth?markEvidenceReady():markEvidenceError();
+      return true;
+    }
+    function handleEvidenceKeydown(event){
+      const tabs=[...content.querySelectorAll("[data-evidence-view]")], index=tabs.indexOf(event.currentTarget);
+      if(index<0)return;
+      let next=index;
+      if(event.key==="ArrowRight")next=(index+1)%tabs.length;
+      else if(event.key==="ArrowLeft")next=(index-1+tabs.length)%tabs.length;
+      else if(event.key==="Home")next=0;
+      else if(event.key==="End")next=tabs.length-1;
+      else return;
+      event.preventDefault();setEvidenceView(tabs[next].dataset.evidenceView,true);
+    }
+    function markEvidenceReady(){
+      const stage=document.getElementById("evidencePanel"), loading=document.getElementById("evidenceLoading");
+      if(stage)stage.classList.add("is-ready");if(loading)loading.classList.add("hidden");
+    }
+    function markEvidenceError(){
+      const stage=document.getElementById("evidencePanel"), loading=document.getElementById("evidenceLoading"), error=document.getElementById("evidenceError");
+      if(stage)stage.classList.remove("is-ready");if(loading)loading.classList.add("hidden");if(error)error.classList.remove("hidden");
+    }
+    function bindTreeEvidence(){
+      const image=document.getElementById("evidenceImage");
+      if(!image)return;
+      content.querySelectorAll("[data-evidence-view]").forEach(tab=>{tab.addEventListener("click",()=>setEvidenceView(tab.dataset.evidenceView));tab.addEventListener("keydown",handleEvidenceKeydown)});
+      image.addEventListener("load",markEvidenceReady);image.addEventListener("error",markEvidenceError);
+      if(image.complete)image.naturalWidth?markEvidenceReady():markEvidenceError();
+    }
+    function indicatorStatus(indicator){
+      const value=indicator.value;
+      if(indicator.id==="ndvi")return value<.45?"bad":value<=.65?"risk":"ok";
+      if(indicator.id==="ndre")return value<.25?"bad":value<=.40?"risk":"ok";
+      if(indicator.id==="ganodermaConfidence")return value<35?"ok":value<=65?"risk":"bad";
+      if(indicator.id==="canopyTemperature")return value<=32?"ok":value<=35?"risk":"bad";
+      return value<=.05?"ok":value<=.15?"risk":"bad";
+    }
+    function renderGanodermaIndicators(observation){
+      if(!observation)return `<section class="card" aria-labelledby="indicatorTitle"><h3 class="cardt" id="indicatorTitle">Ganoderma indicators</h3><div class="empty-state"><strong>No indicator reading recorded</strong><span>No simulated multispectral interpretation is assigned to this tree.</span></div></section>`;
+      return `<section class="card" aria-labelledby="indicatorTitle"><h3 class="cardt" id="indicatorTitle">Ganoderma indicators</h3><div class="indicator-list">${GANODERMA_INDICATORS.map(renderIndicator).join("")}</div><p class="sub">${observation.disclosure} These bands are demonstration thresholds, not diagnostic cut-offs.</p></section>`;
+    }
+    function renderIndicator(indicator){
+      const status=indicatorStatus(indicator), label=status==="bad"?"Danger":status==="risk"?"Suspected":"Okay", marker=Math.max(0,Math.min(100,(indicator.value-indicator.min)/(indicator.max-indicator.min)*100));
+      return `<div class="indicator"><div class="indicator-head"><span class="indicator-title">${indicator.label}<button type="button" class="help" title="${indicator.help}" aria-label="About ${indicator.label}" aria-describedby="${indicator.id}-help">i</button><span class="sr-only" id="${indicator.id}-help">${indicator.help}</span></span><span class="indicator-value">${indicator.display}<em class="badge h-${status}">${label}</em></span></div><div class="indicator-scale" role="img" aria-label="${indicator.label}: ${indicator.display}, ${label}. ${indicator.ranges.map(range=>`${range.label} ${range.text}`).join("; ")}">${indicator.ranges.map(range=>`<span class="indicator-segment h-${range.status}" style="width:${(range.to-range.from)/(indicator.max-indicator.min)*100}%"></span>`).join("")}<span class="indicator-marker" style="left:${marker}%"></span></div><div class="indicator-ranges">${indicator.ranges.map(range=>`<span class="h-${range.status}"><i></i>${range.label} ${range.text}</span>`).join("")}</div></div>`;
+    }
+    function scopedAlerts(){
+      const farms=new Map(flatFarms(scopedDistricts()).map(farm=>[farm.id,farm]));
+      const rank={danger:4,suspected:3,"no-reading":2,okay:1};
+      return alertRecords.filter(alert=>farms.has(alert.farmId)).map(alert=>({...alert,farm:farms.get(alert.farmId)})).sort((a,b)=>rank[b.severity]-rank[a.severity] || b.farm.risk-a.farm.risk || b.date.localeCompare(a.date));
+    }
+    function alertAccount(){
+      if(!demoState.accounts[state.role]) demoState.accounts[state.role]={readAlertIds:[]};
+      return demoState.accounts[state.role];
+    }
+    function isAlertRead(id){return alertAccount().readAlertIds.includes(id)}
+    function markAlertRead(id){
+      const alert=scopedAlerts().find(item=>item.id===id);
+      if(!alert){state.statusMessage="That alert is not available in your assigned AP scope.";return false;}
+      const account=alertAccount();
+      if(!account.readAlertIds.includes(id)) account.readAlertIds.push(id);
+      const saved=saveDemoState();
+      state.statusMessage=saved?`${alert.farm.name} alert marked as read.`:`${alert.farm.name} alert marked as read for this session; browser storage is unavailable.`;
+      return true;
+    }
+    function markAllAlertsRead(){
+      const account=alertAccount(), ids=scopedAlerts().map(alert=>alert.id), before=account.readAlertIds.length;
+      account.readAlertIds=[...new Set([...account.readAlertIds,...ids])];
+      const changed=account.readAlertIds.length-before, saved=saveDemoState();
+      state.statusMessage=changed?`${changed} scoped ${changed===1?"alert":"alerts"} marked as read${saved?".":" for this session; browser storage is unavailable."}`:"All alerts in your AP assignment are already read.";
+      return changed;
+    }
+    function openScopedFarm(farmId){
+      const farm=flatFarms(scopedDistricts()).find(item=>item.id===farmId);
+      if(!farm){state.statusMessage="That farm is not available in your assigned AP scope.";return false;}
+      state.page="Overview";state.path=[];state.farmId=farm.id;state.treeId=null;state.statusMessage="";render();return true;
+    }
+    function escapeHtml(value){
+      return String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+    }
+    function effectiveCase(record){
+      const override=demoState.cases?.[record.id];
+      const allowed=new Set([record.status,...Object.values(CASE_TRANSITIONS).map(item=>item.to)]);
+      return {...record,status:override&&allowed.has(override.status)?override.status:record.status,lastAction:override?.lastAction||null,updatedAt:override?.updatedAt||null};
+    }
+    function effectiveTreatment(record){
+      const override=demoState.treatments?.[record.id], statuses=new Set([...Object.keys(TREATMENT_TRANSITIONS),"Completed"]);
+      const status=override&&statuses.has(override.status)?override.status:record.status;
+      const outcome=status==="Completed"?(override?.outcome||record.outcome||""):"";
+      return {...record,status,progress:override?TREATMENT_PROGRESS[status]:record.progress,outcome,updatedAt:override?.updatedAt||null};
+    }
+    function scopedCases(){
+      const farmList=flatFarms(scopedDistricts()), allowedFarmIds=new Set(farmList.map(farm=>farm.id)), farms=new Map(farmList.map(farm=>[farm.id,farm])), caseOverrides=demoState.cases||{};
+      const rank={Confirmed:5,"Under assessment":4,"Treatment active":3,Monitoring:2,Closed:1};
+      return caseRecords.filter(record=>allowedFarmIds.has(record.farmId)).map(record=>({...effectiveCase(record),hasLocalOverride:Boolean(caseOverrides[record.id]),farm:farms.get(record.farmId)})).sort((a,b)=>(rank[b.status]||0)-(rank[a.status]||0)||b.affectedPalms-a.affectedPalms||b.opened.localeCompare(a.opened));
+    }
+    function scopedTreatments(){
+      const farmList=flatFarms(scopedDistricts()), allowedFarmIds=new Set(farmList.map(farm=>farm.id)), farms=new Map(farmList.map(farm=>[farm.id,farm])), treatmentOverrides=demoState.treatments||{};
+      const cases=new Map(scopedCases().map(record=>[record.id,record]));
+      const rank={"In progress":4,Planned:3,Recommended:2,Completed:1};
+      return treatmentRecords.filter(record=>allowedFarmIds.has(record.farmId)&&cases.has(record.caseId)).map(record=>({...effectiveTreatment(record),hasLocalOverride:Boolean(treatmentOverrides[record.id]),farm:farms.get(record.farmId),caseRecord:cases.get(record.caseId)})).sort((a,b)=>(rank[b.status]||0)-(rank[a.status]||0)||b.farm.risk-a.farm.risk);
+    }
+    function getCaseRecord(id){return scopedCases().find(record=>record.id===id)||null}
+    function getTreatmentRecord(id){return scopedTreatments().find(record=>record.id===id)||null}
+    function activeStaffForCase(record){
+      if(!record||!getCaseRecord(record.id))return [];
+      return managedUsers.map(user=>{
+        const effective=effectiveManagedUser(user),hasScopeOverride=typeof demoState.administration?.users?.[user.id]?.scope==="string";
+        return {...effective,assignedToFarm:hasScopeOverride?effective.scope===record.farmId:[effective.scope,...(Array.isArray(user.assignedFarmIds)?user.assignedFarmIds:[])].includes(record.farmId)};
+      }).filter(user=>user.roleId==="staff"&&user.active&&user.assignedToFarm);
+    }
+    function scopedCaseActions(caseId){
+      const record=getCaseRecord(caseId);
+      if(!record)return [];
+      return (Array.isArray(demoState.caseActions)?demoState.caseActions:[]).filter(entry=>entry.caseId===record.id&&entry.farmId===record.farmId&&entry.treeId===record.treeId).slice().sort((a,b)=>String(b.timestamp).localeCompare(String(a.timestamp)));
+    }
+    function submitCaseAssessment(id,input){
+      const fail=(field,message)=>{
+        state.statusMessage=message;
+        const error=document.getElementById("caseAssessmentError");
+        if(error)error.textContent=message;
+        document.getElementById(field)?.focus();
+        return false;
+      };
+      const record=getCaseRecord(id);
+      if(!record)return fail("caseAssessmentDescription","That case is not available in your assigned AP scope.");
+      if(!["admin","staff"].includes(state.role))return fail("caseAssessmentDescription","This role cannot record a field assessment.");
+      if(record.status!=="Under assessment")return fail("caseAssessmentDescription",`${record.id} cannot accept an assessment from ${record.status}.`);
+      const read=name=>typeof FormData!=="undefined"&&input instanceof FormData?input.get(name):input?.[name];
+      const description=String(read("description")||"").trim().replace(/\s+/g," "),status=String(read("status")||""),ownerId=String(read("ownerId")||"");
+      if(description.length<10||description.length>500||(description.match(/[A-Za-z]/g)||[]).length<3)return fail("caseAssessmentDescription","Enter a meaningful action observation between 10 and 500 characters.");
+      const allowedStatuses=["Pending","In progress","Completed"];
+      if(!allowedStatuses.includes(status))return fail("caseAssessmentStatus","Choose Pending, In progress, or Completed.");
+      const owner=activeStaffForCase(record).find(user=>user.id===ownerId);
+      if(!owner)return fail("caseAssessmentOwner","Choose active Field Staff assigned to this case farm.");
+      const previousActions=Array.isArray(demoState.caseActions)?demoState.caseActions.slice():[],previousCase=demoState.cases[record.id],timestamp=new Date().toISOString(),actor=currentManagedUser()?.name||roles[state.role].name;
+      const entry={id:`CASE-ACTION-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,caseId:record.id,farmId:record.farmId,treeId:record.treeId,action:"field-assessment",description,status,ownerId:owner.id,owner:owner.name,actor,actorRole:state.role,timestamp};
+      demoState.caseActions=[...previousActions,entry];
+      if(status==="Completed")demoState.cases[record.id]={status:"Confirmed",lastAction:"field-assessment",updatedAt:timestamp,actorRole:state.role};
+      if(!saveDemoState()){
+        demoState.caseActions=previousActions;
+        if(previousCase===undefined)delete demoState.cases[record.id];else demoState.cases[record.id]=previousCase;
+        return fail("caseAssessmentDescription","The assessment could not be saved. No case changes were made.");
+      }
+      state.statusMessage=status==="Completed"?`${record.id} assessment completed and moved to Confirmed.`:`${record.id} assessment saved as ${status}; the case remains Under assessment.`;
+      return true;
+    }
+    function applyCaseAction(id,action){
+      const knownActions=["field-assessment","area-action","reopen"];
+      const record=getCaseRecord(id), transition=CASE_TRANSITIONS[action], permissions=CASE_ACTIONS_BY_ROLE[state.role]||[];
+      if(!record){state.statusMessage="That case is not available in your assigned AP scope.";return false;}
+      if(action==="field-assessment"){state.statusMessage="Use the field assessment form to record an observation, status, and assigned owner.";return false;}
+      if(!knownActions.includes(action)||!transition||!permissions.includes(action)){state.statusMessage="This role cannot perform that case action.";return false;}
+      if(record.status!==transition.from){state.statusMessage=`${record.id} cannot use that action from ${record.status}.`;return false;}
+      demoState.cases[record.id]={status:transition.to,lastAction:action,updatedAt:new Date().toISOString(),actorRole:state.role};
+      const saved=saveDemoState();
+      state.statusMessage=`${record.id} moved to ${transition.to}${saved?".":" for this session; browser storage is unavailable."}`;
+      return true;
+    }
+    function progressTreatment(id,outcome=""){
+      const record=getTreatmentRecord(id);
+      if(!record){state.statusMessage="That treatment is not available in your assigned AP scope.";return false;}
+      if(!["admin","manager"].includes(state.role)){state.statusMessage="This role has read-only treatment access.";return false;}
+      const next=TREATMENT_TRANSITIONS[record.status];
+      if(!next){state.statusMessage=`${record.id} has no further legal transition.`;return false;}
+      const cleanOutcome=typeof outcome==="string"?outcome.trim():"";
+      if(next==="Completed"&&cleanOutcome.length<10){state.statusMessage="Enter a meaningful outcome of at least 10 characters before completing treatment.";return false;}
+      demoState.treatments[record.id]={status:next,outcome:next==="Completed"?cleanOutcome:"",updatedAt:new Date().toISOString(),actorRole:state.role};
+      const saved=saveDemoState();
+      state.statusMessage=`${record.id} moved to ${next}${saved?".":" for this session; browser storage is unavailable."}`;
+      return true;
+    }
+    function openScopedTree(farmId,treeId){
+      const farm=flatFarms(scopedDistricts()).find(item=>item.id===farmId);
+      if(!farm||!cellsFor(farm).some(cell=>cell.occupied&&cell.id===treeId)){state.statusMessage="That tree is not available in your assigned AP scope.";return false;}
+      state.page="Overview";state.path=[];state.farmId=farm.id;state.treeId=treeId;state.statusMessage="";render();return true;
+    }
+    function caseBadge(status){
+      if(status==="Confirmed"||status==="Treatment active") return "h-bad";
+      if(status==="Under assessment"||status==="Monitoring") return "h-risk";
+      return "h-ok";
+    }
+    function treatmentBadge(status){return status==="Completed"?"h-ok":status==="In progress"?"h-risk":"h-neutral"}
+    function caseActionFor(record){
+      const allowed=CASE_ACTIONS_BY_ROLE[state.role]||[];
+      return allowed.find(action=>action!=="field-assessment"&&CASE_TRANSITIONS[action].from===record.status)||null;
+    }
+    function canSubmitCaseAssessment(record){return Boolean(record&&record.status==="Under assessment"&&["admin","staff"].includes(state.role)&&(CASE_ACTIONS_BY_ROLE[state.role]||[]).includes("field-assessment"));}
+    function assessmentBadge(status){return status==="Completed"?"h-ok":status==="In progress"?"h-risk":"h-neutral";}
+    function renderCaseAssessmentForm(record){
+      if(!canSubmitCaseAssessment(record))return "";
+      const owners=activeStaffForCase(record),preferred=owners.find(user=>user.name===record.owner)||owners[0];
+      if(!owners.length)return `<div class="assessment-form"><h4>Record field assessment</h4><div class="empty-state"><strong>No active Field Staff assigned</strong><span>An administrator must assign active Field Staff to this farm before an assessment can be recorded.</span></div></div>`;
+      return `<form class="assessment-form" data-case-assessment="${record.id}" novalidate><h4>Record field assessment</h4><div class="assessment-fields"><div class="wide"><label for="caseAssessmentDescription">Action observation</label><textarea id="caseAssessmentDescription" name="description" minlength="10" maxlength="500" required aria-describedby="caseAssessmentHelp caseAssessmentError" placeholder="Describe the field observation and action taken"></textarea><span class="field-help" id="caseAssessmentHelp">10-500 characters. Record observable field evidence; do not infer an image-derived diagnosis.</span></div><div><label for="caseAssessmentStatus">Assessment status</label><select id="caseAssessmentStatus" name="status" required><option value="Pending">Pending</option><option value="In progress">In progress</option><option value="Completed">Completed</option></select></div><div><label for="caseAssessmentOwner">Assigned Field Staff</label><select id="caseAssessmentOwner" name="ownerId" required>${owners.map(user=>`<option value="${user.id}" ${user.id===preferred?.id?"selected":""}>${escapeHtml(user.name)}</option>`).join("")}</select></div></div><p class="field-error" id="caseAssessmentError" role="alert" aria-live="assertive"></p><button class="btn" type="submit">Save assessment</button><p class="sub">Pending and In progress keep this case under assessment. Completed moves it to Confirmed.</p></form>`;
+    }
+    function renderCaseTimeline(record){
+      const entries=scopedCaseActions(record.id);
+      return `<section class="case-timeline" aria-labelledby="caseTimelineTitle"><h4 id="caseTimelineTitle">Assessment timeline</h4><ol class="timeline-list">${entries.map(entry=>`<li class="timeline-entry"><div class="timeline-entry-head"><b>${escapeHtml(entry.owner)}</b><span class="badge ${assessmentBadge(entry.status)}">${escapeHtml(entry.status)}</span></div><p>${escapeHtml(entry.description)}</p><small>${new Date(entry.timestamp).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"})} · recorded by ${escapeHtml(entry.actor)} (${escapeHtml(roles[entry.actorRole]?.name||entry.actorRole)})</small><small>${escapeHtml(entry.treeId)} · ${escapeHtml(entry.action)}</small></li>`).join("")}<li class="timeline-entry"><div class="timeline-entry-head"><b>${escapeHtml(record.owner)}</b><span class="badge h-neutral">Case opened</span></div><p>${escapeHtml(record.observation)}</p><small>${new Date(`${record.opened}T00:00:00`).toLocaleDateString("en-IN",{dateStyle:"medium"})} · original deterministic demo observation</small><small>${escapeHtml(record.treeId)}</small></li></ol></section>`;
+    }
+    function renderCasesTreatments(){
+      content.innerHTML=`<div class="pagehead"><div><h1 class="h1">Cases &amp; Treatments</h1><p class="sub">Ganoderma workflows linked only to farms in ${reportScopeLabel()}. Records and changes are deterministic browser-local demo data.</p></div></div>
+        <div class="tabs" role="tablist" aria-label="Cases and treatments"><button class="tab" id="casesTab" role="tab" aria-selected="${state.caseTab==="cases"}" aria-controls="casesPanel" tabindex="${state.caseTab==="cases"?0:-1}" data-work-tab="cases">Cases</button><button class="tab" id="treatmentsTab" role="tab" aria-selected="${state.caseTab==="treatments"}" aria-controls="treatmentsPanel" tabindex="${state.caseTab==="treatments"?0:-1}" data-work-tab="treatments">Treatments</button></div>
+        <p class="statusline" role="status" aria-live="polite">${escapeHtml(state.statusMessage)}</p>
+        <section id="${state.caseTab}Panel" role="tabpanel" aria-labelledby="${state.caseTab}Tab">${state.caseTab==="cases"?renderCasesPanel():renderTreatmentsPanel()}</section>`;
+      bindCaseTreatmentEvents();
+    }
+    function renderCasesPanel(){
+      const records=scopedCases(), statuses=["all",...new Set(records.map(record=>record.status))];
+      const query=state.caseSearch.trim().toLowerCase();
+      const filtered=records.filter(record=>(state.caseStatus==="all"||record.status===state.caseStatus)&&(!query||[record.id,record.farm.name,record.farm.district,record.owner,record.status].some(value=>String(value).toLowerCase().includes(query))));
+      if(!filtered.some(record=>record.id===state.selectedCaseId)) state.selectedCaseId=filtered[0]?.id||null;
+      const selected=getCaseRecord(state.selectedCaseId), active=records.filter(record=>record.status!=="Closed"), confirmed=records.filter(record=>record.status==="Confirmed"||record.status==="Treatment active"), monitoring=records.filter(record=>record.status==="Monitoring");
+      const attention=active.slice().sort((a,b)=>b.farm.risk-a.farm.risk||b.affectedPalms-a.affectedPalms).slice(0,4);
+      return `<div class="mrow"><div class="mcard"><span class="mlabel">Cases in scope</span><span class="mval">${fmt(records.length)}</span><span class="msub">authorized AP farms</span></div><div class="mcard"><span class="mlabel">Active</span><span class="mval">${fmt(active.length)}</span><span class="msub">not closed</span></div><div class="mcard"><span class="mlabel">Confirmed / treatment</span><span class="mval tone-bad">${fmt(confirmed.length)}</span><span class="msub">priority workflows</span></div><div class="mcard"><span class="mlabel">Monitoring</span><span class="mval tone-risk">${fmt(monitoring.length)}</span><span class="msub">scheduled follow-up</span></div></div>
+        <div class="workgrid"><div class="workmain"><div><div class="paneltitle" style="padding-inline:2px;border:0">Attention queue<span class="lvl">highest farm risk first</span></div><div class="attention">${attention.length?attention.map(record=>`<button class="attention-item" data-case-select="${record.id}" aria-current="${record.id===state.selectedCaseId}"><b>${escapeHtml(record.farm.name)}</b><span>${escapeHtml(record.status)} · ${fmt(record.affectedPalms)} affected palms</span><span>${escapeHtml(record.farm.district)} · ${pct(record.farm.risk)} farm rate</span></button>`).join(""):`<div class="empty-state"><strong>No active cases</strong><span>There are no open workflows in this assignment.</span></div>`}</div></div>
+          <div class="pagehead" style="align-items:flex-end;margin:0"><div class="filters"><label class="filter">Case status<select id="caseStatusFilter">${statuses.map(status=>`<option value="${escapeHtml(status)}" ${state.caseStatus===status?"selected":""}>${status==="all"?"All statuses":escapeHtml(status)}</option>`).join("")}</select></label><label class="filter">Search cases<input class="searchfield" id="caseSearch" type="search" value="${escapeHtml(state.caseSearch)}" placeholder="Case, farm, owner" autocomplete="off"></label></div><span class="lvl">${filtered.length} of ${records.length} shown</span></div>
+          <div class="panel data-scroll"><table class="data-table"><thead><tr><th>Case</th><th>Farm</th><th>Status</th><th>Affected</th><th>Owner</th><th><span class="hidden">Open</span></th></tr></thead><tbody>${filtered.length?filtered.map(record=>`<tr class="${record.id===state.selectedCaseId?"is-selected":""}"><td><strong>${record.id}</strong><br><span class="lvl">${new Date(`${record.opened}T00:00:00`).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}</span></td><td>${escapeHtml(record.farm.name)}<br><span class="lvl">${escapeHtml(record.farm.district)}</span></td><td><span class="badge ${caseBadge(record.status)}">${escapeHtml(record.status)}</span></td><td class="num">${fmt(record.affectedPalms)}</td><td>${escapeHtml(record.owner)}</td><td><button class="rowaction" data-case-select="${record.id}" aria-label="Open ${record.id}">Open</button></td></tr>`).join(""):`<tr><td colspan="6"><div class="empty-state"><strong>No cases match these filters</strong><span>Change the status or search within your assigned AP farms.</span></div></td></tr>`}</tbody></table></div></div>
+          <aside class="card workside" aria-label="Selected case details">${renderCaseDetail(selected)}</aside></div>`;
+    }
+    function renderCaseDetail(record){
+      if(!record) return `<div class="empty-state"><strong>No case selected</strong><span>Select an authorized case to review its details.</span></div>`;
+      const action=caseActionFor(record), transition=action?CASE_TRANSITIONS[action]:null;
+      return `<div class="detail-head"><div><span class="detail-id">${record.id}</span><h3 class="cardt" style="margin:4px 0 0">${escapeHtml(record.farm.name)}</h3></div><span class="badge ${caseBadge(record.status)}">${escapeHtml(record.status)}</span></div><dl class="detail-list"><div class="detail-pair"><dt>Location</dt><dd>${escapeHtml(record.farm.village)}, ${escapeHtml(record.farm.mandal)}, ${escapeHtml(record.farm.district)}</dd></div><div class="detail-pair"><dt>Owner</dt><dd>${escapeHtml(record.owner)}</dd></div><div class="detail-pair"><dt>Affected palms</dt><dd>${fmt(record.affectedPalms)}</dd></div><div class="detail-pair"><dt>Opened</dt><dd>${new Date(`${record.opened}T00:00:00`).toLocaleDateString("en-IN",{dateStyle:"medium"})}</dd></div><div class="detail-pair"><dt>Observation</dt><dd>${escapeHtml(record.observation)}</dd></div>${record.updatedAt?`<div class="detail-pair"><dt>Demo update</dt><dd>${new Date(record.updatedAt).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"})}</dd></div>`:""}</dl><div class="detail-actions"><button class="btn-ghost" data-case-farm="${record.farmId}">View farm</button><button class="btn-ghost" data-case-tree="${record.treeId}" data-tree-farm="${record.farmId}">View supporting tree</button>${transition?`<button class="btn" data-case-action="${action}" data-case-id="${record.id}">${CASE_ACTION_LABELS[action]}</button>`:""}</div>${transition?`<p class="sub">This action moves the case from ${transition.from} to ${transition.to}.</p>`:canSubmitCaseAssessment(record)?"":`<p class="sub">No role-allowed transition is available from this status.</p>`}${renderCaseAssessmentForm(record)}${renderCaseTimeline(record)}`;
+    }
+    function renderTreatmentsPanel(){
+      const records=scopedTreatments(), statuses=["all",...new Set(records.map(record=>record.status))],query=state.treatmentSearch.trim().toLowerCase();
+      const filtered=records.filter(record=>(state.treatmentStatus==="all"||record.status===state.treatmentStatus)&&(!query||[record.id,record.caseId,record.farm.name,record.owner,record.status,record.treatment].some(value=>String(value).toLowerCase().includes(query))));
+      if(!filtered.some(record=>record.id===state.selectedTreatmentId)) state.selectedTreatmentId=filtered[0]?.id||null;
+      const selected=getTreatmentRecord(state.selectedTreatmentId),active=records.filter(record=>record.status==="In progress"),completed=records.filter(record=>record.status==="Completed"),average=records.length?Math.round(records.reduce((sum,record)=>sum+record.progress,0)/records.length):0;
+      return `<div class="mrow"><div class="mcard"><span class="mlabel">Treatments in scope</span><span class="mval">${fmt(records.length)}</span><span class="msub">linked authorized cases</span></div><div class="mcard"><span class="mlabel">In progress</span><span class="mval tone-risk">${fmt(active.length)}</span><span class="msub">active workflows</span></div><div class="mcard"><span class="mlabel">Completed</span><span class="mval tone-ok">${fmt(completed.length)}</span><span class="msub">outcome recorded</span></div><div class="mcard"><span class="mlabel">Average progress</span><span class="mval">${average}%</span><span class="msub">scoped demo records</span></div></div>
+        <div class="workgrid"><div class="workmain"><div class="pagehead" style="align-items:flex-end;margin:0"><div class="filters"><label class="filter">Treatment status<select id="treatmentStatusFilter">${statuses.map(status=>`<option value="${escapeHtml(status)}" ${state.treatmentStatus===status?"selected":""}>${status==="all"?"All statuses":escapeHtml(status)}</option>`).join("")}</select></label><label class="filter">Search treatments<input class="searchfield" id="treatmentSearch" type="search" value="${escapeHtml(state.treatmentSearch)}" placeholder="Treatment, case, farm, owner" autocomplete="off"></label></div><span class="lvl">${filtered.length} of ${records.length} shown</span></div>
+          <div class="panel data-scroll"><table class="data-table"><thead><tr><th>Treatment</th><th>Farm / Case</th><th>Status</th><th>Progress</th><th>Owner</th><th><span class="hidden">Open</span></th></tr></thead><tbody>${filtered.length?filtered.map(record=>`<tr class="${record.id===state.selectedTreatmentId?"is-selected":""}"><td><strong>${record.id}</strong><br><span class="lvl">${escapeHtml(record.treatment)}</span></td><td>${escapeHtml(record.farm.name)}<br><span class="lvl">${record.caseId}</span></td><td><span class="badge ${treatmentBadge(record.status)}">${escapeHtml(record.status)}</span></td><td class="num">${record.progress}%</td><td>${escapeHtml(record.owner)}</td><td><button class="rowaction" data-treatment-select="${record.id}" aria-label="Open ${record.id}">Open</button></td></tr>`).join(""):`<tr><td colspan="6"><div class="empty-state"><strong>No treatments match these filters</strong><span>Change the status or search within your assigned AP farms.</span></div></td></tr>`}</tbody></table></div></div><aside class="card workside" aria-label="Selected treatment details">${renderTreatmentDetail(selected)}</aside></div>`;
+    }
+    function renderTreatmentDetail(record){
+      if(!record) return `<div class="empty-state"><strong>No treatment selected</strong><span>Select an authorized treatment to review its details.</span></div>`;
+      const canProgress=["admin","manager"].includes(state.role),next=TREATMENT_TRANSITIONS[record.status];
+      return `<div class="detail-head"><div><span class="detail-id">${record.id}</span><h3 class="cardt" style="margin:4px 0 0">${escapeHtml(record.treatment)}</h3></div><span class="badge ${treatmentBadge(record.status)}">${escapeHtml(record.status)}</span></div><dl class="detail-list"><div class="detail-pair"><dt>Farm</dt><dd>${escapeHtml(record.farm.name)}</dd></div><div class="detail-pair"><dt>Linked case</dt><dd>${record.caseId} · ${escapeHtml(record.caseRecord.status)}</dd></div><div class="detail-pair"><dt>Owner</dt><dd>${escapeHtml(record.owner)}</dd></div><div class="detail-pair"><dt>Progress</dt><dd>${record.progress}%</dd></div><div class="detail-pair"><dt>Recommendation</dt><dd>${escapeHtml(record.recommendation)}</dd></div><div class="detail-pair"><dt>Outcome</dt><dd>${escapeHtml(record.outcome||"Not recorded yet")}</dd></div></dl><div class="detail-actions"><button class="btn-ghost" data-treatment-farm="${record.farmId}">View farm</button><button class="btn-ghost" data-treatment-case="${record.caseId}">View case</button>${canProgress&&next&&next!=="Completed"?`<button class="btn" data-treatment-progress="${record.id}" title="Next status: ${next}">Advance treatment</button>`:""}</div>${canProgress&&next==="Completed"?`<div class="outcome-box"><label for="treatmentOutcome">Completion outcome</label><textarea id="treatmentOutcome" minlength="10" placeholder="Describe the observed treatment outcome"></textarea><button class="btn" style="margin-top:10px" data-treatment-progress="${record.id}" data-requires-outcome="true">Advance treatment</button><p class="sub">This completes the treatment. At least 10 meaningful characters are required.</p></div>`:!canProgress?`<p class="sub">Treatment progress is read-only for ${roles[state.role].name}.</p>`:!next?`<p class="sub">This treatment is complete and has no further transition.</p>`:""}`;
+    }
+    function bindCaseTreatmentEvents(){
+      const tabs=[...content.querySelectorAll("[data-work-tab]")];
+      tabs.forEach((tab,index)=>{tab.addEventListener("click",()=>{state.caseTab=tab.dataset.workTab;state.statusMessage="";render()});tab.addEventListener("keydown",event=>{let target=null;if(event.key==="ArrowRight") target=tabs[(index+1)%tabs.length];if(event.key==="ArrowLeft") target=tabs[(index-1+tabs.length)%tabs.length];if(event.key==="Home") target=tabs[0];if(event.key==="End") target=tabs[tabs.length-1];if(target){event.preventDefault();state.caseTab=target.dataset.workTab;state.statusMessage="";render();document.getElementById(`${state.caseTab}Tab`)?.focus();}})});
+      document.getElementById("caseStatusFilter")?.addEventListener("change",event=>{state.caseStatus=event.target.value;state.statusMessage="";render()});
+      document.getElementById("caseSearch")?.addEventListener("change",event=>{state.caseSearch=event.target.value;state.statusMessage="";render()});
+      content.querySelectorAll("[data-case-select]").forEach(button=>button.addEventListener("click",()=>{state.selectedCaseId=button.dataset.caseSelect;state.statusMessage="";render()}));
+      content.querySelectorAll("[data-case-farm]").forEach(button=>button.addEventListener("click",()=>openScopedFarm(button.dataset.caseFarm)));
+      content.querySelectorAll("[data-case-tree]").forEach(button=>button.addEventListener("click",()=>openScopedTree(button.dataset.treeFarm,button.dataset.caseTree)));
+      content.querySelectorAll("[data-case-action]").forEach(button=>button.addEventListener("click",()=>{applyCaseAction(button.dataset.caseId,button.dataset.caseAction);render()}));
+      content.querySelectorAll("[data-case-assessment]").forEach(form=>form.addEventListener("submit",event=>{event.preventDefault();if(submitCaseAssessment(form.dataset.caseAssessment,new FormData(form)))render();}));
+      document.getElementById("treatmentStatusFilter")?.addEventListener("change",event=>{state.treatmentStatus=event.target.value;state.statusMessage="";render()});
+      document.getElementById("treatmentSearch")?.addEventListener("change",event=>{state.treatmentSearch=event.target.value;state.statusMessage="";render()});
+      content.querySelectorAll("[data-treatment-select]").forEach(button=>button.addEventListener("click",()=>{state.selectedTreatmentId=button.dataset.treatmentSelect;state.statusMessage="";render()}));
+      content.querySelectorAll("[data-treatment-farm]").forEach(button=>button.addEventListener("click",()=>openScopedFarm(button.dataset.treatmentFarm)));
+      content.querySelectorAll("[data-treatment-case]").forEach(button=>button.addEventListener("click",()=>{const record=getCaseRecord(button.dataset.treatmentCase);if(!record){state.statusMessage="That case is not available in your assigned AP scope.";render();return;}state.caseTab="cases";state.selectedCaseId=record.id;state.statusMessage="";render()}));
+      content.querySelectorAll("[data-treatment-progress]").forEach(button=>button.addEventListener("click",()=>{const outcome=button.dataset.requiresOutcome?document.getElementById("treatmentOutcome")?.value||"":"";progressTreatment(button.dataset.treatmentProgress,outcome);render()}));
+    }
+    function alertPresentation(severity){
+      if(severity==="danger") return {label:"Danger",cls:"h-bad",icon:"!"};
+      if(severity==="suspected") return {label:"Suspected",cls:"h-risk",icon:"?"};
+      if(severity==="no-reading") return {label:"No reading",cls:"h-neutral",icon:"-"};
+      return {label:"Okay",cls:"h-ok",icon:"✓"};
+    }
+    function renderAlerts(){
+      const alerts=scopedAlerts(), unread=alerts.filter(alert=>!isAlertRead(alert.id));
+      const filtered=alerts.filter(alert=>(state.alertRead!=="unread"||!isAlertRead(alert.id))&&(state.alertSeverity==="all"||alert.severity===state.alertSeverity));
+      const danger=alerts.filter(alert=>alert.severity==="danger").length, suspected=alerts.filter(alert=>alert.severity==="suspected").length;
+      content.innerHTML=`<div class="pagehead"><div><h1 class="h1">Infection watchlist</h1><p class="sub">Farms with active or emerging Ganoderma workflow risk, ranked by severity. Deterministic AP demo observations; not image-derived diagnosis.</p></div><button class="btn-ghost" id="markAllAlerts" ${unread.length?"":"disabled"}>Mark all read</button></div>
+        <div class="mrow"><div class="mcard"><span class="mlabel">Alerts in scope</span><span class="mval">${fmt(alerts.length)}</span><span class="msub">assigned AP farms only</span></div><div class="mcard"><span class="mlabel">Danger</span><span class="mval tone-bad">${fmt(danger)}</span><span class="msub">requires priority review</span></div><div class="mcard"><span class="mlabel">Suspected</span><span class="mval tone-risk">${fmt(suspected)}</span><span class="msub">follow-up recommended</span></div><div class="mcard"><span class="mlabel">Unread</span><span class="mval">${fmt(unread.length)}</span><span class="msub">for ${roles[state.role].name}</span></div></div>
+        <div class="pagehead" style="align-items:center;margin-bottom:12px"><div class="filters"><label class="filter">Read status<select id="alertReadFilter" data-alert-filter="read"><option value="all">All</option><option value="unread">Unread</option></select></label><label class="filter">Severity<select id="alertSeverityFilter" data-alert-filter="severity"><option value="all">All</option><option value="danger">Danger</option><option value="suspected">Suspected</option><option value="okay">Okay</option><option value="no-reading">No reading</option></select></label></div><span class="lvl">${filtered.length} of ${alerts.length} shown</span></div>
+        <p class="statusline" id="alertStatus" role="status" aria-live="polite">${state.statusMessage}</p>
+        <div class="panel"><div class="paneltitle">Active alerts<span class="lvl">severity ranked</span></div><div class="watchlist">${filtered.length?filtered.map(alert=>{const view=alertPresentation(alert.severity),read=isAlertRead(alert.id);return `<article class="alertrow ${read?"is-read":""}" data-alert-id="${alert.id}"><div class="alertmain"><span class="badge ${view.cls}" aria-hidden="true">${view.icon}</span><span class="alertcopy"><b>${alert.farm.name}</b><small>${alert.id} · ${alert.farm.village}, ${alert.farm.mandal}, ${alert.farm.district}</small></span></div><span><em class="badge ${view.cls}">${view.label}</em></span><span class="alertmeta"><strong>${fmt(alert.affected)}</strong>${alert.affected===1?"palm":"palms"} affected</span><span class="alertmeta alert-date"><strong>${pct(alert.farm.risk)}</strong> infection rate · ${new Date(`${alert.date}T00:00:00`).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}</span><span class="alertactions"><button class="btn-ghost" data-alert-read="${alert.id}" aria-label="Mark ${alert.farm.name} alert read" ${read?"disabled":""}>${read?"Read":"Mark alert read"}</button><button class="btn-ghost" data-alert-farm="${alert.farmId}" aria-label="View ${alert.farm.name} farm">View farm</button></span></article>`}).join(""):`<div class="empty-state"><strong>No alerts match these filters</strong><span>Adjust Read status or Severity to see other records in your AP assignment.</span></div>`}</div></div>`;
+      const readFilter=document.getElementById("alertReadFilter"), severityFilter=document.getElementById("alertSeverityFilter");
+      readFilter.value=state.alertRead;severityFilter.value=state.alertSeverity;
+      readFilter.addEventListener("change",()=>{state.alertRead=readFilter.value;state.statusMessage="";render()});
+      severityFilter.addEventListener("change",()=>{state.alertSeverity=severityFilter.value;state.statusMessage="";render()});
+      document.getElementById("markAllAlerts").addEventListener("click",()=>{markAllAlertsRead();render()});
+      content.querySelectorAll("[data-alert-read]").forEach(button=>button.addEventListener("click",()=>{markAlertRead(button.dataset.alertRead);render()}));
+      content.querySelectorAll("[data-alert-farm]").forEach(button=>button.addEventListener("click",()=>openScopedFarm(button.dataset.alertFarm)));
+    }
+    function renderAdministration(){
+      if(!["admin","ceo"].includes(state.role)){state.page="Overview";state.statusMessage="Administration is not available for this role.";return render();}
+      const users=scopedManagedUsers(),active=users.filter(user=>user.active).length,events=scopedActivityEvents();
+      content.innerHTML=`<div class="pagehead"><div><h1 class="h1">Administration</h1><p class="sub">Manage AP demo accounts and review the built-in access model. Changes stay in this browser and never alter operational farm records.</p></div></div>
+        <div class="mrow"><div class="mcard"><span class="mlabel">AP accounts</span><span class="mval">${fmt(users.length)}</span><span class="msub">inside your geography</span></div><div class="mcard"><span class="mlabel">Active accounts</span><span class="mval tone-ok">${fmt(active)}</span><span class="msub">${fmt(users.length-active)} inactive</span></div><div class="mcard"><span class="mlabel">Built-in roles</span><span class="mval">${fmt(ROLE_ACCESS_MATRIX.length)}</span><span class="msub">read-only matrix</span></div><div class="mcard"><span class="mlabel">Protected accounts</span><span class="mval">${fmt(users.filter(user=>user.protected).length)}</span><span class="msub">immutable administrator</span></div></div>
+        <p class="statusline" role="status" aria-live="polite">${escapeHtml(state.statusMessage)}</p>
+        <div class="admin-grid"><div class="admin-stack"><section class="panel"><div class="paneltitle">User directory<span class="lvl">AP scoped · demo controls</span></div>${users.map(user=>{const options=ADMIN_SCOPE_OPTIONS[user.roleId]||[],isSelf=user.id===currentManagedUser()?.id;return `<article class="user-row ${user.active?"":"is-inactive"}"><div class="user-main"><span class="avatar" aria-hidden="true">${roles[user.roleId].initials}</span><span><b>${escapeHtml(user.name)}</b><small>${escapeHtml(user.email)}</small></span></div><div><span class="badge ${user.active?"h-ok":"h-neutral"}">${user.active?"Active":"Inactive"}</span><div class="lvl" style="margin-top:5px">${escapeHtml(roles[user.roleId].name)}${user.protected?" · protected":isSelf?" · you":""}</div></div><div class="scope-cell"><label class="filter">AP assignment<select class="scope-select" data-user-scope="${user.id}" ${user.protected?"disabled aria-describedby='protected-note'":""}>${options.map(option=>`<option value="${escapeHtml(option.id)}" ${option.id===user.scope?"selected":""}>${escapeHtml(option.label)}</option>`).join("")}</select></label></div><div class="user-actions"><button class="btn-ghost" data-user-reset="${user.id}" ${user.protected?"disabled":""}>Issue reset link</button><button class="btn-ghost" data-user-status="${user.id}" ${user.protected||isSelf&&user.active?"disabled":""}>${user.active?"Deactivate":"Activate"}</button></div></article>`}).join("")}<p class="storage-note" id="protected-note" style="padding:0 18px 14px">The System Administrator account and assignment are protected. You cannot deactivate the account currently signed in.</p></section>
+          <section class="panel"><div class="paneltitle">Built-in role and access matrix<span class="lvl">read only</span></div><div class="role-matrix" role="table" aria-label="Built-in role and access matrix"><div class="matrix-cell matrix-head" role="columnheader">Role</div><div class="matrix-cell matrix-head" role="columnheader">Export</div><div class="matrix-cell matrix-head" role="columnheader">Cases</div><div class="matrix-cell matrix-head" role="columnheader">Treatments</div><div class="matrix-cell matrix-head" role="columnheader">Admin</div>${ROLE_ACCESS_MATRIX.map(item=>`<div class="matrix-cell" role="rowheader"><b>${escapeHtml(roles[item.roleId].name)}</b></div>${[item.exports,item.caseActions,item.treatmentActions,item.administration].map(value=>`<div class="matrix-cell ${value?"matrix-yes":"matrix-no"}" role="cell"><span aria-label="${value?"Allowed":"Not allowed"}">${value?"Yes":"—"}</span></div>`).join("")}`).join("")}</div></section></div>
+          <aside class="admin-stack"><section class="card"><h2 class="cardt">Custom role preview</h2><p class="sub">Validate a proposed role without creating or storing it.</p><form id="customRoleForm"><div class="field" style="margin-top:14px"><label for="customRoleName">Role name</label><input id="customRoleName" name="name" minlength="3" required placeholder="Regional survey reviewer"></div><div class="field" style="margin-top:12px"><label for="customPermission">Permission set</label><select id="customPermission" name="permission" required><option value="read">Read-only monitoring</option><option value="operations">Field operations</option><option value="export">Reporting and export</option></select></div><div class="field" style="margin-top:12px"><label for="customScope">Maximum AP scope</label><select id="customScope" name="scope" required><option value="district">Assigned district</option><option value="mandal">Assigned mandal</option><option value="farm">Assigned farm</option></select></div><button class="btn" style="margin-top:14px">Validate preview</button></form><div id="customRoleResult" class="notice" style="margin-top:14px" role="status" aria-live="polite">No custom role has been previewed. Nothing entered here is saved.</div></section>
+          <section class="card"><h2 class="cardt">Security activity</h2>${state.role==="admin"?`<ul class="activity-list">${events.slice(0,8).map(event=>`<li class="activity-item"><b>${escapeHtml(event.summary)}</b><span>${escapeHtml(event.actor)} · ${new Date(event.at).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"})}</span></li>`).join("")}</ul>`:`<div class="notice"><strong>Restricted to System Administrator</strong><p class="sub">CEO / General Manager can manage AP demo accounts but cannot view the full security activity record.</p></div>`}</section></aside></div>`;
+      content.querySelectorAll("[data-user-status]").forEach(button=>button.addEventListener("click",()=>{updateManagedUserStatus(button.dataset.userStatus);render()}));
+      content.querySelectorAll("[data-user-reset]").forEach(button=>button.addEventListener("click",()=>{issuePasswordReset(button.dataset.userReset);render()}));
+      content.querySelectorAll("[data-user-scope]").forEach(select=>select.addEventListener("change",()=>{updateManagedUserScope(select.dataset.userScope,select.value);render()}));
+      document.getElementById("customRoleForm").addEventListener("submit",event=>{event.preventDefault();const input=Object.fromEntries(new FormData(event.currentTarget)),result=previewCustomRole(input),target=document.getElementById("customRoleResult");state.customRolePreview=result;target.innerHTML=result.valid?`<strong>${escapeHtml(result.preview.name)}</strong><p class="sub">${escapeHtml(result.preview.summary)} Preview only — this role was not saved.</p>`:`<strong>Preview needs attention</strong><ul>${result.errors.map(error=>`<li>${escapeHtml(error)}</li>`).join("")}</ul>`;});
+    }
+    function renderSettings(){
+      const user=effectiveManagedUser(currentManagedUser()||{roleId:state.role,scope:"ap-all",name:roles[state.role].name,email:"demo@palmwatch.local"}),prefs=getPreferences();
+      content.innerHTML=`<div class="pagehead"><div><h1 class="h1">Settings</h1><p class="sub">Account context and browser-local preferences for the PalmWatch AP demonstration.</p></div></div><p class="statusline" role="status" aria-live="polite">${escapeHtml(state.statusMessage)}</p><div class="settings-grid"><div class="admin-stack"><section class="card"><h2 class="cardt">Account and assignment</h2><dl class="detail-list"><div class="detail-pair"><dt>Name</dt><dd>${escapeHtml(user.name)}</dd></div><div class="detail-pair"><dt>Email</dt><dd>${escapeHtml(user.email)}</dd></div><div class="detail-pair"><dt>Role</dt><dd>${escapeHtml(roles[state.role].name)}</dd></div><div class="detail-pair"><dt>AP scope</dt><dd>${escapeHtml(scopeLabel(user))}</dd></div></dl></section><section class="card"><h2 class="cardt">Notifications</h2><label class="choice"><input type="checkbox" id="notificationPreference" ${prefs.notifications?"checked":""}><span><b>Operational notifications</b><span>Show browser-demo notices for assigned alerts, cases, and treatment activity.</span></span></label></section><section class="card"><h2 class="cardt">Display density</h2><div class="choice-group" role="radiogroup" aria-label="Display density"><label class="choice"><input type="radio" name="density" value="comfortable" ${prefs.density==="comfortable"?"checked":""}><span><b>Comfortable</b><span>More breathing room between records.</span></span></label><label class="choice"><input type="radio" name="density" value="compact" ${prefs.density==="compact"?"checked":""}><span><b>Compact</b><span>Fit more operational rows on screen.</span></span></label></div></section></div><aside class="card danger-zone"><h2 class="cardt">Reset browser demo</h2><p class="sub">Clear read-alert markers, case and treatment actions, administration changes, report history, and preferences. The deterministic AP farm dataset remains unchanged.</p>${state.resetConfirm?`<div class="notice" style="margin-top:14px"><strong>Reset all local demo changes?</strong><p class="sub">This cannot be undone, but it will not remove farms or trees.</p><div class="confirm-row"><button class="btn" id="confirmDemoReset">Reset demo changes</button><button class="btn-ghost" id="cancelDemoReset">Cancel</button></div></div>`:`<button class="btn-ghost" id="requestDemoReset" style="margin-top:14px">Reset demo changes</button>`}<p class="storage-note">Settings are stored only in this browser. No production account is changed.</p></aside></div>`;
+      document.getElementById("notificationPreference").addEventListener("change",event=>{updatePreference("notifications",event.target.checked);render()});
+      content.querySelectorAll('input[name="density"]').forEach(input=>input.addEventListener("change",()=>{if(input.checked){updatePreference("density",input.value);render()}}));
+      document.getElementById("requestDemoReset")?.addEventListener("click",()=>{state.resetConfirm=true;state.statusMessage="";render()});
+      document.getElementById("cancelDemoReset")?.addEventListener("click",()=>{state.resetConfirm=false;state.statusMessage="Reset cancelled.";render()});
+      document.getElementById("confirmDemoReset")?.addEventListener("click",()=>{resetDemoState();state.resetConfirm=false;applyPreferences();render()});
     }
     function renderPlaceholder(){
       const farms=flatFarms(scopedDistricts()), m=metricsFor(farms);
       content.innerHTML = `<div class="pagehead"><div><h1 class="h1">${state.page}</h1><p class="sub">Functional AP-only ${state.page.toLowerCase()} workspace. Data respects the selected role scope and excludes non-AP regions.</p></div></div>${metricStrip(m)}<div class="panel"><div class="paneltitle">${state.page} records<span class="lvl">role scoped</span></div>${farms.slice(0,8).map(f=>`<button class="htr frow" data-farm="${f.id}"><span class="hname"><span class="nm">${f.name}</span><span class="lvl">${f.district}</span></span><span class="num">${fmt(f.trees)}</span><span class="num">${fmt(f.infected)}</span><span class="num">${fmt(f.pending)}</span><span><em class="badge ${hclass(f.risk)}">${hlabel(f.risk)}</em></span></button>`).join("")}</div>`;
       content.querySelectorAll("[data-farm]").forEach(b=>b.addEventListener("click",()=>{state.page="Overview";state.farmId=b.dataset.farm;render()}));
     }
+    function invalidateNewFarmPreview(){state.newFarmPreview=null;state.newFarmErrors=[];}
     function renderNewFarm(){
+      if(!["admin","ceo"].includes(state.role)){state.page="Overview";state.statusMessage="New Farm is limited to System Administrator and CEO / General Manager.";return render();}
+      state.newFarmDraft=normalizeNewFarmDraft(state.newFarmDraft);
+      state.newFarmAcre=Math.max(1,Math.min(state.newFarmDraft.acres,Number(state.newFarmAcre)||1));
+      const draft=state.newFarmDraft,current=draft.layouts[state.newFarmAcre-1],validation=validateNewFarmDraft(draft),selected=current.cells.filter(cell=>cell.occupied).length,totalSelected=draft.layouts.reduce((sum,layout)=>sum+layout.cells.filter(cell=>cell.occupied).length,0),targetTotal=draft.layouts.reduce((sum,layout)=>sum+layout.target,0),difference=current.target-selected;
+      const canonicalDistrict=districts.find(item=>item.name===draft.district)||districts[0],mandals=canonicalDistrict.mandals,canonicalMandal=mandals.find(item=>item.name===draft.mandal)||mandals[0],villages=canonicalMandal.villages;
+      const userOptions=roleId=>managedUsers.filter(user=>user.roleId===roleId&&effectiveManagedUser(user).active).map(user=>`<option value="${user.id}" ${draft[roleId==="head"?"headUserId":roleId==="manager"?"managerUserId":"staffUserId"]===user.id?"selected":""}>${escapeHtml(user.name)} · ${escapeHtml(scopeLabel(effectiveManagedUser(user)))}</option>`).join("");
+      content.innerHTML=`<div class="pagehead"><div><h1 class="h1">Add a new AP farm</h1><p class="sub">Set the exact 8×8 layout for every acre, review the generated IDs, then explicitly save the browser-local demo farm.</p></div><em class="badge h-neutral">Local demo record</em></div><div class="notice" style="margin-bottom:18px"><strong>Preview only — not yet saved.</strong> Preview validates and freezes the exact layout. Save farm writes the farm and its trees together to this browser. No cases, treatments, survey readings, or diagnoses are invented.</div>
+      <div class="farm-builder"><div class="farm-builder-stack"><form class="card" id="newFarmForm"><h3 class="cardt">Farm identity and AP geography</h3><div class="formgrid"><div class="field"><label for="farmName">Farm name</label><input required id="farmName" name="name" value="${escapeHtml(draft.name)}" placeholder="e.g. Munduru South Block"></div><div class="field"><label for="farmDistrict">District</label><select id="farmDistrict" name="district">${districts.map(item=>`<option ${draft.district===item.name?"selected":""}>${item.name}</option>`).join("")}</select></div><div class="field"><label for="farmMandal">Mandal</label><select id="farmMandal" name="mandal">${mandals.map(item=>`<option ${draft.mandal===item.name?"selected":""}>${item.name}</option>`).join("")}</select></div><div class="field"><label for="farmVillage">Village</label><select id="farmVillage" name="village">${villages.map(item=>`<option ${draft.village===item.name?"selected":""}>${item.name}</option>`).join("")}</select></div><div class="field"><label for="farmLat">Latitude</label><input required id="farmLat" name="lat" type="number" min="12.55" max="19.25" step="0.0001" value="${Number.isFinite(draft.lat)?draft.lat:""}"><span class="field-help">Approximate AP demo location; not an ownership boundary.</span></div><div class="field"><label for="farmLon">Longitude</label><input required id="farmLon" name="lon" type="number" min="76.70" max="84.85" step="0.0001" value="${Number.isFinite(draft.lon)?draft.lon:""}"></div><div class="field"><label for="farmAcres">Number of acres</label><input required id="farmAcres" name="acres" type="number" min="1" max="24" value="${draft.acres}"><span class="field-help">One exact 8×8 grid is created per acre.</span></div></div><h3 class="cardt" style="margin-top:20px">Assignments</h3><div class="formgrid"><div class="field"><label for="farmHead">Plantation Head</label><select id="farmHead" name="headUserId">${userOptions("head")}</select></div><div class="field"><label for="farmManager">Area Manager</label><select id="farmManager" name="managerUserId">${userOptions("manager")}</select></div><div class="field"><label for="farmStaff">Field Staff</label><select id="farmStaff" name="staffUserId">${userOptions("staff")}</select></div></div></form></div>
+      <div class="farm-builder-stack"><section class="card" aria-labelledby="layoutTitle"><div class="acre-toolbar"><div><h3 class="cardt" id="layoutTitle" style="margin:0">Set the farm grid layout</h3><p class="sub">Acre ${state.newFarmAcre} of ${draft.acres}</p></div><div class="acre-nav"><button class="btn-ghost" id="newFarmPrev" ${state.newFarmAcre===1?"disabled":""}>Previous</button><button class="btn-ghost" id="newFarmNext" ${state.newFarmAcre===draft.acres?"disabled":""}>Next</button></div></div><div class="acre-pills" aria-label="Choose acre">${draft.layouts.map(layout=>`<button class="acre-pill" data-new-acre="${layout.acre}" aria-current="${layout.acre===state.newFarmAcre}">Acre ${layout.acre} · ${layout.cells.filter(cell=>cell.occupied).length}/${layout.target}</button>`).join("")}</div><div class="field" style="margin-top:14px;max-width:260px"><label for="acreTarget">Number of trees on acre ${state.newFarmAcre}</label><input id="acreTarget" type="number" min="50" max="57" value="${current.target}"></div><div class="grid-counter" aria-live="polite"><span class="count-chip"><strong>${selected}/${current.target}</strong> plotted</span><span class="count-chip"><strong>${difference>0?difference:0}</strong> remaining</span>${difference<0?`<span class="count-chip"><strong>${Math.abs(difference)}</strong> over target</span>`:""}<span class="count-chip"><strong>${totalSelected}/${targetTotal}</strong> farm total</span></div><div class="treegrid" id="newFarmGrid" role="grid" aria-label="Editable acre ${state.newFarmAcre} layout">${current.cells.map((cell,index)=>`<button type="button" class="tcell is-editable ${cell.occupied?"h-ok":"h-empty"}" data-layout-cell="${index}" aria-pressed="${cell.occupied}" aria-label="Acre ${state.newFarmAcre}, row ${cell.row}, column ${cell.column}: ${cell.occupied?"Tree plotted":"No tree"}">${cell.occupied?current.cells.slice(0,index+1).filter(item=>item.occupied).length:""}</button>`).join("")}</div><p class="sub">Black means no tree. Black cells are editable here and disabled after saving.</p><div class="builder-actions"><button class="btn-ghost" id="resetAcre">Reset this acre</button><button class="btn-ghost" id="copyPattern">Copy this pattern to all acres</button><button class="btn-ghost" id="resetAllAcres">Reset all acres</button></div><p class="form-error" id="newFarmErrors" role="alert">${state.newFarmErrors.map(escapeHtml).join(" ")}</p><div class="builder-actions"><button class="btn" id="previewNewFarm" ${validation.valid?"":"disabled"}>Preview farm layout</button></div><p class="save-note">Preview becomes available when every acre matches its independent 50–57 tree target and the AP farm fields are complete.</p></section><div id="newFarmPreview">${renderNewFarmPreview()}</div></div></div>`;
+      bindNewFarmBuilder();
+    }
+    function renderNewFarmPreview(){
+      const preview=state.newFarmPreview;
+      if(!preview)return `<section class="card"><h3 class="cardt">Farm preview</h3><div class="empty-state"><strong>No exact preview yet</strong><span>Complete every acre grid, then choose Preview exact farm. Nothing has been saved.</span></div></section>`;
+      const layout=preview.layouts.find(item=>item.acre===preview.previewAcre)||preview.layouts[0],selected=layout.cells.filter(cell=>cell.occupied).length;
+      return `<section class="card" aria-labelledby="previewTitle"><div class="preview-banner"><div><b id="previewTitle">Exact preview ready · not saved yet</b><span>Review the Farm ID, assignments, acreage, and every occupied position before saving.</span></div><em class="badge h-neutral">Pending / no evidence</em></div><div class="preview-meta">${[["Farm ID",preview.id],["Farm",preview.draft.name],["Location",`${preview.draft.village}, ${preview.draft.mandal}, ${preview.draft.district}`],["Area",`${preview.draft.acres} ${preview.draft.acres===1?"acre":"acres"}`],["Plotted palms",preview.totalSelected],["Current acre",`${layout.acre} · ${selected}/${layout.target} plotted`]].map(item=>`<div class="tdrow"><span class="tdk">${item[0]}</span><span class="tdv">${escapeHtml(String(item[1]))}</span></div>`).join("")}</div><div class="acre-toolbar"><h3 class="cardt" style="margin:0">Preview acre ${layout.acre} of ${preview.draft.acres}</h3><div class="acre-nav"><button class="btn-ghost" id="previewPrevAcre" ${layout.acre===1?"disabled":""}>Previous</button><select class="csel" id="previewAcreSelect" aria-label="Preview acre">${preview.layouts.map(item=>`<option value="${item.acre}" ${item.acre===layout.acre?"selected":""}>Acre ${item.acre}</option>`).join("")}</select><button class="btn-ghost" id="previewNextAcre" ${layout.acre===preview.draft.acres?"disabled":""}>Next</button></div></div><div class="treegrid" role="grid" aria-label="Read-only preview acre ${layout.acre}">${layout.cells.map((cell,index)=>`<button class="tcell ${cell.occupied?"h-neutral":"h-empty"}" ${cell.occupied?`title="${cell.treeId}" aria-label="${cell.treeId}, row ${cell.row}, column ${cell.column}, Pending, no evidence"`:`disabled title="No tree" aria-label="Acre ${layout.acre}, row ${cell.row}, column ${cell.column}: No tree"`}>${cell.occupied?layout.cells.slice(0,index+1).filter(item=>item.occupied).length:""}</button>`).join("")}</div><div class="preview-actions"><button class="btn-ghost" id="editNewFarmGrid">Edit layout</button><button class="btn" id="saveNewFarm">Save farm</button></div><p class="save-note"><strong>Save farm</strong> writes this exact layout atomically to browser-local demo state. It does not create cases, treatments, readings, or imagery.</p></section>`;
+    }
+    function bindNewFarmBuilder(){
+      const form=document.getElementById("newFarmForm"),draft=state.newFarmDraft,current=draft.layouts[state.newFarmAcre-1];
+      const updateField=(name,value)=>{draft[name]=value;invalidateNewFarmPreview();};
+      form.querySelectorAll("input,select").forEach(control=>control.addEventListener("change",()=>{
+        if(control.name==="acres"){
+          const nextAcres=Math.max(1,Math.min(24,Math.trunc(Number(control.value)||1))),previous=draft.layouts;
+          draft.acres=nextAcres;draft.layouts=Array.from({length:nextAcres},(_,index)=>previous[index]||createDefaultAcreLayout(index+1,54));state.newFarmAcre=Math.min(state.newFarmAcre,nextAcres);invalidateNewFarmPreview();return render();
+        }
+        if(control.name==="district"){
+          const district=districts.find(item=>item.name===control.value)||districts[0],mandal=district.mandals[0],village=mandal.villages[0];
+          Object.assign(draft,{district:district.name,mandal:mandal.name,village:village.name,lat:village.lat,lon:village.lon});invalidateNewFarmPreview();return render();
+        }
+        if(control.name==="mandal"){
+          const district=districts.find(item=>item.name===draft.district),mandal=district.mandals.find(item=>item.name===control.value)||district.mandals[0],village=mandal.villages[0];
+          Object.assign(draft,{mandal:mandal.name,village:village.name,lat:village.lat,lon:village.lon});invalidateNewFarmPreview();return render();
+        }
+        if(control.name==="village"){
+          const village=districts.find(item=>item.name===draft.district)?.mandals.find(item=>item.name===draft.mandal)?.villages.find(item=>item.name===control.value);updateField("village",control.value);if(village){draft.lat=village.lat;draft.lon=village.lon;}return render();
+        }
+        updateField(control.name,["lat","lon"].includes(control.name)?Number(control.value):control.value);render();
+      }));
+      document.getElementById("acreTarget").addEventListener("change",event=>{current.target=Math.max(50,Math.min(57,Math.trunc(Number(event.target.value)||54)));invalidateNewFarmPreview();render()});
+      document.querySelectorAll("[data-layout-cell]").forEach(button=>button.addEventListener("click",()=>{const cell=current.cells[Number(button.dataset.layoutCell)];cell.occupied=!cell.occupied;delete cell.treeId;invalidateNewFarmPreview();render()}));
+      document.querySelectorAll("[data-new-acre]").forEach(button=>button.addEventListener("click",()=>{state.newFarmAcre=Number(button.dataset.newAcre);render()}));
+      document.getElementById("newFarmPrev").addEventListener("click",()=>{state.newFarmAcre--;render()});document.getElementById("newFarmNext").addEventListener("click",()=>{state.newFarmAcre++;render()});
+      document.getElementById("resetAcre").addEventListener("click",()=>{draft.layouts[state.newFarmAcre-1]=createDefaultAcreLayout(state.newFarmAcre,current.target);invalidateNewFarmPreview();render()});
+      document.getElementById("resetAllAcres").addEventListener("click",()=>{draft.layouts=Array.from({length:draft.acres},(_,index)=>createDefaultAcreLayout(index+1,draft.layouts[index]?.target||54));invalidateNewFarmPreview();render()});
+      document.getElementById("copyPattern").addEventListener("click",()=>{draft.layouts=Array.from({length:draft.acres},(_,index)=>({acre:index+1,target:current.target,cells:current.cells.map(cell=>({acre:index+1,row:cell.row,column:cell.column,occupied:cell.occupied}))}));invalidateNewFarmPreview();render()});
+      document.getElementById("previewNewFarm").addEventListener("click",()=>{const result=validateNewFarmDraft(draft);if(!result.valid){state.newFarmErrors=result.errors;state.newFarmPreview=null;return render();}const id=generatePreviewFarmId(result.draft),layouts=generatePreviewTreeIds(id,result.draft.layouts);state.newFarmPreview={id,draft:result.draft,layouts,totalSelected:result.totalSelected,previewAcre:1};state.newFarmErrors=[];render()});
+      const preview=state.newFarmPreview;if(!preview)return;
+      document.getElementById("previewPrevAcre").addEventListener("click",()=>{preview.previewAcre--;render()});document.getElementById("previewNextAcre").addEventListener("click",()=>{preview.previewAcre++;render()});document.getElementById("previewAcreSelect").addEventListener("change",event=>{preview.previewAcre=Number(event.target.value);render()});
+      document.getElementById("editNewFarmGrid").addEventListener("click",()=>{document.getElementById("layoutTitle").scrollIntoView({behavior:"smooth",block:"start"});document.getElementById("acreTarget").focus()});
+      document.getElementById("saveNewFarm").addEventListener("click",()=>{const result=saveNewFarmPreview(preview);if(!result.saved){state.newFarmErrors=[result.error];return render();}state.statusMessage=`${result.farm.name} was saved to this browser with ${result.farm.trees} trees.`;state.page="Overview";state.path=[];state.farmId=result.farm.id;state.farmAcre=1;state.newFarmDraft=normalizeNewFarmDraft(DEFAULT_FARM_DRAFT);state.newFarmPreview=null;render()});
+    }
+    function renderNewFarmLegacy(){
       content.innerHTML = `<div class="pagehead"><div><h1 class="h1">New Farm Preview</h1><p class="sub">Preview-only farm layout builder. Nothing is saved to mock data, browser storage, audit, notifications, or trees.</p></div></div><div class="grid2"><form class="card" id="newFarmForm"><h3 class="cardt">Farm identity and AP geography</h3><div class="formgrid"><div class="field"><label>Farm name</label><input required name="name" value="Preview Pedavegi Farm"></div><div class="field"><label>District</label><select name="district"><option>Eluru</option><option>East Godavari</option><option>West Godavari</option><option>Krishna</option></select></div><div class="field"><label>Mandal</label><input required name="mandal" value="Pedavegi"></div><div class="field"><label>Village</label><input required name="village" value="Munduru"></div><div class="field"><label>Latitude</label><input required name="lat" value="16.8792"></div><div class="field"><label>Longitude</label><input required name="lon" value="81.1471"></div><div class="field"><label>Number of acres</label><input required type="number" name="acres" min="1" max="24" value="1"></div><div class="field"><label>Trees on current acre</label><input required type="number" name="density" min="50" max="57" value="54"></div></div><p class="sub" id="plotCount">54/54 plotted on acre 1</p><div class="treegrid" id="editGrid">${Array.from({length:64},(_,i)=>`<button type="button" class="tcell ${i<54?"h-ok":"h-empty"}" data-i="${i}">${i<54?i+1:""}</button>`).join("")}</div><p class="sub">Black cells are editable here. In Farm Detail, black means no tree and is disabled.</p><button class="btn" style="margin-top:16px">Add farm</button></form><div id="previewPane" class="card"><h3 class="cardt">Preview only - not saved yet</h3><p class="sub">Press Add farm to render the unsaved farm layout preview.</p></div></div>`;
       const grid=document.getElementById("editGrid"), form=document.getElementById("newFarmForm"), count=document.getElementById("plotCount");
       function update(){const target=Number(form.density.value)||54;const selected=[...grid.querySelectorAll(".tcell:not(.h-empty)")].length;count.textContent=`${selected}/${target} plotted on acre 1`;}

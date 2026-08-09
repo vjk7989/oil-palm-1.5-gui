@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "classification": "demo",
+  "captureDate": "2026-06-20",
+  "captureId": "DJI_20260620095527_0011",
+  "notice": "Real demonstration survey context only. These captures are not evidence for a selected simulated tree, proof of farm ownership, or the source of the displayed NDVI, NDRE, diagnosis, confidence, temperature, or trend values.",
+  "sourcesRetainedOutsideWebBundle": true,
+  "views": [
+    {
+      "id": "rgb",
+      "label": "RGB",
+      "band": "Visible RGB",
+      "sourceFilename": "DJI_20260620095527_0011_D.JPG",
+      "sourceSha256": "275b01f5773d9eef51c9b37153434664be0ad84c459a07632596b85f4fb72cc7",
+      "sourceDimensions": [5280, 3956],
+      "derivative": "assets/tree-evidence/rgb.webp",
+      "derivativeDimensions": [1400, 948],
+      "processing": "Removed top 380 px burned-in timestamp/GPS/operator overlay; resized to maximum 1400 px; WebP quality 88.",
+      "privacyCropped": true,
+      "classification": "demo"
+    },
+    {
+      "id": "false-colour",
+      "label": "False colour",
+      "band": "Camera false-colour",
+      "sourceFilename": "DJI_20260620095527_0011_F.JPG",
+      "sourceSha256": "6d80f617f16a5203f4c53723d6ee17c1814f158352d3e47e01e9197b30a14457",
+      "sourceDimensions": [2592, 1944],
+      "derivative": "assets/tree-evidence/false-colour.webp",
+      "derivativeDimensions": [1400, 953],
+      "processing": "Removed top 180 px burned-in timestamp/GPS/operator overlay; resized to maximum 1400 px; WebP quality 88.",
+      "privacyCropped": true,
+      "classification": "demo"
+    },
+    {
+      "id": "green",
+      "label": "Green",
+      "band": "Green",
+      "sourceFilename": "DJI_20260620095527_0011_MS_G.TIF",
+      "sourceSha256": "90cd39919875c3898ef695f81db633840f72b2ae9fa7cfab227f52aacde6a0d6",
+      "sourceDimensions": [2592, 1944],
+      "derivative": "assets/tree-evidence/green.webp",
+      "derivativeDimensions": [1400, 1050],
+      "processing": "Independent per-band linear 2nd-to-98th percentile display stretch (5008 to 54720); resized to maximum 1400 px; WebP quality 88.",
+      "privacyCropped": false,
+      "classification": "demo"
+    },
+    {
+      "id": "red",
+      "label": "Red",
+      "band": "Red",
+      "sourceFilename": "DJI_20260620095527_0011_MS_R.TIF",
+      "sourceSha256": "78fc7e924cdd916350e28e7889fd86395e54d78379ffefb18c869f581b737780",
+      "sourceDimensions": [2592, 1944],
+      "derivative": "assets/tree-evidence/red.webp",
+      "derivativeDimensions": [1400, 1050],
+      "processing": "Independent per-band linear 2nd-to-98th percentile display stretch (4336 to 36160); resized to maximum 1400 px; WebP quality 88.",
+      "privacyCropped": false,
+      "classification": "demo"
+    },
+    {
+      "id": "red-edge",
+      "label": "Red-edge",
+      "band": "Red-edge",
+      "sourceFilename": "DJI_20260620095527_0011_MS_RE.TIF",
+      "sourceSha256": "661c0fcb990c69d2b5f8d2e64b3d2dfb7654507524db57fc14a7828edbaf8c08",
+      "sourceDimensions": [2592, 1944],
+      "derivative": "assets/tree-evidence/red-edge.webp",
+      "derivativeDimensions": [1400, 1050],
+      "processing": "Independent per-band linear 2nd-to-98th percentile display stretch (5872 to 64608); resized to maximum 1400 px; WebP quality 88.",
+      "privacyCropped": false,
+      "classification": "demo"
+    },
+    {
+      "id": "near-infrared",
+      "label": "Near-infrared",
+      "band": "Near-infrared",
+      "sourceFilename": "DJI_20260620095527_0011_MS_NIR.TIF",
+      "sourceSha256": "081fc10745a928be391ca4e1dbe1c3d0f2826750dd4189d44928259e9180059c",
+      "sourceDimensions": [2592, 1944],
+      "derivative": "assets/tree-evidence/near-infrared.webp",
+      "derivativeDimensions": [1400, 1050],
+      "processing": "Independent per-band linear 2nd-to-98th percentile display stretch (6704 to 41808); resized to maximum 1400 px; WebP quality 88.",
+      "privacyCropped": false,
+      "classification": "demo"
+    }
+  ]
+}
