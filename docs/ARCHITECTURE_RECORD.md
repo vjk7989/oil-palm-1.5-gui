@@ -79,7 +79,7 @@ The expanded verified portfolio reconciles to:
 
 Farm acreage, palm counts, health states, survey coverage, suspected palms, pending work, coordinates, and tree evidence are simulated. Totals shown to a restricted role are recalculated only from records visible to that role.
 
-Public Godrej Agrovet figures may be shown only as separately sourced context. They must not be presented as PalmWatch operational totals, farm ownership evidence, or validation of the simulated farm records. No unsourced business-critical farm, farmer, ownership, inspection, disease, or GPS value should be presented as factual.
+Official Godrej Agrovet and Andhra Pradesh Horticulture figures are retained in this architecture record as source context only and are not rendered by the application. They must not be presented as PalmWatch operational totals, farm ownership evidence, or validation of the simulated farm records. No unsourced business-critical farm, farmer, ownership, inspection, disease, or GPS value should be presented as factual.
 
 ## Decision: realistic AP portfolio expansion and public-source boundary
 
@@ -100,16 +100,24 @@ The eight accepted expansion farms are fixed fixtures rather than runtime-genera
 
 The expansion changes only discoverable geography, farm metrics, map/table nodes, reports, and Administration assignment options. It deliberately creates no alerts, cases, treatments, assessments, or diagnostic evidence for the eight farms. Existing operational workflow records remain linked only to their accepted pre-expansion Farm IDs.
 
-The public-context notice is sourced from two official pages and is structurally separate from every role-scoped metric and export:
+The public-source basis is retained in documentation and remains separate from every role-scoped metric and export:
 
 - The [Godrej Agrovet Oil Palm Business public page](https://www.godrejagrovet.com/businesses/oil-palm-business) states approximately 65,000 farmers and more than 75,000 hectares across six states.
 - The [Andhra Pradesh Horticulture Department Oil Palm page](https://horticulture.ap.nic.in/OIL%20PALM.html) reports 226,528 hectares covered against 476,913 hectares of potential across 24 districts.
 
-These figures describe public industry and programme context. They are not PalmWatch demo totals, restricted-role totals, mapped-farm ownership, proof that a location is company-owned, or validation of any simulated health reading.
+These figures describe public industry and programme context. They are not PalmWatch demo totals, restricted-role totals, mapped-farm ownership, proof that a location is company-owned, or validation of any simulated health reading. The runtime Overview no longer displays these figures or source links.
 
 System Administrator and CEO / General Manager now receive all nineteen farms. Plantation Head remains restricted to seven farms in Eluru and East Godavari; Area Manager remains restricted to three Pedavegi farms; Field Staff remains restricted to `FRM-AP-ELR-0004`. The exact verified scope counts are therefore `19 / 19 / 7 / 3 / 1`.
 
 Administration adds the `kakinada-ntr` Plantation Head assignment and the `peddapuram`, `jaggampeta`, `mylavaram`, and `tiruvuru` Area Manager assignments. `scopeFarmIds()` resolves the combined district assignment to exactly the eight expansion farms and each mandal assignment to exactly its two farms; unknown values return an empty scope. During the gated increment, the first independent run exposed that the new options were displayed before all corresponding scope mappings existed. Mandatory failure analysis classified this as a valid production scope defect, not a test defect. The mapping was repaired, affected and regression gates were rerun, and no failure was waived or weakened.
+
+## Decision: concise Overview composition
+
+The Overview removes both explanatory boxes that previously appeared between the metric strip and the operational explorer: **Operational data basis** and **Public context**. The obsolete `publicFacts` runtime model, public figure interpolation, and Overview source links were removed with them. The official source facts remain documented above for provenance, but are not loaded, displayed, or mixed into the application runtime.
+
+The page heading now uses one exact concise subtitle: **AP-only deterministic demo data; public place names do not imply farm ownership.** This preserves the two disclosures necessary for the operational view without recreating the removed notices.
+
+Role-scoped metric calculation, the six-district hierarchy, Map/Table node equivalence, Explorer state, Leaflet behavior, Farm/Tree drill-down, report rows, and all RBAC boundaries are unchanged. The metric strip keeps a 22 px bottom margin, so the selected Map or Table surface begins directly after the metrics with a consistent 22 px gap and no empty notice region.
 
 ## Decision: New Farm v2 exact-layout persistence
 
@@ -347,6 +355,33 @@ The realistic Kakinada/NTR AP expansion passed independent verification on 2026-
 - Browser artifacts are stored under `.tmp/expansion-browser` (`results.json`, `desktop.png`, `tablet.png`, and `mobile.png`) and `.tmp/increment2-browser`; the extracted syntax artifact is `.tmp/expansion-inline-parse.js`. The local harnesses remain under `.tmp/pw-runner`.
 - Increment-owned listeners on ports 4191 and 4189 were stopped and confirmed closed after the two browser suites.
 
+The concise Overview notice-removal increment passed independent verification on 2026-08-10:
+
+- `npm test`, `npm run build`, direct Node parsing, extracted inline application-script parsing, and `git diff --check` were green.
+- The expanded Overview browser suite passed 85/85 assertions across all five roles. Each role retained its exact farm, acreage, and palm metrics; the Overview rendered zero notice boxes, zero removed source links or public figures, the exact concise demo/non-ownership subtitle, and equivalent scoped nodes in Map and Table view.
+- Map and Table each began directly after the metric strip with the accepted 22 px gap. Six-district navigation, Kakinada/NTR Farm-to-Tree drill-down, Administration assignments, Reports, Field Staff assessment, evidence gallery, and Reset regressions remained green.
+- The unchanged New Farm regression passed 41/41 assertions. Combined browser verification was 126/126.
+- Desktop 1536x1024, tablet 1024x768, and mobile 390x844 reported no horizontal overflow. Browser capture reported zero console errors, console warnings, or page errors.
+- Updated Overview artifacts are stored under `.tmp/expansion-browser` (`results.json`, `desktop.png`, `tablet.png`, and `mobile.png`); New Farm regression artifacts remain under `.tmp/increment2-browser`; the extracted syntax artifact is `.tmp/overview-inline-parse.js`; harnesses remain under `.tmp/pw-runner`.
+- Increment-owned listeners on ports 4191 and 4189 were stopped and confirmed closed after verification.
+
+The Cases & Treatments Open-action repair passed verification on 2026-08-10:
+
+- Row-level case `Open`, attention-queue case cards, row-level treatment `Open`, and treatment-detail `View case` now use shared scoped selectors that resolve the record through the signed-in AP scope, update the selected row, announce the selected record in the live status line, rerender, then scroll and focus the selected detail panel.
+- The selected case and treatment detail panels now expose stable focus targets (`selectedCaseDetails` and `selectedTreatmentDetails`) with `tabindex="-1"`. Guarded `View farm` and `View supporting tree` behavior remains unchanged.
+- Static contracts were extended to pin the shared selector helpers, focusable detail targets, selection updates, live announcements, and treatment-to-case handoff.
+- `npm test`, `npm run build`, `node --check tests/static-check.mjs`, extracted inline application-script parsing, and `git diff --check -- index.html tests/static-check.mjs` passed. Git reported only expected LF-to-CRLF working-copy warnings.
+- Browser smoke passed on a temporary local server: case `Open`, treatment `Open`, treatment `View case`, case `View farm`, case `View supporting tree`, and desktop/tablet/mobile no-overflow checks were green with zero console or page errors. The temporary server was stopped after verification.
+- An initial browser-harness attempt used the full navigation accessible name after the tablet/mobile breakpoint hid sidebar text; rerun used the stable `data-nav` selector. This was a harness locator issue for the smoke test, not a production Open-action failure.
+
+The final responsive hardening pass completed on 2026-08-10:
+
+- The app shell, content column, mobile top bar, Leaflet fallback, and 8x8 farm grids were tightened so wide tables, compact navigation, detail side panels, and tree cells do not force horizontal overflow on desktop, tablet, mobile, or ultra-narrow screens.
+- Static contracts now pin `min-width:0` on the main/content columns, wrapped mobile topbar controls, matching mobile map/fallback heights, and the ultra-narrow farm-grid breakpoint.
+- `npm test`, `npm run build`, inline application-script parsing, and `git diff --check` passed. Git reported only expected LF-to-CRLF working-copy warnings.
+- A browser responsive sweep passed 94 checks across 13 viewport sizes: 1920x1080, 1536x1024, 1366x768, 1280x720, 1024x768, 820x1180, 768x1024, 620x900, 480x900, 390x844, 360x740, 320x568, and 280x653.
+- The sweep covered Overview, New Farm, Alerts, Reports, Cases & Treatments, Administration, and Settings, plus the fixed Case/Treatment Open actions. Browser capture reported zero console or page errors and no horizontal overflow. Screenshots and `results.json` remain under `.tmp/responsive-final`; the temporary server was stopped after verification.
+
 ## Current limitations and deferred work
 
 - The application is static and has no authentication backend, API, database, or server-side durable persistence.
@@ -360,7 +395,7 @@ The realistic Kakinada/NTR AP expansion passed independent verification on 2026-
 - Leaflet and OpenStreetMap tiles require network access. The role-scoped rail and Table view are the supported offline fallback.
 - Farm coordinates, operational health readings, tree histories, and Ganoderma indicators are simulated deterministic demo values.
 - Markers indicate plausible operational locations; surveyed polygons and authoritative cadastral boundaries are not included.
-- Official Godrej Agrovet and Andhra Pradesh Horticulture figures are public context only. They do not establish mapped-farm ownership, validate demo totals, or make the deterministic records authoritative operational data.
+- Official Godrej Agrovet and Andhra Pradesh Horticulture figures are documentation-only source context. They are absent from the runtime Overview and do not establish mapped-farm ownership, validate demo totals, or make the deterministic records authoritative operational data.
 - New Farm persistence is browser-local demonstration state only. It has no backend transaction, central identifier service, multi-user concurrency control, server authorization, durable audit, cross-device synchronization, backup, or recovery guarantee.
 - Saved browser-local farms begin with Pending / no evidence state. The workflow deliberately does not create surveys, cases, treatments, diagnoses, imagery, notifications, or audit events for them.
 - Farm ID collision checking is limited to the current browser's merged AP dataset. Production use requires a server-owned collision-safe identifier and atomic database transaction.

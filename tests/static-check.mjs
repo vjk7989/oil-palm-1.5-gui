@@ -35,7 +35,6 @@ function extractDemoModel(source) {
   return Function(`${modelSource}\nreturn {
     roles,
     districts,
-    publicFacts,
     alerts: typeof alertRecords !== "undefined"
       ? alertRecords
       : (typeof alerts !== "undefined" ? alerts : undefined),
@@ -168,9 +167,6 @@ const required = [
   "Black means no tree",
   "New Farm Preview",
   "Preview only - not saved yet",
-  "Godrej Agrovet",
-  "around 65,000",
-  "more than 75,000",
   "No NDVI, NDRE, diagnosis, Ganoderma confidence, canopy temperature, or recent trend is derived from the supplied images"
 ];
 
@@ -200,11 +196,17 @@ assert.match(html, /L\.tileLayer\s*\([^)]*openstreetmap/is, "The Leaflet map mus
 assert.match(html, /attribution\s*:[^\n]*OpenStreetMap/i, "OpenStreetMap attribution must be configured");
 assert.match(html, /(?:AP_BOUNDS|apBounds|ANDHRA_PRADESH_BOUNDS)/, "Named Andhra Pradesh bounds must be defined");
 assert.match(html, /(?:fitBounds|maxBounds)\s*[:(]/, "The map viewport must be constrained to Andhra Pradesh bounds");
+assert.match(html, /\.main\{[^}]*min-width:0/, "The main application column must not force horizontal overflow");
+assert.match(html, /\.content\{[^}]*min-width:0/, "The scrollable content column must not force horizontal overflow");
+assert.match(html, /@media\(max-width:620px\)[^@]*\.topbar\{[^}]*flex-wrap:wrap/, "Mobile top bar must wrap controls instead of overflowing");
+assert.match(html, /@media\(max-width:620px\)[^@]*\.leaflet-map,\s*\.map-fallback\{[^}]*min-height:420px/, "Mobile map and fallback must keep matching stable heights");
+assert.match(html, /@media\(max-width:380px\)/, "Ultra-narrow devices need a dedicated compact breakpoint");
+assert.match(html, /@media\(max-width:380px\)[^@]*\.treegrid\{[^}]*gap:3px/, "Ultra-narrow farm grids must tighten without changing 8x8 layout");
+assert.match(html, /@media\(max-width:380px\)[^@]*\.tcell\{[^}]*font-size:8px/, "Ultra-narrow tree cells must keep labels inside their cells");
 
 const {
   roles,
   districts,
-  publicFacts,
   alerts,
   cases,
   treatments,
@@ -247,6 +249,27 @@ assert.equal(farms.length, 19, "The AP portfolio must contain exactly 19 discove
 assert.equal(farms.reduce((total, farm) => total + farm.acres, 0), 153, "The AP demo acreage must reconcile to 153 acres");
 assert.equal(farms.reduce((total, farm) => total + farm.trees, 0), 8280, "The AP demo portfolio must reconcile to 8,280 planted palms");
 assert.ok(farms.every((farm) => /^FRM-AP-/.test(farm.id)), "Every active farm ID must be AP-scoped");
+
+const metricsForBody = functionBody(html, "metricsFor");
+const metricsFor = Function(
+  "flatFarms",
+  `return function metricsFor(items){${metricsForBody}};`
+)(flattenFarms);
+const portfolioMetrics = metricsFor(farms);
+assert.deepEqual(
+  portfolioMetrics,
+  {
+    farms: farms.length,
+    acres: farms.reduce((total, farm) => total + farm.acres, 0),
+    totalTrees: farms.reduce((total, farm) => total + farm.trees, 0),
+    surveyed: farms.reduce((total, farm) => total + farm.surveyed, 0),
+    infected: farms.reduce((total, farm) => total + farm.infected, 0),
+    pending: farms.reduce((total, farm) => total + farm.pending, 0),
+    coverage: farms.reduce((total, farm) => total + farm.surveyed, 0) / farms.reduce((total, farm) => total + farm.trees, 0),
+    rate: farms.reduce((total, farm) => total + farm.infected, 0) / farms.reduce((total, farm) => total + farm.trees, 0),
+  },
+  "The Overview metric strip must reconcile exactly with the complete AP farm portfolio"
+);
 
 // The Kakinada and NTR expansion is an explicit deterministic fixture, not
 // synthetic output generated at runtime. Exact geography and field values make
@@ -701,13 +724,19 @@ const renderTreatmentsPanelBody = functionBody(html, "renderTreatmentsPanel");
 const renderCaseDetailBody = functionBody(html, "renderCaseDetail");
 const renderTreatmentDetailBody = functionBody(html, "renderTreatmentDetail");
 const bindCaseTreatmentEventsBody = functionBody(html, "bindCaseTreatmentEvents");
+const focusWorkDetailBody = functionBody(html, "focusWorkDetail");
+const selectCaseRecordBody = functionBody(html, "selectCaseRecord");
+const selectTreatmentRecordBody = functionBody(html, "selectTreatmentRecord");
 const caseTreatmentUi = [
   renderCasesTreatmentsBody,
   renderCasesPanelBody,
   renderTreatmentsPanelBody,
   renderCaseDetailBody,
   renderTreatmentDetailBody,
-  bindCaseTreatmentEventsBody
+  bindCaseTreatmentEventsBody,
+  focusWorkDetailBody,
+  selectCaseRecordBody,
+  selectTreatmentRecordBody
 ].join("\n");
 assert.match(renderCasesTreatmentsBody, /role=["']tablist["']/, "Cases & Treatments must expose an accessible tab list");
 assert.ok((renderCasesTreatmentsBody.match(/role=["']tab["']/g) || []).length >= 2, "Cases and Treatments both need accessible tabs");
@@ -731,6 +760,21 @@ assert.match(caseTreatmentUi, /applyCaseAction/, "Case details must bind only ro
 assert.match(caseTreatmentUi, /progressTreatment/, "Treatment details must bind the guarded progress action");
 assert.match(caseTreatmentUi, /outcome/i, "Treatment completion must expose an outcome field");
 assert.match(renderCasesTreatmentsBody, /aria-live=["']polite["']|role=["']status["']/, "Case/treatment changes must be announced live");
+assert.match(renderCasesPanelBody, /id=["']selectedCaseDetails["'][^>]*tabindex=["']-1["']|tabindex=["']-1["'][^>]*id=["']selectedCaseDetails["']/, "Selected case details must expose a stable focus target");
+assert.match(renderTreatmentsPanelBody, /id=["']selectedTreatmentDetails["'][^>]*tabindex=["']-1["']|tabindex=["']-1["'][^>]*id=["']selectedTreatmentDetails["']/, "Selected treatment details must expose a stable focus target");
+assert.match(focusWorkDetailBody, /scrollIntoView/, "Open actions must scroll selected details into view");
+assert.match(focusWorkDetailBody, /\.focus\s*\(/, "Open actions must move keyboard focus to selected details");
+assert.match(selectCaseRecordBody, /getCaseRecord\s*\(/, "Case Open must resolve the record through scoped case lookup");
+assert.match(selectCaseRecordBody, /selectedCaseId\s*=\s*record\.id/, "Case Open must update the selected case");
+assert.match(selectCaseRecordBody, /Opened\s*\$\{record\.id\}\s*details/, "Case Open must announce the selected detail");
+assert.match(selectCaseRecordBody, /focusWorkDetail\s*\(\s*["']selectedCaseDetails["']\s*\)/, "Case Open must focus the selected case detail panel");
+assert.match(selectTreatmentRecordBody, /getTreatmentRecord\s*\(/, "Treatment Open must resolve the record through scoped treatment lookup");
+assert.match(selectTreatmentRecordBody, /selectedTreatmentId\s*=\s*record\.id/, "Treatment Open must update the selected treatment");
+assert.match(selectTreatmentRecordBody, /Opened\s*\$\{record\.id\}\s*details/, "Treatment Open must announce the selected detail");
+assert.match(selectTreatmentRecordBody, /focusWorkDetail\s*\(\s*["']selectedTreatmentDetails["']\s*\)/, "Treatment Open must focus the selected treatment detail panel");
+assert.match(bindCaseTreatmentEventsBody, /data-case-select[^]*selectCaseRecord/, "Case table and attention Open actions must use the shared case selector");
+assert.match(bindCaseTreatmentEventsBody, /data-treatment-select[^]*selectTreatmentRecord/, "Treatment table Open actions must use the shared treatment selector");
+assert.match(bindCaseTreatmentEventsBody, /data-treatment-case[^]*selectCaseRecord/, "Treatment detail View case must use the shared case selector");
 for (const label of ["Record field assessment", "Take area-manager action", "Reopen case", "Advance treatment"]) {
   assert.match(html, new RegExp(label, "i"), `Missing role-controlled action label: ${label}`);
 }
@@ -1004,11 +1048,6 @@ for (const farm of farms) {
 }
 
 assert.match(html, /deterministic demo data/i, "Operational data must be explicitly labelled deterministic demo data");
-assert.match(
-  html,
-  /(?:not necessarily company-owned|does not imply (?:farm )?ownership|not proof of (?:farm )?ownership)/i,
-  "The UI must explicitly state that public/linked locations do not establish company ownership"
-);
 
 // Map and Table must render the same scoped node collection and share the same
 // drill-down hook so switching views cannot widen or change the portfolio.
@@ -1040,36 +1079,32 @@ assert.deepEqual(
 );
 assert.deepEqual(scopeFarmIdsForExpansion("__unknown_scope__"), [], "Unknown Administration scopes must fail closed");
 
-assert.equal(publicFacts.farmers, "around 65,000", "Public farmer context changed unexpectedly");
-assert.equal(publicFacts.hectares, "more than 75,000", "Public hectare context changed unexpectedly");
-assert.match(html, /six states/i, "Godrej public context must state that its figures span six states");
+const renderOverviewBody = functionBody(html, "renderOverview");
+for (const [pattern, description] of [
+  [/Operational data basis/i, "the removed operational-data notice"],
+  [/Public context/i, "the removed public-context notice"],
+  [/Planting-density reference|agritech\.tnau\.ac\.in/i, "the planting-density source link"],
+  [/godrejagrovet\.com\/businesses\/oil-palm-business|Godrej Agrovet|65,000|75,000/i, "Godrej public-source copy or figures"],
+  [/horticulture\.ap\.nic\.in|226,528|476,913|24 districts/i, "AP Horticulture source copy or figures"],
+  [/publicFacts/i, "the obsolete publicFacts runtime model"],
+]) {
+  assert.doesNotMatch(renderOverviewBody, pattern, `Overview must not render ${description}`);
+}
+
+const overviewSubtitleMatch = /<p\s+class=["']sub["']>([^<]+)<\/p>/i.exec(renderOverviewBody);
+assert.ok(overviewSubtitleMatch, "Overview needs one concise operational-data subtitle");
+const overviewSubtitle = overviewSubtitleMatch[1].replace(/\s+/g, " ").trim();
+assert.match(overviewSubtitle, /AP-only deterministic demo data/i, "Overview subtitle must identify the role-scoped metrics as AP-only deterministic demo data");
 assert.match(
-  html,
-  /href=["']https:\/\/www\.godrejagrovet\.com\/businesses\/oil-palm-business["']/i,
-  "Godrej public context must link to the official Oil Palm Business page"
+  overviewSubtitle,
+  /do(?:es)? not imply (?:farm )?ownership|not necessarily company-owned|not proof of (?:farm )?ownership/i,
+  "Overview subtitle must retain the non-ownership qualification"
 );
-assert.equal(publicFacts.apHorticulture?.coveredHectares, 226528, "AP Horticulture public context must retain the published 226,528 ha figure");
-assert.equal(publicFacts.apHorticulture?.potentialHectares, 476913, "AP Horticulture public context must retain the published 476,913 ha figure");
-assert.equal(publicFacts.apHorticulture?.districts, 24, "AP Horticulture public context must retain its 24-district scope");
-const renderOverviewPublicContextBody = functionBody(html, "renderOverview");
-assert.match(renderOverviewPublicContextBody, /226,528|fmt\s*\(\s*publicFacts\.apHorticulture\.coveredHectares\s*\)/, "Overview must visibly format the published AP covered-hectares figure");
-assert.match(renderOverviewPublicContextBody, /476,913|fmt\s*\(\s*publicFacts\.apHorticulture\.potentialHectares\s*\)/, "Overview must visibly format the published AP potential-hectares figure");
-assert.match(renderOverviewPublicContextBody, /24 districts|publicFacts\.apHorticulture\.districts/, "Overview must visibly state the AP Horticulture district count");
+assert.ok(overviewSubtitle.length <= 220, "Overview subtitle must stay concise rather than recreating the removed notices");
 assert.match(
-  html,
-  /href=["']https:\/\/horticulture\.ap\.nic\.in\/OIL%20PALM\.html["']/i,
-  "AP public context must link to the official Andhra Pradesh Horticulture page"
-);
-assert.match(html, /Public context\s*(?::|—|-)/i, "Public Godrej figures must have a separate context presentation");
-assert.match(
-  html,
-  /not (?:restricted-role|PalmWatch) operational totals/i,
-  "Public Godrej figures must not be presented as role-scoped operational totals"
-);
-assert.match(
-  html,
-  /(?:public context|published context)[^]{0,500}(?:separate|not)[^]{0,200}(?:demo|operational totals)|(?:demo|operational totals)[^]{0,500}(?:separate|not)[^]{0,200}(?:public context|published context)/i,
-  "Published public figures must be explicitly separated from the deterministic operational demo totals"
+  renderOverviewBody,
+  /\$\{\s*metricStrip\s*\(\s*m\s*\)\s*\}\s*\$\{\s*state\.view\s*===\s*["']map["']\s*\?\s*mapView\s*\(\s*nodes\s*,\s*level\s*\)\s*:\s*tableView\s*\(\s*nodes\s*,\s*level\s*\)\s*\}/,
+  "The Map/Table explorer must follow the metric strip immediately and both views must receive the same scoped nodes"
 );
 
 // The supplied survey gallery is a fixed, audited demo asset set. Source hashes
@@ -1298,9 +1333,9 @@ assert.match(renderIndicatorBody, /indicator\.ranges\.map/, "Every indicator mus
 assert.match(renderIndicatorBody, /aria-label=["']About \$\{indicator\.label\}["']/, "Every metric needs a keyboard-focusable named help control");
 assert.match(renderIndicatorBody, /aria-describedby=["']\$\{indicator\.id\}-help["']/, "Every metric help control must expose its explanation to assistive technology");
 
-// New Farm v2 is a deliberate browser-local creation workflow. Its versioned
-// contract must migrate the earlier preview-only state without widening AP
-// scope or inventing related operational records.
+// New Farm v2 is a deliberate preview-only workflow. Its versioned browser
+// state may preserve earlier local demo fields for migration compatibility, but
+// the active route must not write farm/tree records or widen AP scope.
 const versionMatch = /const\s+DEMO_STATE_VERSION\s*=\s*(\d+)/.exec(html);
 assert.ok(versionMatch, "Browser-local demo state must publish a numeric schema version");
 assert.equal(Number(versionMatch[1]), 2, "New Farm persistence must use demo-state schema version 2");
@@ -1414,13 +1449,16 @@ assert.match(renderNewFarmV2Body, /remaining|over target/i, "The acre editor mus
 assert.match(renderNewFarmV2Body, /aria-live=["']polite["']|role=["']status["']/i, "Layout counts and validation must be announced accessibly");
 assert.match(renderNewFarmV2Body, /aria-label=["'][^"']*(?:acre|row|column|tree)/i, "Editable grid cells must have coordinate-aware accessible names");
 
-// Preview and persistence are intentionally separate user decisions.
+// New Farm preview is intentionally separate from persistence. The accepted
+// AP-only implementation generates display-only IDs and keeps the farm out of
+// mock data, local farms, audit, notifications, cases, treatments, and storage.
 assert.match(renderNewFarmV2Body, /Preview (?:farm|exact farm|layout)|Generate preview/i, "New Farm must offer an explicit preview action");
 const renderNewFarmPreviewBody = functionBody(html, "renderNewFarmPreview");
-assert.match(renderNewFarmPreviewBody, /Save farm|Confirm and save/i, "A valid preview must offer a separate explicit save action");
+assert.doesNotMatch(renderNewFarmPreviewBody, /Save farm|Confirm and save/i, "New Farm preview must not expose a persistence action");
 assert.match(renderNewFarmPreviewBody, /(?:Preview only|Exact preview ready)[^]*(?:not saved|not yet saved)/i, "The preview must clearly state that it has not been persisted");
+assert.match(renderNewFarmPreviewBody, /display-only|does not call persistence|does not write/i, "Preview IDs must be clearly labelled display-only");
 assert.match(renderNewFarmV2Body, /validateNewFarmDraft\s*\(/, "Preview and save must use the authoritative exact-layout validator");
-assert.match(functionBody(html, "bindNewFarmBuilder"), /saveNewFarmPreview\s*\(/, "Only the explicit save control may invoke local-farm persistence");
+assert.doesNotMatch(functionBody(html, "bindNewFarmBuilder"), /saveNewFarmPreview\s*\(/, "The active New Farm route must not invoke local-farm persistence");
 
 const previewIdBody = functionBody(html, "generatePreviewFarmId");
 assert.match(previewIdBody, /FRM-AP-/, "Generated Farm IDs must remain AP-scoped");
@@ -1446,15 +1484,9 @@ assert.deepEqual(
 );
 
 const saveNewFarmPreviewBody = functionBody(html, "saveNewFarmPreview");
-assert.match(saveNewFarmPreviewBody, /validateNewFarmDraft\s*\(/, "Save must revalidate the exact preview draft");
-assert.match(saveNewFarmPreviewBody, /existingIds|allExistingIds|\.has\s*\(\s*preview\.id\s*\)/i, "Save must reject a preview Farm ID that now collides with an existing farm");
-assert.match(saveNewFarmPreviewBody, /generatePreviewTreeIds\s*\(/, "Save must assign deterministic Tree IDs once");
-assert.match(saveNewFarmPreviewBody, /localFarms/, "Save must append the accepted preview to browser-local farms");
-assert.match(saveNewFarmPreviewBody, /JSON\.(?:parse|stringify)|structuredClone|map\s*\(/, "Save must preserve an independent exact copy of the selected cell positions");
-assert.doesNotMatch(saveNewFarmPreviewBody, /createDefaultAcreLayout\s*\(/, "Save must not regenerate or replace the accepted preview layout");
-assert.doesNotMatch(saveNewFarmPreviewBody, /caseRecords|treatmentRecords|\.cases\s*=|\.treatments\s*=/, "Saving a farm must not invent cases or treatments");
-assert.match(saveNewFarmPreviewBody, /try\s*\{[^]*localStorage\.setItem[^]*\}\s*catch/i, "Browser-local farm persistence must handle a storage write failure atomically");
-assert.match(saveNewFarmPreviewBody, /catch[^]*(?:demoState\s*=|localFarms\s*=|rollback|previous)/i, "A failed storage write must restore the previous in-memory state");
+assert.match(saveNewFarmPreviewBody, /preview-only/i, "Retained compatibility save helper must refuse persistence");
+assert.doesNotMatch(saveNewFarmPreviewBody, /localStorage\.setItem|localFarms\s*:\s*\[|demoState\s*=|validateNewFarmDraft\s*\(/, "New Farm preview must not write browser-local farm records");
+assert.doesNotMatch(saveNewFarmPreviewBody, /caseRecords|treatmentRecords|\.cases\s*=|\.treatments\s*=/, "Preview-only New Farm must not invent cases or treatments");
 
 // Local farms join the base portfolio through one merged hierarchy so every
 // Overview consumer and report sees the same role-scoped source of truth.
