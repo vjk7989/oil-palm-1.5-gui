@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PalmWatch AP Portal</title>
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    :root{
+      --font-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+      --font-mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+      --bg:oklch(0.9754 0.0084 325.6414);
+      --fg:oklch(0.3257 0.1161 325.0372);
+      --card:oklch(1 0 0);
+      --card2:oklch(0.988 0.006 326);
+      --muted:oklch(0.9395 0.0260 331.5454);
+      --mfg:oklch(0.4924 0.1244 324.4523);
+      --primary:oklch(0.5316 0.1409 355.1999);
+      --primsoft:oklch(0.93 0.05 350);
+      --sidebar:oklch(0.9360 0.0288 320.5788);
+      --sbfg:oklch(0.4948 0.1909 354.5435);
+      --border:oklch(0.8568 0.0829 328.9110);
+      --bord2:oklch(0.8568 0.0829 328.9110 / .5);
+      --healthy:oklch(0.60 0.13 155);
+      --risk:oklch(0.72 0.135 82);
+      --bad:oklch(0.55 0.16 25);
+      --healthy-bg:oklch(0.95 0.045 155);
+      --risk-bg:oklch(0.95 0.06 85);
+      --bad-bg:oklch(0.945 0.05 25);
+      --empty:#141111;
+      --r:12px;
+      --shadow:0 1px 2px oklch(0.33 0.11 325 / .05),0 6px 20px oklch(0.33 0.11 325 / .05);
+    }
+    body{font-family:var(--font-sans);color:var(--fg);background:var(--bg);-webkit-font-smoothing:antialiased}
+    button,input,select{font:inherit}
+    button{cursor:pointer}
+    .app{display:grid;grid-template-columns:250px 1fr;height:100vh;overflow:hidden}
+    .side{background:var(--sidebar);border-right:1px solid var(--bord2);display:flex;flex-direction:column;padding:20px 14px;gap:6px}
+    .logo{display:flex;align-items:center;gap:10px;padding:6px 8px 18px}
+    .logomark{width:32px;height:32px;border-radius:9px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px}
+    .logotext{display:block;font-weight:800;font-size:16px;letter-spacing:-.01em}
+    .logosub{display:block;font:11px var(--font-mono);color:var(--sbfg);opacity:.8;margin-top:1px}
+    .navlabel{font:600 10px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--sbfg);opacity:.7;padding:14px 10px 6px}
+    .navitem{display:flex;align-items:center;gap:11px;padding:10px 11px;border:none;background:none;border-radius:9px;color:var(--sbfg);font-size:14px;font-weight:500;text-align:left;width:100%}
+    .navitem:hover{background:oklch(1 0 0 / .5)}
+    .navitem.active{background:var(--primary);color:#fff}
+    .nico{width:18px;text-align:center;font-size:13px;opacity:.9}
+    .nbadge{margin-left:auto;background:var(--bad);color:#fff;font:700 11px var(--font-mono);padding:1px 7px;border-radius:20px}
+    .sidefoot{margin-top:auto;display:flex;align-items:center;gap:10px;padding:12px 8px;border-top:1px solid var(--bord2)}
+    .avatar{width:34px;height:34px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none}
+    .uname{display:block;font-size:13px;font-weight:600}.urole{display:block;font-size:11px;color:var(--sbfg)}
+    .main{display:flex;flex-direction:column;overflow:hidden}
+    .topbar{height:64px;border-bottom:1px solid var(--bord2);display:flex;align-items:center;justify-content:space-between;padding:0 26px;background:oklch(1 0 0 / .55);flex:none}
+    .tb-left{display:flex;align-items:center;gap:14px;min-width:0}
+    .crumbs{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
+    .crumb{border:none;background:none;font-size:13.5px;color:var(--mfg);padding:4px 6px;border-radius:6px}
+    .crumb:hover{color:var(--primary);background:var(--muted)}
+    .crumb:last-child{color:var(--fg);font-weight:600}
+    .crumb+.crumb::before{content:"/";margin-right:8px;color:var(--border)}
+    .tbtitle{font-size:17px;font-weight:700;margin:0;letter-spacing:-.01em}
+    .tb-right{display:flex;align-items:center;gap:14px}
+    .toggle{display:flex;background:var(--muted);border-radius:9px;padding:3px}
+    .tg{border:none;background:none;padding:6px 16px;border-radius:7px;font-size:13px;font-weight:600;color:var(--mfg)}
+    .tg.on{background:var(--card);color:var(--fg);box-shadow:var(--shadow)}
+    .csel,.field input,.field select{appearance:none;border:1px solid var(--border);background:var(--card);border-radius:9px;padding:8px 12px;color:var(--fg)}
+    .content{overflow:auto;padding:26px 30px 60px;flex:1}
+    .pagehead{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;gap:20px}
+    .h1{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:0}
+    .sub{color:var(--mfg);font-size:14px;margin:6px 0 0;line-height:1.45}
+    .mrow{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+    .mrow5{grid-template-columns:repeat(5,1fr)}
+    .mcard,.card,.panel{background:var(--card);border:1px solid var(--bord2);border-radius:var(--r);box-shadow:var(--shadow)}
+    .mcard{padding:16px 18px;display:flex;flex-direction:column;gap:7px}
+    .mlabel{font:600 11px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mfg)}
+    .mval{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1}
+    .msub{font-size:12px;color:var(--mfg)}
+    .tone-ok{color:var(--healthy)}.tone-risk{color:var(--risk)}.tone-bad{color:var(--bad)}
+    .mapwrap{display:grid;grid-template-columns:1.7fr 1fr;gap:18px;align-items:stretch;min-height:520px}
+    .map{position:relative;background:var(--card2);background-image:radial-gradient(oklch(0.85 0.05 328 / .5) 1px,transparent 1px);background-size:26px 26px;border:1px solid var(--bord2);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);min-height:520px}
+    .ap-svg{position:absolute;inset:0;width:100%;height:100%}
+    .ap-shape{fill:oklch(0.93 0.035 332);stroke:var(--border);stroke-width:1.4}
+    .maptag{position:absolute;top:14px;left:16px;font:600 11px var(--font-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--mfg);background:oklch(1 0 0 / .78);padding:5px 10px;border-radius:7px;backdrop-filter:blur(4px)}
+    .blob{position:absolute;transform:translate(-50%,-50%);background:var(--card);border:1px solid var(--border);border-left:3px solid var(--c);border-radius:11px;padding:9px 12px;display:flex;flex-direction:column;gap:3px;box-shadow:var(--shadow);min-width:116px;text-align:left;transition:transform .12s,border-color .12s}
+    .blob:hover{border-color:var(--primary);transform:translate(-50%,-50%) scale(1.04);z-index:5}
+    .h-ok{--c:var(--healthy);--cb:var(--healthy-bg)}.h-risk{--c:var(--risk);--cb:var(--risk-bg)}.h-bad{--c:var(--bad);--cb:var(--bad-bg)}.h-empty{--c:var(--empty);--cb:oklch(0.91 0.01 325)}
+    .blobtop{display:flex;align-items:center;gap:7px}.blobname{font-weight:700;font-size:13px}.blobn{font:11px var(--font-mono);color:var(--mfg)}.blobinf{font:11px var(--font-mono);color:var(--c);font-weight:700}
+    .dot{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}.dot.big{width:11px;height:11px}
+    .legend{position:absolute;bottom:14px;left:16px;display:flex;gap:14px;background:oklch(1 0 0 / .84);padding:8px 12px;border-radius:8px;backdrop-filter:blur(4px);flex-wrap:wrap}
+    .legend span{display:flex;align-items:center;gap:6px;font:600 11px var(--font-mono);color:var(--fg)}
+    .rail{display:flex;flex-direction:column;gap:9px;overflow:auto;max-height:640px}
+    .railhd{font:600 11px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--mfg);padding:2px}
+    .railitem{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--card);border:1px solid var(--bord2);border-radius:11px;text-align:left;transition:border-color .12s}
+    .railitem:hover{border-color:var(--primary)}
+    .railitem b{font-size:14px;font-weight:700;display:block}.railitem small{font-size:12px;color:var(--mfg)}
+    .railn{margin-left:auto;font:700 12px var(--font-mono);color:var(--c);text-align:right}.railn small{display:block;font-weight:500;color:var(--mfg);font-size:10px}
+    .chev{color:var(--border);font-size:20px}
+    .panel{overflow:hidden}
+    .paneltitle{font-size:15px;font-weight:700;padding:16px 18px;border-bottom:1px solid var(--bord2);display:flex;align-items:center;justify-content:space-between}
+    .htr{display:grid;grid-template-columns:minmax(220px,2fr) 1fr 1fr 1fr 1fr;align-items:center;padding:0 18px;min-height:46px;border-bottom:1px solid var(--bord2);font-size:13px}
+    .htr:last-child{border-bottom:none}.htr.thead{height:40px;font:600 10.5px var(--font-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mfg);background:var(--card2)}
+    .htr.frow:hover{background:var(--card2)}
+    .num{font-variant-numeric:tabular-nums;font-family:var(--font-mono);font-size:12.5px;text-align:right}
+    .hname{display:flex;align-items:center;gap:9px;min-width:0}.nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lvl{font:10px var(--font-mono);color:var(--mfg);text-transform:uppercase;letter-spacing:.04em}
+    .badge{display:inline-flex;align-items:center;gap:6px;font:700 10.5px var(--font-mono);text-transform:uppercase;letter-spacing:.03em;color:var(--c);background:var(--cb);padding:4px 9px;border-radius:20px}
+    .badge::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
+    .btn,.btn-ghost{border-radius:9px;font-weight:600}
+    .btn{border:none;padding:10px 18px;background:var(--primary);color:#fff}
+    .btn-ghost{background:none;border:1px solid var(--border);color:var(--fg);padding:8px 14px}
+    .btn:disabled,.btn-ghost:disabled{opacity:.5;cursor:not-allowed}
+    .grid2{display:grid;grid-template-columns:1fr 1.4fr;gap:18px;align-items:start}
+    .card{padding:18px}.cardt{font-size:14px;font-weight:700;margin:0 0 14px}
+    .treegrid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+    .tcell{aspect-ratio:1;border-radius:5px;border:1.5px solid transparent;background:var(--c);color:#fff;font:700 9px var(--font-mono);display:flex;align-items:center;justify-content:center;min-width:0}
+    .tcell:hover:not(:disabled){border-color:var(--fg);transform:scale(1.12);z-index:2}
+    .tcell:disabled{cursor:not-allowed;opacity:1}
+    .hbar{display:flex;height:16px;border-radius:8px;overflow:hidden;background:var(--muted);margin-bottom:14px}.hseg{height:100%;background:var(--c)}
+    .legrow{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bord2);font-size:13px}.legrow:last-child{border:none}.legL{display:flex;align-items:center;gap:9px}.legN{font:700 13px var(--font-mono)}
+    .trend{display:flex;align-items:flex-end;gap:9px;height:150px;margin-top:6px}.trendcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end}.tbarwrap{width:100%;flex:1;display:flex;align-items:flex-end;justify-content:center}.tbar{width:66%;background:var(--primary);border-radius:5px 5px 0 0;min-height:3px}.tbar.hot{background:var(--bad)}.tlab{font:10.5px var(--font-mono);color:var(--mfg)}
+    .tree-hero{display:grid;grid-template-columns:320px 1fr;gap:22px}
+    .ph{background:repeating-linear-gradient(45deg,var(--muted),var(--muted) 11px,transparent 11px,transparent 22px);border:1px dashed var(--border);border-radius:var(--r);display:flex;align-items:center;justify-content:center;color:var(--mfg);font-family:var(--font-mono);font-size:12px;text-align:center;padding:20px}
+    .tdetail{display:grid;grid-template-columns:1fr 1fr;gap:2px 26px}.tdrow{display:flex;flex-direction:column;gap:3px;padding:12px 0;border-bottom:1px solid var(--bord2)}.tdk{font:600 10.5px var(--font-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mfg)}.tdv{font-size:16px;font-weight:700}
+    .gauge{height:9px;border-radius:6px;background:var(--muted);overflow:hidden;margin-top:5px}.gaugefill{height:100%;background:var(--c);border-radius:6px}
+    .metricline{display:grid;grid-template-columns:130px 1fr 70px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--bord2)}.metricline:last-child{border-bottom:none}
+    .metricbar{height:9px;background:var(--muted);border-radius:99px;overflow:hidden}.metricfill{height:100%;background:var(--c)}
+    .help{border:1px solid var(--border);background:var(--card2);color:var(--mfg);width:18px;height:18px;border-radius:50%;font:700 11px var(--font-mono)}
+    .formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field label{display:block;font:600 11px var(--font-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mfg);margin-bottom:7px}.field input,.field select{width:100%}
+    .notice{border:1px solid var(--bord2);background:var(--card2);border-radius:var(--r);padding:14px 16px;color:var(--mfg);font-size:13px;line-height:1.45}
+    .hidden{display:none!important}
+    @media(max-width:980px){.app{grid-template-columns:82px 1fr}.logotext,.logosub,.navitem span:not(.nico),.sidefoot span:not(.avatar),.navlabel{display:none}.side{padding:16px 10px}.navitem{justify-content:center}.mapwrap,.grid2,.tree-hero{grid-template-columns:1fr}.mrow,.mrow5{grid-template-columns:repeat(2,1fr)}.htr{grid-template-columns:1.4fr .8fr .8fr .8fr .8fr}}
+    @media(max-width:620px){.app{display:block;height:auto}.side{position:sticky;top:0;z-index:5;display:flex;flex-direction:row;overflow:auto;border-right:0;border-bottom:1px solid var(--bord2)}.logo,.sidefoot,.navlabel{display:none}.main{min-height:100vh}.topbar{height:auto;min-height:64px;padding:12px;align-items:flex-start;gap:12px}.tb-right{flex-wrap:wrap;justify-content:flex-end}.content{padding:18px 14px 40px}.mrow,.mrow5,.formgrid{grid-template-columns:1fr}.map{min-height:420px}.htr{grid-template-columns:1fr;gap:6px;padding:12px 14px}.num{text-align:left}.treegrid{gap:4px}.tdetail{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="side" aria-label="Primary navigation">
+      <div class="logo"><span class="logomark">P</span><span><span class="logotext">PalmWatch</span><span class="logosub">AP MONITORING</span></span></div>
+      <div class="navlabel">Monitoring</div>
+      <div id="nav"></div>
+      <div class="sidefoot"><span class="avatar" id="userInitials">SA</span><span><span class="uname" id="userName">System Administrator</span><span class="urole">AP operations</span></span></div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div class="tb-left">
+          <button class="btn-ghost hidden" id="backBtn">Back</button>
+          <nav class="crumbs" id="crumbs" aria-label="Explorer breadcrumbs"></nav>
+          <h2 class="tbtitle hidden" id="pageTitle"></h2>
+        </div>
+        <div class="tb-right">
+          <div class="toggle" id="viewToggle"><button class="tg on" data-view="map">Map</button><button class="tg" data-view="table">Table</button></div>
+          <select class="csel" id="roleSelect" aria-label="Select demo role"></select>
+          <button class="avatar" id="profileBtn" title="Settings and sign out">SA</button>
+        </div>
+      </header>
+      <section class="content" id="content" aria-live="polite"></section>
+    </main>
+  </div>
+  <script>
+    const roles = {
+      admin:{name:"System Administrator",initials:"SA",districts:"all",nav:["Overview","New Farm","Alerts","Reports","Cases & Treatments","Disease Analytics","Administration","Settings"]},
+      ceo:{name:"CEO / General Manager",initials:"GM",districts:"all",nav:["Overview","New Farm","Alerts","Reports","Cases & Treatments","Disease Analytics","Administration","Settings"]},
+      head:{name:"Plantation Head",initials:"PH",districts:["Eluru","East Godavari"],nav:["Overview","Alerts","Reports","Cases & Treatments","Disease Analytics","Settings"]},
+      manager:{name:"Area Manager",initials:"AM",districts:["Eluru"],mandals:["Pedavegi"],nav:["Overview","Alerts","Cases & Treatments","Settings"]},
+      staff:{name:"Field Staff",initials:"FS",farmIds:["FRM-AP-ELR-0004"],nav:["Overview","Alerts","Cases & Treatments","Settings"]}
+    };
+    const navIcons = {"Overview":"M","New Farm":"+","Alerts":"!","Reports":"R","Cases & Treatments":"C","Disease Analytics":"D","Administration":"A","Settings":"S"};
+    const publicFacts = {farmers:"around 65,000",hectares:"more than 75,000",source:"Godrej Agrovet Oil Palm Business public page"};
+    const districts = [
+      {name:"Eluru",lat:16.7107,lon:81.0952,mandals:[
+        {name:"Pedavegi",lat:16.8296,lon:81.1056,villages:[
+          {name:"Munduru",lat:16.8777,lon:81.1459,farms:[farm("FRM-AP-ELR-0004","Lakshmi Pedavegi Estate",16.8792,81.1471,9,54,.052),farm("FRM-AP-ELR-0011","Munduru Palm Block",16.8651,81.1242,7,52,.024)]},
+          {name:"Pedavegi",lat:16.8288,lon:81.1051,farms:[farm("FRM-AP-ELR-0023","Pedavegi Demonstration Farm",16.8318,81.1133,10,55,.078)]}
+        ]},
+        {name:"Denduluru",lat:16.7689,lon:81.1681,villages:[{name:"Somavarappadu",lat:16.7825,lon:81.1914,farms:[farm("FRM-AP-ELR-0037","Somavarappadu Grove",16.7852,81.1962,6,54,.031)]}]}
+      ]},
+      {name:"East Godavari",lat:17.0052,lon:81.7782,mandals:[
+        {name:"Rajanagaram",lat:17.0796,lon:81.8957,villages:[{name:"Palacherla",lat:17.0832,lon:81.9078,farms:[farm("FRM-AP-EGD-0104","Palacherla Oil Palm Farm",17.0841,81.9122,12,53,.019),farm("FRM-AP-EGD-0112","Rajanagaram Linkage Farm",17.0623,81.8844,8,56,.066)]}]},
+        {name:"Gokavaram",lat:17.2666,lon:81.8491,villages:[{name:"Gummalla Doddi",lat:17.2519,lon:81.8329,farms:[farm("FRM-AP-EGD-0129","Gokavaram Extension Farm",17.2528,81.8355,5,54,.041)]}]}
+      ]},
+      {name:"West Godavari",lat:16.7104,lon:81.6810,mandals:[
+        {name:"Pentapadu",lat:16.8083,lon:81.5271,villages:[{name:"Ravipadu",lat:16.7984,lon:81.5483,farms:[farm("FRM-AP-WGD-0207","Ravipadu Palm Estate",16.7988,81.5511,11,55,.036)]}]},
+        {name:"Tanuku",lat:16.7530,lon:81.6840,villages:[{name:"Velpuru",lat:16.7423,lon:81.7045,farms:[farm("FRM-AP-WGD-0215","Velpuru Demo Farm",16.7456,81.7072,8,52,.091)]}]}
+      ]},
+      {name:"Krishna",lat:16.5062,lon:80.6480,mandals:[
+        {name:"Agiripalli",lat:16.6854,lon:80.7812,villages:[{name:"Kanuru",lat:16.6476,lon:80.7793,farms:[farm("FRM-AP-KRI-0302","Kanuru Trial Farm",16.6492,80.7831,7,54,.028)]}]},
+        {name:"Nuzvid",lat:16.7881,lon:80.8465,villages:[{name:"Tukkuluru",lat:16.7628,lon:80.8931,farms:[farm("FRM-AP-KRI-0318","Nuzvid Palm Linkage",16.7664,80.8952,6,57,.058)]}]}
+      ]}
+    ];
+    function farm(id,name,lat,lon,acres,density,risk){
+      const trees = acres * density;
+      return {id,name,lat,lon,acres,density,trees,surveyed:Math.round(trees*.88),infected:Math.round(trees*risk),suspected:Math.round(trees*(risk+.04)),pending:Math.max(2,Math.round(trees*(.03+risk/2))),risk};
+    }
+    let state = {role:"admin",page:"Overview",view:"map",path:[],farmId:null,treeId:null,newFarmPreview:null};
+    const content = document.getElementById("content");
+    const nav = document.getElementById("nav");
+    const crumbs = document.getElementById("crumbs");
+    const backBtn = document.getElementById("backBtn");
+    const pageTitle = document.getElementById("pageTitle");
+    function scopedDistricts(){
+      const role = roles[state.role];
+      const all = JSON.parse(JSON.stringify(districts));
+      if(role.districts !== "all") all.splice(0, all.length, ...all.filter(d=>role.districts.includes(d.name)));
+      if(role.mandals) all.forEach(d=>d.mandals = d.mandals.filter(m=>role.mandals.includes(m.name)));
+      if(role.farmIds) all.forEach(d=>d.mandals.forEach(m=>m.villages.forEach(v=>v.farms = v.farms.filter(f=>role.farmIds.includes(f.id)))));
+      return all.map(d=>({...d,mandals:d.mandals.map(m=>({...m,villages:m.villages.filter(v=>v.farms.length)})).filter(m=>m.villages.length)})).filter(d=>d.mandals.length);
+    }
+    function flatFarms(ds=scopedDistricts()){
+      return ds.flatMap(d=>d.mandals.flatMap(m=>m.villages.flatMap(v=>v.farms.map(f=>({...f,district:d.name,mandal:m.name,village:v.name})))));
+    }
+    function metricsFor(items){
+      const farms = items.filter(x=>x.id).length ? items : flatFarms(items);
+      const totalTrees = farms.reduce((a,f)=>a+f.trees,0);
+      const surveyed = farms.reduce((a,f)=>a+f.surveyed,0);
+      const infected = farms.reduce((a,f)=>a+f.infected,0);
+      const pending = farms.reduce((a,f)=>a+f.pending,0);
+      const acres = farms.reduce((a,f)=>a+f.acres,0);
+      return {farms:farms.length,acres,totalTrees,surveyed,infected,pending,coverage:totalTrees?surveyed/totalTrees:0,rate:totalTrees?infected/totalTrees:0};
+    }
+    function fmt(n){return Math.round(n).toLocaleString("en-IN")}
+    function pct(n){return (n*100).toFixed(1)+"%"}
+    function hclass(rate){return rate<.035?"h-ok":rate<.075?"h-risk":"h-bad"}
+    function hlabel(rate){return rate<.035?"Healthy":rate<.075?"At risk":"Infected"}
+    function project(lat,lon){
+      const minLat=13.9,maxLat=18.4,minLon=79.4,maxLon=84.9;
+      return {x:10+((lon-minLon)/(maxLon-minLon))*80,y:88-((lat-minLat)/(maxLat-minLat))*76};
+    }
+    function render(){
+      renderNav(); renderRole(); renderCrumbs();
+      document.getElementById("viewToggle").classList.toggle("hidden", state.page!=="Overview" || state.farmId || state.treeId);
+      backBtn.classList.toggle("hidden", !canBack());
+      pageTitle.classList.toggle("hidden", state.page==="Overview");
+      pageTitle.textContent = state.page;
+      if(state.page==="Overview") return state.treeId?renderTree():state.farmId?renderFarm():renderOverview();
+      if(state.page==="New Farm") return renderNewFarm();
+      return renderPlaceholder();
+    }
+    function renderNav(){
+      const role = roles[state.role];
+      nav.innerHTML = role.nav.map(label=>`<button class="navitem ${state.page===label?"active":""}" data-nav="${label}"><span class="nico">${navIcons[label]}</span><span>${label}</span>${label==="Alerts"?'<em class="nbadge">6</em>':""}</button>`).join("");
+      nav.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>{state.page=b.dataset.nav;state.path=[];state.farmId=null;state.treeId=null;render()}));
+    }
+    function renderRole(){
+      const sel = document.getElementById("roleSelect");
+      if(!sel.options.length) sel.innerHTML = Object.entries(roles).map(([id,r])=>`<option value="${id}">${r.name}</option>`).join("");
+      sel.value = state.role;
+      const r = roles[state.role];
+      document.getElementById("userInitials").textContent = r.initials;
+      document.getElementById("profileBtn").textContent = r.initials;
+      document.getElementById("userName").textContent = r.name;
+    }
+    function renderCrumbs(){
+      const items = ["Andhra Pradesh",...state.path.map(p=>p.name)];
+      crumbs.innerHTML = items.map((name,i)=>`<button class="crumb" data-crumb="${i}">${name}</button>`).join("");
+      crumbs.querySelectorAll("[data-crumb]").forEach(b=>b.addEventListener("click",()=>{const i=Number(b.dataset.crumb);state.path=state.path.slice(0,Math.max(0,i));state.farmId=null;state.treeId=null;render()}));
+    }
+    function levelData(){
+      let nodes = scopedDistricts();
+      for(const p of state.path){
+        const found = nodes.find(n=>n.name===p.name);
+        if(!found) return [];
+        nodes = found.mandals || found.villages || found.farms || [];
+      }
+      return nodes;
+    }
+    function canBack(){return state.treeId || state.farmId || state.path.length || state.page!=="Overview"}
+    backBtn.addEventListener("click",()=>{if(state.treeId){state.treeId=null}else if(state.farmId){state.farmId=null}else if(state.path.length){state.path.pop()}else{state.page="Overview"} render()});
+    document.getElementById("roleSelect").addEventListener("change",e=>{state.role=e.target.value;state.path=[];state.farmId=null;state.treeId=null;render()});
+    document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>{state.view=b.dataset.view;document.querySelectorAll("[data-view]").forEach(x=>x.classList.toggle("on",x.dataset.view===state.view));render()}));
+    function renderOverview(){
+      const nodes = levelData();
+      const farms = flatFarms(scopedDistricts());
+      const m = metricsFor(farms);
+      const level = state.path.length===0?"District":state.path.length===1?"Mandal":state.path.length===2?"Village":"Farm";
+      content.innerHTML = `
+        <div class="pagehead"><div><h1 class="h1">${state.path.at(-1)?.name || "Andhra Pradesh Portfolio"}</h1><p class="sub">AP-only deterministic demo data. Public Godrej context stays separate from role-scoped operational totals.</p></div><button class="btn-ghost" id="resetScope">Reset scope</button></div>
+        ${metricStrip(m)}
+        <div class="notice" style="margin-bottom:18px">Public context: Godrej Agrovet says it works with ${publicFacts.farmers} farmers and more than ${publicFacts.hectares} hectares in its oil palm business. These figures are not restricted-role operational totals. Source: ${publicFacts.source}.</div>
+        ${state.view==="map"?mapView(nodes,level):tableView(nodes,level)}
+      `;
+      document.getElementById("resetScope").addEventListener("click",()=>{state.path=[];state.farmId=null;state.treeId=null;render()});
+      bindOpen(nodes);
+    }
+    function metricStrip(m){
+      return `<div class="mrow mrow5">
+        <div class="mcard"><span class="mlabel">Farms</span><span class="mval">${fmt(m.farms)}</span><span class="msub">within role scope</span></div>
+        <div class="mcard"><span class="mlabel">Planted area</span><span class="mval">${fmt(m.acres)} ac</span><span class="msub">demo operational acreage</span></div>
+        <div class="mcard"><span class="mlabel">Planted palms</span><span class="mval">${fmt(m.totalTrees)}</span><span class="msub">from farm layouts</span></div>
+        <div class="mcard"><span class="mlabel">Survey coverage</span><span class="mval tone-ok">${pct(m.coverage)}</span><span class="msub">${fmt(m.surveyed)} scanned</span></div>
+        <div class="mcard"><span class="mlabel">Pending work</span><span class="mval tone-risk">${fmt(m.pending)}</span><span class="msub">inspections/actions</span></div>
+      </div>`;
+    }
+    function nodeMetrics(n){
+      const farms = n.farms ? n.farms : n.mandals ? flatFarms([n]) : n.villages ? flatFarms([{mandals:[n]}]) : n.id ? [n] : [];
+      return metricsFor(farms);
+    }
+    function mapView(nodes,level){
+      return `<div class="mapwrap"><div class="map" role="region" aria-label="Andhra Pradesh geographic map">
+        <svg class="ap-svg" viewBox="0 0 100 100" aria-hidden="true"><path class="ap-shape" d="M26 83 L34 76 L31 66 L38 56 L36 45 L45 35 L49 24 L61 18 L70 24 L76 35 L72 49 L80 58 L75 69 L66 76 L54 82 L40 88 Z"/></svg>
+        <span class="maptag">AP ${level} map</span>
+        ${nodes.map(n=>marker(n)).join("")}
+        <div class="legend"><span><span class="dot h-ok"></span>Healthy</span><span><span class="dot h-risk"></span>Suspected</span><span><span class="dot h-bad"></span>Danger</span></div>
+      </div><div class="rail"><div class="railhd">${level}s in scope</div>${nodes.map(n=>rail(n)).join("")}</div></div>`;
+    }
+    function marker(n){
+      const p = project(n.lat,n.lon), mm = nodeMetrics(n), cls = hclass(mm.rate);
+      return `<button class="blob ${cls}" style="left:${p.x}%;top:${p.y}%" data-open="${n.name}"><span class="blobtop"><span class="dot big"></span><span class="blobname">${n.name}</span></span><span class="blobn">${fmt(mm.farms)} farms</span><span class="blobinf">${pct(mm.rate)} infection</span></button>`;
+    }
+    function rail(n){
+      const mm = nodeMetrics(n), cls = hclass(mm.rate);
+      return `<button class="railitem ${cls}" data-open="${n.name}"><span class="dot"></span><span><b>${n.name}</b><small>${fmt(mm.totalTrees)} palms · ${fmt(mm.pending)} pending</small></span><span class="railn">${pct(mm.rate)}<small>${hlabel(mm.rate)}</small></span><span class="chev">›</span></button>`;
+    }
+    function tableView(nodes,level){
+      return `<div class="panel"><div class="htr thead"><span>${level}</span><span class="num">Farms</span><span class="num">Planted palms</span><span class="num">Infected</span><span>Health</span></div>${nodes.map(n=>{const mm=nodeMetrics(n),cls=hclass(mm.rate);return `<button class="htr frow" data-open="${n.name}"><span class="hname"><span class="nm">${n.name}</span><span class="lvl">${level}</span></span><span class="num">${fmt(mm.farms)}</span><span class="num">${fmt(mm.totalTrees)}</span><span class="num">${fmt(mm.infected)}</span><span><em class="badge ${cls}">${hlabel(mm.rate)}</em></span></button>`}).join("")}</div>`;
+    }
+    function bindOpen(nodes){
+      content.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>{const node=nodes.find(n=>n.name===b.dataset.open); if(!node)return; if(node.id){state.farmId=node.id}else{state.path.push({name:node.name})} render()}));
+    }
+    function findFarm(id){return flatFarms(districts).find(f=>f.id===id)}
+    function cellsFor(farm){
+      const empty = [5,14,23,31,39,46,55,63,8,17].slice(0,64-farm.density);
+      return Array.from({length:64},(_,i)=>{
+        const occupied = !empty.includes(i);
+        const seq = Array.from({length:i+1},(_,j)=>j).filter(j=>!empty.includes(j)).length;
+        const seed = (seq * 31 + farm.infected * 7) % 100;
+        const status = !occupied?"empty":seed < farm.risk*100?"bad":seed < farm.risk*100+9?"risk":"ok";
+        return {i,occupied,seq,status,id:occupied?`${farm.id}-T${String(seq).padStart(3,"0")}`:""};
+      });
+    }
+    function renderFarm(){
+      const farm=findFarm(state.farmId), cells=cellsFor(farm), m=metricsFor([farm]);
+      content.innerHTML = `<div class="pagehead"><div><h1 class="h1">${farm.name}</h1><p class="sub">${farm.village}, ${farm.mandal}, ${farm.district} · ${farm.id} · ${farm.acres} acres · deterministic demo farm</p></div><em class="badge ${hclass(m.rate)}">${hlabel(m.rate)}</em></div>${metricStrip(m)}
+      <div class="grid2"><div style="display:flex;flex-direction:column;gap:18px"><div class="card"><h3 class="cardt">Health breakdown</h3><div class="hbar"><span class="hseg h-ok" style="width:${Math.max(20,100-(farm.suspected/farm.trees*100))}%"></span><span class="hseg h-risk" style="width:${farm.suspected/farm.trees*100}%"></span><span class="hseg h-bad" style="width:${farm.infected/farm.trees*100}%"></span></div>${["Healthy","Suspected","Danger"].map((l,i)=>`<div class="legrow"><span class="legL"><span class="dot ${["h-ok","h-risk","h-bad"][i]}"></span>${l}</span><span class="legN">${i===0?fmt(farm.trees-farm.suspected):i===1?fmt(farm.suspected-farm.infected):fmt(farm.infected)}</span></div>`).join("")}</div><div class="card"><h3 class="cardt">Ganoderma infection trend</h3><div class="trend">${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug"].map((l,i)=>`<div class="trendcol"><div class="tbarwrap"><div class="tbar ${i>5?"hot":""}" style="height:${18+i*8+farm.risk*100}%"></div></div><span class="tlab">${l}</span></div>`).join("")}</div><p class="sub">Trend is simulated for demo review and not image-derived diagnosis.</p></div></div><div style="display:flex;flex-direction:column;gap:18px"><div class="card"><div class="pagehead" style="margin-bottom:14px"><h3 class="cardt" style="margin:0">Tree layout - 8 x 8 acre grid</h3><span class="lvl">Black means no tree</span></div><div class="treegrid">${cells.map(c=>`<button class="tcell ${c.status==="empty"?"h-empty":c.status==="bad"?"h-bad":c.status==="risk"?"h-risk":"h-ok"}" ${c.occupied?`data-tree="${c.id}" title="${c.id}"`:"disabled title='No tree'"}>${c.occupied?c.seq:""}</button>`).join("")}</div></div><div class="card"><h3 class="cardt">Accessible tree table</h3>${cells.filter(c=>c.occupied).slice(0,8).map(c=>`<div class="legrow"><span>${c.id}</span><button class="btn-ghost" data-tree="${c.id}">Open Tree Details</button></div>`).join("")}</div></div></div>`;
+      content.querySelectorAll("[data-tree]").forEach(b=>b.addEventListener("click",()=>{state.treeId=b.dataset.tree;render()}));
+    }
+    function renderTree(){
+      const farm=findFarm(state.farmId), cell=cellsFor(farm).find(c=>c.id===state.treeId), risk=cell.status==="bad"?.82:cell.status==="risk"?.54:.18;
+      const indicators=[["NDVI",cell.status==="bad"?.43:cell.status==="risk"?.58:.74,"Vegetation vigor from simulated survey context. Higher is generally healthier."],["NDRE",cell.status==="bad"?.19:cell.status==="risk"?.32:.49,"Canopy stress indicator. Lower values can suggest stress in mature palms."],["Ganoderma confidence",risk,"Demo classifier confidence; not derived from supplied imagery."],["Canopy temperature",cell.status==="bad"?.77:cell.status==="risk"?.58:.36,"Relative heat stress scale, not absolute temperature."],["Recent trend",cell.status==="bad"?.69:cell.status==="risk"?.51:.22,"Recent movement in risk score across demo scan history."]];
+      content.innerHTML = `<div class="pagehead"><div><h1 class="h1">Palm ${state.treeId}</h1><p class="sub">${farm.name} · Row ${Math.floor(cell.i/8)+1}, Col ${(cell.i%8)+1} · ${farm.village}, Andhra Pradesh</p></div><em class="badge ${cell.status==="bad"?"h-bad":cell.status==="risk"?"h-risk":"h-ok"}">${cell.status==="bad"?"Danger":cell.status==="risk"?"Suspected":"Okay"}</em></div>
+      <div class="tree-hero"><div style="display:flex;flex-direction:column;gap:16px"><div class="ph" style="height:230px">demo survey gallery<br>RGB / false colour / Green / Red / Red-edge / NIR</div><div class="card"><h3 class="cardt">Ganoderma indicator widget</h3>${indicators.map(([k,v,h])=>indicator(k,v,h)).join("")}<p class="sub">Demo/simulated readings only. No NDVI, NDRE, diagnosis, or confidence is derived from the supplied images.</p></div></div><div style="display:flex;flex-direction:column;gap:16px"><div class="card"><div class="tdetail">${[["Tree ID",state.treeId],["Farm",farm.id],["Health",cell.status==="bad"?"Danger":cell.status==="risk"?"Suspected":"Okay"],["Last scan","20 Jun 2026"],["Recommendation",cell.status==="bad"?"Create case and prioritize treatment":"Continue scheduled monitoring"],["RBAC","Actions depend on selected role"]].map(d=>`<div class="tdrow"><span class="tdk">${d[0]}</span><span class="tdv">${d[1]}</span></div>`).join("")}</div></div><div class="card"><h3 class="cardt">Scan history</h3>${["20 Jun 2026","04 Jun 2026","18 May 2026","30 Apr 2026"].map((d,i)=>`<div class="legrow"><span><b>${d}</b><br><span class="sub">${i===0?"Current demo survey context":"Routine field observation"}</span></span><span class="num">${Math.round((risk-i*.07)*100)}%</span></div>`).join("")}</div><div class="card ${cell.status==="bad"?"h-bad":cell.status==="risk"?"h-risk":"h-ok"}" style="border-color:var(--c)"><h3 class="cardt">Recommended action</h3><p class="sub" style="color:var(--fg)">${cell.status==="bad"?"Danger: open a field case, inspect collar/trunk symptoms, and track treatment response.":cell.status==="risk"?"Suspected: schedule follow-up scan and field inspection.":"Okay: continue normal monitoring cadence."}</p></div></div></div>`;
+    }
+    function indicator(k,v,h){
+      const cls=v>.66?"h-bad":v>.42?"h-risk":"h-ok";
+      const label=v>.66?"Danger":v>.42?"Suspected":"Okay";
+      return `<div class="metricline ${cls}"><span>${k} <button class="help" title="${h}" aria-label="${k} help">?</button></span><span class="metricbar"><span class="metricfill" style="width:${Math.round(v*100)}%"></span></span><span class="num">${label}</span></div>`;
+    }
+    function renderPlaceholder(){
+      const farms=flatFarms(scopedDistricts()), m=metricsFor(farms);
+      content.innerHTML = `<div class="pagehead"><div><h1 class="h1">${state.page}</h1><p class="sub">Functional AP-only ${state.page.toLowerCase()} workspace. Data respects the selected role scope and excludes non-AP regions.</p></div></div>${metricStrip(m)}<div class="panel"><div class="paneltitle">${state.page} records<span class="lvl">role scoped</span></div>${farms.slice(0,8).map(f=>`<button class="htr frow" data-farm="${f.id}"><span class="hname"><span class="nm">${f.name}</span><span class="lvl">${f.district}</span></span><span class="num">${fmt(f.trees)}</span><span class="num">${fmt(f.infected)}</span><span class="num">${fmt(f.pending)}</span><span><em class="badge ${hclass(f.risk)}">${hlabel(f.risk)}</em></span></button>`).join("")}</div>`;
+      content.querySelectorAll("[data-farm]").forEach(b=>b.addEventListener("click",()=>{state.page="Overview";state.farmId=b.dataset.farm;render()}));
+    }
+    function renderNewFarm(){
+      content.innerHTML = `<div class="pagehead"><div><h1 class="h1">New Farm Preview</h1><p class="sub">Preview-only farm layout builder. Nothing is saved to mock data, browser storage, audit, notifications, or trees.</p></div></div><div class="grid2"><form class="card" id="newFarmForm"><h3 class="cardt">Farm identity and AP geography</h3><div class="formgrid"><div class="field"><label>Farm name</label><input required name="name" value="Preview Pedavegi Farm"></div><div class="field"><label>District</label><select name="district"><option>Eluru</option><option>East Godavari</option><option>West Godavari</option><option>Krishna</option></select></div><div class="field"><label>Mandal</label><input required name="mandal" value="Pedavegi"></div><div class="field"><label>Village</label><input required name="village" value="Munduru"></div><div class="field"><label>Latitude</label><input required name="lat" value="16.8792"></div><div class="field"><label>Longitude</label><input required name="lon" value="81.1471"></div><div class="field"><label>Number of acres</label><input required type="number" name="acres" min="1" max="24" value="1"></div><div class="field"><label>Trees on current acre</label><input required type="number" name="density" min="50" max="57" value="54"></div></div><p class="sub" id="plotCount">54/54 plotted on acre 1</p><div class="treegrid" id="editGrid">${Array.from({length:64},(_,i)=>`<button type="button" class="tcell ${i<54?"h-ok":"h-empty"}" data-i="${i}">${i<54?i+1:""}</button>`).join("")}</div><p class="sub">Black cells are editable here. In Farm Detail, black means no tree and is disabled.</p><button class="btn" style="margin-top:16px">Add farm</button></form><div id="previewPane" class="card"><h3 class="cardt">Preview only - not saved yet</h3><p class="sub">Press Add farm to render the unsaved farm layout preview.</p></div></div>`;
+      const grid=document.getElementById("editGrid"), form=document.getElementById("newFarmForm"), count=document.getElementById("plotCount");
+      function update(){const target=Number(form.density.value)||54;const selected=[...grid.querySelectorAll(".tcell:not(.h-empty)")].length;count.textContent=`${selected}/${target} plotted on acre 1`;}
+      grid.querySelectorAll(".tcell").forEach(b=>b.addEventListener("click",()=>{b.classList.toggle("h-empty");b.classList.toggle("h-ok");b.textContent=b.classList.contains("h-empty")?"":[...grid.querySelectorAll(".tcell:not(.h-empty)")].indexOf(b)+1;state.newFarmPreview=null;update()}));
+      form.density.addEventListener("input",update);
+      form.addEventListener("submit",e=>{e.preventDefault();const fd=new FormData(form), target=Number(fd.get("density")), selected=[...grid.querySelectorAll(".tcell:not(.h-empty)")];if(target<50||target>57||selected.length!==target){document.getElementById("previewPane").innerHTML=`<h3 class="cardt">Preview blocked</h3><p class="sub">Grid count must match the tree count. Current count is ${selected.length}/${target} plotted.</p>`;return;}const id="FRM-AP-PREV-0001";document.getElementById("previewPane").innerHTML=`<h3 class="cardt">Preview only - not saved yet</h3><p class="sub">${fd.get("name")} · ${fd.get("village")}, ${fd.get("mandal")}, ${fd.get("district")} · ${fd.get("acres")} acre · ${selected.length} preview trees</p><div class="treegrid">${Array.from({length:64},(_,i)=>{const on=!grid.children[i].classList.contains("h-empty");const seq=on?selected.indexOf(grid.children[i])+1:0;return `<button class="tcell ${on?"h-ok":"h-empty"}" ${on?`title="${id}-T${String(seq).padStart(3,"0")}"`:"disabled title='No tree'"}>${on?seq:""}</button>`}).join("")}</div><p class="sub">Occupied preview cells are Pending / no evidence yet. This preview did not create records.</p><button class="btn-ghost" id="editAgain">Edit grid</button>`;document.getElementById("editAgain").addEventListener("click",()=>form.scrollIntoView({behavior:"smooth",block:"start"}));});
+    }
+    render();
+  </script>
+</body>
+</html>
