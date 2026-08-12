@@ -105,11 +105,11 @@
     .chev{color:var(--border);font-size:20px}
     .panel{overflow:hidden}
     .paneltitle{font-size:15px;font-weight:700;padding:16px 18px;border-bottom:1px solid var(--bord2);display:flex;align-items:center;justify-content:space-between}
-    .htr{display:grid;grid-template-columns:minmax(220px,2fr) 1fr 1fr 1fr 1fr;align-items:center;padding:0 18px;min-height:46px;border-bottom:1px solid var(--bord2);font-size:13px}
-    .htr:last-child{border-bottom:none}.htr.thead{height:40px;font:600 10.5px var(--font-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mfg);background:var(--card2)}
-    .htr.frow:hover{background:var(--card2)}
+    .htr{display:grid;grid-template-columns:minmax(290px,2.4fr) 1fr 1fr 1fr 1fr 1fr;align-items:center;padding:0 22px;min-height:46px;border-bottom:1px solid var(--bord2);font-size:13px;color:var(--fg)}
+    .htr:last-child{border-bottom:none}.htr.thead{height:48px;font:700 10.5px var(--font-mono);text-transform:uppercase;letter-spacing:.055em;color:var(--mfg);background:linear-gradient(180deg,var(--card),var(--card2))}
+    .htr.frow{width:100%;border-left:0;border-right:0;border-top:0;background:var(--card);text-align:left;cursor:pointer}.htr.frow:hover,.htr.frow:focus-visible{background:var(--card2);box-shadow:inset 3px 0 0 var(--primary)}.htr.frow.is-expanded{background:var(--card2)}
     .num{font-variant-numeric:tabular-nums;font-family:var(--font-mono);font-size:12.5px;text-align:right}
-    .hname{display:flex;align-items:center;gap:9px;min-width:0}.nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lvl{font:10px var(--font-mono);color:var(--mfg);text-transform:uppercase;letter-spacing:.04em}
+    .hname{display:flex;align-items:center;gap:10px;min-width:0}.rowchev{width:24px;height:24px;border-radius:7px;background:var(--primsoft);color:var(--primary);display:inline-grid;place-items:center;font:800 11px var(--font-mono);flex:none}.nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lvl{font:10px var(--font-mono);color:var(--mfg);text-transform:uppercase;letter-spacing:.04em}
     .badge{display:inline-flex;align-items:center;gap:6px;font:700 10.5px var(--font-mono);text-transform:uppercase;letter-spacing:.03em;color:var(--c);background:var(--cb);padding:4px 9px;border-radius:20px}
     .badge::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
     .btn,.btn-ghost{border-radius:9px;font-weight:600}
@@ -838,8 +838,11 @@
       const mm = nodeMetrics(n), cls = hclass(mm.rate);
       return `<button class="railitem ${cls}" data-open="${n.name}"><span class="dot"></span><span><b>${n.name}</b><small>${fmt(mm.totalTrees)} palms · ${fmt(mm.pending)} pending</small></span><span class="railn">${pct(mm.rate)}<small>${hlabel(mm.rate)}</small></span><span class="chev">›</span></button>`;
     }
+    function demoYieldFor(metrics){
+      return Math.round(metrics.totalTrees*.071);
+    }
     function tableView(nodes,level){
-      return `<div class="panel"><div class="htr thead"><span>${level}</span><span class="num">Farms</span><span class="num">Planted palms</span><span class="num">Infected</span><span>Health</span></div>${nodes.map(n=>{const mm=nodeMetrics(n),cls=hclass(mm.rate);return `<button class="htr frow" data-open="${n.name}"><span class="hname"><span class="nm">${n.name}</span><span class="lvl">${level}</span></span><span class="num">${fmt(mm.farms)}</span><span class="num">${fmt(mm.totalTrees)}</span><span class="num">${fmt(mm.infected)}</span><span><em class="badge ${cls}">${hlabel(mm.rate)}</em></span></button>`}).join("")}</div>`;
+      return `<div class="panel data-scroll" role="region" aria-label="${level} portfolio table"><div class="htr thead"><span>${level} / farm</span><span class="num">Planted palms</span><span class="num">Infected</span><span class="num">Infection</span><span class="num">Yield</span><span>Health</span></div>${nodes.map(n=>{const mm=nodeMetrics(n),cls=hclass(mm.rate);return `<button class="htr frow" data-open="${n.name}" aria-label="Open ${n.name} ${level}"><span class="hname"><span class="rowchev">›</span><span class="nm">${n.name}</span><span class="lvl">${level}</span></span><span class="num">${fmt(mm.totalTrees)}</span><span class="num">${fmt(mm.infected)}</span><span class="num">${pct(mm.rate)}</span><span class="num">${fmt(demoYieldFor(mm))} t</span><span><em class="badge ${cls}">${hlabel(mm.rate)}</em></span></button>`}).join("")}</div>`;
     }
     function bindOpen(nodes){
       content.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>openNode(nodes.find(n=>n.name===b.dataset.open))));

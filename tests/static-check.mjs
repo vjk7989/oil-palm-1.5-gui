@@ -1065,6 +1065,11 @@ assert.match(html, /deterministic demo data/i, "Operational data must be explici
 assert.match(functionBody(html, "renderOverview"), /scopedDistricts\s*\(/, "Explorer roots must be built from the complete role-scoped AP hierarchy");
 assert.match(html, /mapView\s*\(\s*nodes\s*,\s*level\s*\)/, "Map view must consume the scoped Explorer nodes");
 assert.match(html, /tableView\s*\(\s*nodes\s*,\s*level\s*\)/, "Table view must consume the scoped Explorer nodes");
+const tableViewBody = functionBody(html, "tableView");
+for (const column of ["farm", "Planted palms", "Infected", "Infection", "Yield", "Health"]) {
+  assert.match(tableViewBody, new RegExp(column, "i"), `Table view must expose the ${column} column`);
+}
+assert.match(tableViewBody, /role=["']region["'][^]*portfolio table/i, "Table view must be a named horizontally-scrollable region");
 assert.ok((html.match(/data-open=/g) || []).length >= 2, "Map and Table need equivalent drill-down hooks");
 
 const scopeFarmIdsBodyForExpansion = functionBody(html, "scopeFarmIds");
