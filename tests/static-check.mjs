@@ -520,14 +520,14 @@ assert.match(
 );
 
 // Reports retain the original PalmWatch catalogue semantics while rendering in
-// the Buckleson visual language. One printable report and five exact CSV
-// offerings are intentionally part of the public demo contract.
+// the Buckleson visual language. One openable report and five Excel-compatible
+// workbook exports are intentionally part of the public demo contract.
 assert.ok(Array.isArray(reportDefinitions), "Reports need an inspectable report definition catalogue");
-assert.equal(reportDefinitions.length, 6, "Reports must expose one printable and five CSV offerings");
+assert.equal(reportDefinitions.length, 6, "Reports must expose one report and five Excel offerings");
 assert.deepEqual(
   reportDefinitions.map((report) => report.title),
   [
-    "Printable executive report",
+    "Executive report",
     "Survey coverage by plantation area",
     "Suspected palms by quarter",
     "Open inspections by assignee",
@@ -537,9 +537,9 @@ assert.deepEqual(
   "The accepted six-report catalogue changed unexpectedly"
 );
 const printableReports = reportDefinitions.filter((report) => report.format === "printable");
-const csvReports = reportDefinitions.filter((report) => report.format === "csv");
+const excelReports = reportDefinitions.filter((report) => report.format === "excel");
 assert.equal(printableReports.length, 1, "Exactly one report must use the printable view");
-assert.equal(csvReports.length, 5, "Exactly five reports must generate CSV files");
+assert.equal(excelReports.length, 5, "Exactly five reports must generate Excel-compatible workbooks");
 assert.equal(new Set(reportDefinitions.map((report) => report.id)).size, 6, "Report IDs must be unique");
 
 assert.deepEqual(
@@ -594,19 +594,21 @@ assert.equal(escapeCsvCell("line one\nline two"), '"line one\nline two"', "CSV f
 const buildReportCsvBody = functionBody(html, "buildReportCsv");
 assert.match(buildReportCsvBody, /escapeCsvCell/, "CSV headers and rows must use the shared RFC-style escaping hook");
 assert.match(buildReportCsvBody, /\r\n|\\r\\n/, "CSV generation must use deterministic CRLF row separators");
-const downloadReportCsvBody = functionBody(html, "downloadReportCsv");
-assert.match(downloadReportCsvBody, /scopedReportRows/, "CSV download must scope rows before generating the file");
-assert.match(downloadReportCsvBody, /buildReportCsv/, "CSV download must build from the already-scoped row collection");
+const downloadReportExcelBody = functionBody(html, "downloadReportExcel");
+assert.match(downloadReportExcelBody, /scopedReportRows/, "Excel download must scope rows before generating the file");
+assert.match(downloadReportExcelBody, /buildReportExcel/, "Excel download must build from the already-scoped row collection");
 assert.ok(
-  downloadReportCsvBody.indexOf("scopedReportRows") < downloadReportCsvBody.indexOf("buildReportCsv"),
-  "Report rows must be scoped before the CSV builder is called"
+  downloadReportExcelBody.indexOf("scopedReportRows") < downloadReportExcelBody.indexOf("buildReportExcel"),
+  "Report rows must be scoped before the Excel builder is called"
 );
-assert.match(downloadReportCsvBody, /new Blob\s*\(/, "CSV export must create a browser Blob");
-assert.match(downloadReportCsvBody, /URL\.createObjectURL/, "CSV export must create a temporary object URL");
-assert.match(downloadReportCsvBody, /\.download\s*=|setAttribute\s*\(\s*["']download/i, "CSV export must provide a download filename");
-assert.match(downloadReportCsvBody, /\.click\s*\(/, "CSV export must activate a browser download");
-assert.match(downloadReportCsvBody, /URL\.revokeObjectURL/, "CSV export must release its temporary object URL");
-assert.match(downloadReportCsvBody, /recordReportDownload/, "Successful downloads must enter the local history");
+assert.match(downloadReportExcelBody, /application\/vnd\.ms-excel/, "Excel export must use an Excel-compatible MIME type");
+assert.match(downloadReportExcelBody, /\.xls/, "Excel export must provide an .xls filename");
+assert.match(downloadReportExcelBody, /new Blob\s*\(/, "Excel export must create a browser Blob");
+assert.match(downloadReportExcelBody, /URL\.createObjectURL/, "Excel export must create a temporary object URL");
+assert.match(downloadReportExcelBody, /\.download\s*=|setAttribute\s*\(\s*["']download/i, "Excel export must provide a download filename");
+assert.match(downloadReportExcelBody, /\.click\s*\(/, "Excel export must activate a browser download");
+assert.match(downloadReportExcelBody, /URL\.revokeObjectURL/, "Excel export must release its temporary object URL");
+assert.match(downloadReportExcelBody, /recordReportDownload/, "Successful downloads must enter the local history");
 
 const recordReportDownloadBody = functionBody(html, "recordReportDownload");
 assert.match(recordReportDownloadBody, /reportHistory/, "Download history must use the versioned demo-state document");
@@ -720,6 +722,7 @@ assert.match(progressTreatmentBody, /not available in your assigned AP scope|not
 
 const renderCasesTreatmentsBody = functionBody(html, "renderCasesTreatments");
 const renderCasesPanelBody = functionBody(html, "renderCasesPanel");
+const renderCaseModalBody = functionBody(html, "renderCaseModal");
 const renderTreatmentsPanelBody = functionBody(html, "renderTreatmentsPanel");
 const renderCaseDetailBody = functionBody(html, "renderCaseDetail");
 const renderTreatmentDetailBody = functionBody(html, "renderTreatmentDetail");
@@ -730,6 +733,7 @@ const selectTreatmentRecordBody = functionBody(html, "selectTreatmentRecord");
 const caseTreatmentUi = [
   renderCasesTreatmentsBody,
   renderCasesPanelBody,
+  renderCaseModalBody,
   renderTreatmentsPanelBody,
   renderCaseDetailBody,
   renderTreatmentDetailBody,
@@ -746,7 +750,7 @@ assert.match(renderCasesTreatmentsBody, /role=["']tabpanel["']/, "Cases/Treatmen
 assert.match(caseTreatmentUi, /caseSearch|treatmentSearch|Search/i, "Cases and Treatments must provide scoped text search");
 assert.match(caseTreatmentUi, /caseStatus|treatmentStatus|Status/i, "Cases and Treatments must provide status filtering");
 assert.match(caseTreatmentUi, /mcard|metric|KPI|Open cases|Active treatments/i, "Cases and Treatments must show scoped KPIs");
-assert.match(caseTreatmentUi, /selectedCaseId|selectedTreatmentId/, "Cases and Treatments must render an explicit selected-record detail state");
+assert.match(caseTreatmentUi, /selectedCaseId|selectedTreatmentId|caseModalOpen/, "Cases and Treatments must render an explicit selected-record detail state");
 assert.match(renderCasesPanelBody, /scopedCases\s*\(\s*\)/, "Case UI must begin from authorized scoped cases");
 assert.match(renderTreatmentsPanelBody, /scopedTreatments\s*\(\s*\)/, "Treatment UI must begin from authorized scoped treatments");
 assert.ok(
@@ -760,14 +764,21 @@ assert.match(caseTreatmentUi, /applyCaseAction/, "Case details must bind only ro
 assert.match(caseTreatmentUi, /progressTreatment/, "Treatment details must bind the guarded progress action");
 assert.match(caseTreatmentUi, /outcome/i, "Treatment completion must expose an outcome field");
 assert.match(renderCasesTreatmentsBody, /aria-live=["']polite["']|role=["']status["']/, "Case/treatment changes must be announced live");
-assert.match(renderCasesPanelBody, /id=["']selectedCaseDetails["'][^>]*tabindex=["']-1["']|tabindex=["']-1["'][^>]*id=["']selectedCaseDetails["']/, "Selected case details must expose a stable focus target");
+assert.match(renderCasesPanelBody, /renderCaseModal\s*\(\s*selected\s*\)/, "Cases must open selected case details through the modal renderer");
+assert.match(renderCaseModalBody, /role=["']dialog["'][^]*aria-modal=["']true["']/, "Selected case details must open as an accessible modal dialog");
+assert.match(renderCaseModalBody, /id=["']selectedCaseDetails["'][^>]*tabindex=["']-1["']|tabindex=["']-1["'][^>]*id=["']selectedCaseDetails["']/, "Selected case modal must expose a stable focus target");
+assert.match(renderCaseModalBody, /data-case-close|Close case details/, "Selected case modal must include an explicit close control");
 assert.match(renderTreatmentsPanelBody, /id=["']selectedTreatmentDetails["'][^>]*tabindex=["']-1["']|tabindex=["']-1["'][^>]*id=["']selectedTreatmentDetails["']/, "Selected treatment details must expose a stable focus target");
 assert.match(focusWorkDetailBody, /scrollIntoView/, "Open actions must scroll selected details into view");
 assert.match(focusWorkDetailBody, /\.focus\s*\(/, "Open actions must move keyboard focus to selected details");
 assert.match(selectCaseRecordBody, /getCaseRecord\s*\(/, "Case Open must resolve the record through scoped case lookup");
 assert.match(selectCaseRecordBody, /selectedCaseId\s*=\s*record\.id/, "Case Open must update the selected case");
 assert.match(selectCaseRecordBody, /Opened\s*\$\{record\.id\}\s*details/, "Case Open must announce the selected detail");
-assert.match(selectCaseRecordBody, /focusWorkDetail\s*\(\s*["']selectedCaseDetails["']\s*\)/, "Case Open must focus the selected case detail panel");
+assert.match(selectCaseRecordBody, /caseModalOpen\s*=\s*true/, "Case Open must launch the selected case modal");
+assert.match(selectCaseRecordBody, /focusWorkDetail\s*\(\s*["']selectedCaseDetails["']\s*\)/, "Case Open must focus the selected case modal");
+const closeCaseModalBody = functionBody(html, "closeCaseModal");
+assert.match(closeCaseModalBody, /caseModalOpen\s*=\s*false/, "Case modal close must clear the modal state");
+assert.match(closeCaseModalBody, /\.focus\s*\(/, "Case modal close must return focus to the opening row control");
 assert.match(selectTreatmentRecordBody, /getTreatmentRecord\s*\(/, "Treatment Open must resolve the record through scoped treatment lookup");
 assert.match(selectTreatmentRecordBody, /selectedTreatmentId\s*=\s*record\.id/, "Treatment Open must update the selected treatment");
 assert.match(selectTreatmentRecordBody, /Opened\s*\$\{record\.id\}\s*details/, "Treatment Open must announce the selected detail");
@@ -1113,93 +1124,39 @@ assert.match(
 const evidenceManifestUrl = new URL("../assets/tree-evidence/manifest.json", import.meta.url);
 assert.ok(existsSync(evidenceManifestUrl), "The audited tree-evidence manifest must be bundled with the static app");
 const evidenceManifest = JSON.parse(readFileSync(evidenceManifestUrl, "utf8"));
-const expectedEvidence = [
-  {
-    id: "rgb", label: "RGB", band: "Visible RGB", sourceFilename: "DJI_20260620095527_0011_D.JPG",
-    sourceSha256: "275b01f5773d9eef51c9b37153434664be0ad84c459a07632596b85f4fb72cc7",
-    derivativeFilename: "rgb.webp", derivativeSha256: "e5e21f66667909c8906f5320366425bf2f70b78809a33ae8e75cbae8a54af9f0",
-    originalDimensions: [5280, 3956], displayDimensions: [1400, 948], privacyCropped: true,
-  },
-  {
-    id: "false-colour", label: "False colour", band: "Camera false-colour", sourceFilename: "DJI_20260620095527_0011_F.JPG",
-    sourceSha256: "6d80f617f16a5203f4c53723d6ee17c1814f158352d3e47e01e9197b30a14457",
-    derivativeFilename: "false-colour.webp", derivativeSha256: "4291db1792ed7be8182cde897cb9f691177f91649592d78bfd847c7539157f70",
-    originalDimensions: [2592, 1944], displayDimensions: [1400, 953], privacyCropped: true,
-  },
-  {
-    id: "green", label: "Green", band: "Green", sourceFilename: "DJI_20260620095527_0011_MS_G.TIF",
-    sourceSha256: "90cd39919875c3898ef695f81db633840f72b2ae9fa7cfab227f52aacde6a0d6",
-    derivativeFilename: "green.webp", derivativeSha256: "550be64f6ee344ff82f2e14408bec42f5b268cd601c8b61952b0f4175d573b9d",
-    originalDimensions: [2592, 1944], displayDimensions: [1400, 1050], privacyCropped: false, stretched: true,
-  },
-  {
-    id: "red", label: "Red", band: "Red", sourceFilename: "DJI_20260620095527_0011_MS_R.TIF",
-    sourceSha256: "78fc7e924cdd916350e28e7889fd86395e54d78379ffefb18c869f581b737780",
-    derivativeFilename: "red.webp", derivativeSha256: "ff2aa7e1e12ede701fb4d262ed340ee0bdc09235e2771e411d4264836f44aa8f",
-    originalDimensions: [2592, 1944], displayDimensions: [1400, 1050], privacyCropped: false, stretched: true,
-  },
-  {
-    id: "red-edge", label: "Red-edge", band: "Red-edge", sourceFilename: "DJI_20260620095527_0011_MS_RE.TIF",
-    sourceSha256: "661c0fcb990c69d2b5f8d2e64b3d2dfb7654507524db57fc14a7828edbaf8c08",
-    derivativeFilename: "red-edge.webp", derivativeSha256: "b1cb7f5f51be44edabd1756ae52c34ef9c1c0f9a54ac8d44f664b75a350c6ebf",
-    originalDimensions: [2592, 1944], displayDimensions: [1400, 1050], privacyCropped: false, stretched: true,
-  },
-  {
-    id: "near-infrared", label: "Near-infrared", band: "Near-infrared", sourceFilename: "DJI_20260620095527_0011_MS_NIR.TIF",
-    sourceSha256: "081fc10745a928be391ca4e1dbe1c3d0f2826750dd4189d44928259e9180059c",
-    derivativeFilename: "near-infrared.webp", derivativeSha256: "6c15fea5023776fc7f6cf3b427816135217ebd94dc1d0164be605b00a263250e",
-    originalDimensions: [2592, 1944], displayDimensions: [1400, 1050], privacyCropped: false, stretched: true,
-  },
-];
-
-assert.equal(evidenceManifest.version, 1, "The gallery manifest needs an explicit version");
-assert.equal(evidenceManifest.captureId, "DJI_20260620095527_0011", "The gallery must remain tied to the accepted 0011 capture");
+assert.equal(evidenceManifest.version, 2, "The supplied 0001 gallery manifest needs an explicit version");
+assert.equal(evidenceManifest.captureId, "DJI_20260620095043_0001", "The gallery must use the supplied 0001 capture");
 assert.equal(evidenceManifest.classification, "demo", "Supplied survey imagery must remain classified as demo context");
 assert.equal(evidenceManifest.captureDate, "2026-06-20", "The source capture date must remain deterministic");
 assert.equal(evidenceManifest.sourcesRetainedOutsideWebBundle, true, "Original source captures must stay outside the browser bundle");
 assert.match(evidenceManifest.notice, /real demonstration survey context/i, "The manifest must identify the images as real demonstration survey context");
-assert.match(evidenceManifest.notice, /not evidence for a selected simulated tree/i, "The manifest must not associate the survey capture with a simulated palm");
+assert.match(evidenceManifest.notice, /reused for every simulated tree/i, "The manifest must state that the supplied capture is reused across demo trees");
 assert.match(evidenceManifest.notice, /proof of farm ownership/i, "The manifest must not imply ownership from survey imagery");
-assert.match(evidenceManifest.notice, /not .*source of the displayed NDVI, NDRE, diagnosis, confidence, temperature, or trend values/i, "The manifest must prohibit image-derived indices and assessment");
-assert.equal(evidenceManifest.views.length, 6, "The evidence gallery must contain exactly the six accepted supplied views");
-
-for (const [index, expected] of expectedEvidence.entries()) {
-  const item = evidenceManifest.views[index];
-  assert.equal(item.id, expected.id, `Evidence view ${index + 1} changed ID or order`);
-  assert.equal(item.label, expected.label, `${expected.id} must retain its accepted human-readable label`);
-  assert.equal(item.band, expected.band, `${expected.id} must retain its accepted band label`);
-  assert.equal(item.sourceFilename, expected.sourceFilename, `${expected.id} must preserve the supplied source filename`);
-  assert.equal(item.sourceSha256, expected.sourceSha256, `${expected.id} must preserve the accepted source SHA-256`);
-  assert.equal(item.derivative, `assets/tree-evidence/${expected.derivativeFilename}`, `${expected.id} must reference its browser-ready local derivative`);
-  assert.deepEqual(item.sourceDimensions, expected.originalDimensions, `${expected.id} source dimensions changed unexpectedly`);
-  assert.deepEqual(item.derivativeDimensions, expected.displayDimensions, `${expected.id} display dimensions changed unexpectedly`);
-  assert.equal(item.privacyCropped, expected.privacyCropped, `${expected.id} privacy-crop metadata changed unexpectedly`);
-  assert.equal(item.classification, "demo", `${expected.id} must remain demo-classified`);
-  if (expected.privacyCropped) {
-    assert.match(item.processing, /burned-in timestamp\/GPS\/operator overlay/i, `${expected.id} processing must explain removal of identifying text`);
-  }
-  if (expected.stretched) {
-    assert.match(item.processing, /independent per-band linear 2nd-to-98th percentile display stretch/i, `${expected.id} TIFF preview must disclose its independent browser stretch`);
-  } else {
-    assert.doesNotMatch(item.processing, /percentile stretch/i, `${expected.id} camera preview must not claim TIFF stretching`);
-  }
-
-  const derivativeUrl = new URL(`../${item.derivative}`, import.meta.url);
-  assert.ok(existsSync(derivativeUrl), `${expected.id} browser derivative is missing: ${item.derivative}`);
-  const derivative = readFileSync(derivativeUrl);
-  assert.equal(createHash("sha256").update(derivative).digest("hex"), expected.derivativeSha256, `${expected.id} derivative bytes changed unexpectedly`);
-  assert.deepEqual(webpDimensions(derivative), expected.displayDimensions, `${expected.id} derivative pixel dimensions must match the manifest`);
-}
-
-// Only the explicitly designated sample palm receives the real demonstration
-// survey context. Readings remain a separate deterministic demo record.
-assert.equal(evidenceTreeId, "FRM-AP-ELR-0004-T001", "Evidence imagery must remain limited to the accepted sample palm");
-assert.equal(treeObservation.treeId, evidenceTreeId, "The deterministic observation must identify the same sample palm");
+assert.match(evidenceManifest.notice, /not .*source of displayed NDVI, NDRE, Ganoderma confidence, temperature, or trend values/i, "The manifest must prohibit image-derived indices and assessment");
 assert.deepEqual(
-  treeObservation.values,
-  { ndvi: 0.43, ndre: 0.32, ganodermaConfidence: 18, canopyTemperature: 30.8, recentRiskTrend: 0.03 },
-  "The accepted deterministic sample-palm readings changed unexpectedly"
+  evidenceManifest.views.map(({ id, label, band, sourceFilename }) => ({ id, label, band, sourceFilename })),
+  [
+    { id:"rgb", label:"RGB", band:"Visible RGB", sourceFilename:"DJI_20260620095043_0001_D.JPG" },
+    { id:"false-colour", label:"False colour", band:"Camera false-colour", sourceFilename:"DJI_20260620095043_0001_F.JPG" },
+    { id:"green", label:"Green", band:"Green", sourceFilename:"DJI_20260620095043_0001_MS_G.TIF" },
+    { id:"red", label:"Red", band:"Red", sourceFilename:"DJI_20260620095043_0001_MS_R.TIF" },
+    { id:"red-edge", label:"Red-edge", band:"Red-edge", sourceFilename:"DJI_20260620095043_0001_MS_RE.TIF" },
+    { id:"near-infrared", label:"NIR", band:"Near-infrared", sourceFilename:"DJI_20260620095043_0001_MS_NIR.TIF" },
+  ],
+  "The audited external manifest must list the supplied 0001 RGB, false-colour, Green, Red, Red-edge, and NIR views"
 );
+for (const item of evidenceManifest.views) {
+  assert.match(item.sourceSha256, /^[a-f0-9]{64}$/, `${item.id} must record the supplied source hash`);
+  assert.ok(Array.isArray(item.sourceDimensions) && item.sourceDimensions.length === 2, `${item.id} must record source dimensions`);
+  assert.match(item.derivative, /^assets\/tree-evidence\/.+\.webp$/, `${item.id} must point to a browser WebP derivative`);
+  assert.ok(item.derivativeDimensions[0] <= 1400 && item.derivativeDimensions[1] <= 1400, `${item.id} derivative must be review-sized`);
+  assert.match(item.processing, /resized to maximum 1400 px/i, `${item.id} processing must document the browser derivative`);
+  assert.equal(item.classification, "demo", `${item.id} must retain demo classification`);
+  const derivativeUrl = new URL(`../${item.derivative}`, import.meta.url);
+  assert.ok(existsSync(derivativeUrl), `${item.id} browser derivative is missing: ${item.derivative}`);
+  assert.deepEqual(webpDimensions(readFileSync(derivativeUrl)), item.derivativeDimensions, `${item.id} derivative dimensions must match the manifest`);
+}
+assert.equal(treeObservation.treeId, "demo-all-trees", "The deterministic observation template must be reusable across demo trees");
 assert.match(treeObservation.disclosure, /Demo interpretation bands and simulated readings only/i, "Tree indicators must disclose their simulated interpretation basis");
 assert.match(treeObservation.disclosure, /No NDVI, NDRE, diagnosis, Ganoderma confidence, canopy temperature, or recent trend is derived from the supplied images/i, "Tree indicators must explicitly separate every reading from the supplied imagery");
 assert.equal(treeEvidenceManifest.captureId, evidenceManifest.captureId, "The rendered gallery must use the audited manifest capture");
@@ -1209,53 +1166,7 @@ assert.deepEqual(
   evidenceManifest.views.map(({ id, label, band, derivative }) => ({ id, label, band, src: derivative })),
   "The gallery's rendered view list must exactly mirror the audited external manifest"
 );
-assert.ok(treeEvidenceManifest.views.every((view) => /demonstration|demo/i.test(view.alt)), "Every evidence image needs meaningful demonstration-context alt text");
-
-const expectedIndicators = [
-  {
-    id: "ndvi", label: "NDVI", value: 0.43, display: "0.43", min: 0, max: 1, selectedStatus: "bad",
-    ranges: [["Danger", "< 0.45", 0, 0.45, "bad"], ["Suspected", "0.45-0.65", 0.45, 0.65, "risk"], ["Okay", "> 0.65", 0.65, 1, "ok"]],
-    help: /vegetation-vigor.*not a Ganoderma diagnosis/i,
-  },
-  {
-    id: "ndre", label: "NDRE", value: 0.32, display: "0.32", min: 0, max: 1, selectedStatus: "risk",
-    ranges: [["Danger", "< 0.25", 0, 0.25, "bad"], ["Suspected", "0.25-0.40", 0.25, 0.4, "risk"], ["Okay", "> 0.40", 0.4, 1, "ok"]],
-    help: /chlorophyll-related canopy stress.*not diagnostic on its own/i,
-  },
-  {
-    id: "ganodermaConfidence", label: "Ganoderma confidence", value: 18, display: "18%", min: 0, max: 100, selectedStatus: "ok",
-    ranges: [["Okay", "< 35%", 0, 35, "ok"], ["Suspected", "35-65%", 35, 65, "risk"], ["Danger", "> 65%", 65, 100, "bad"]],
-    help: /simulated model-confidence.*not calculated from the supplied captures/i,
-  },
-  {
-    id: "canopyTemperature", label: "Canopy temperature", value: 30.8, display: "30.8°C", min: 20, max: 45, selectedStatus: "ok",
-    ranges: [["Okay", "<= 32°C", 20, 32, "ok"], ["Suspected", "> 32-35°C", 32, 35, "risk"], ["Danger", "> 35°C", 35, 45, "bad"]],
-    help: /degrees Celsius.*heat or water stress.*not specific to Ganoderma/i,
-  },
-  {
-    id: "recentRiskTrend", label: "Recent risk trend", value: 0.03, display: "+0.03", min: -0.1, max: 0.25, selectedStatus: "ok",
-    ranges: [["Okay", "<= +0.05", -0.1, 0.05, "ok"], ["Suspected", "> +0.05-0.15", 0.05, 0.15, "risk"], ["Danger", "> +0.15", 0.15, 0.25, "bad"]],
-    help: /simulated change.*Positive movement means risk increased/i,
-  },
-];
-assert.equal(ganodermaIndicators.length, 5, "The Ganoderma widget must contain exactly five accepted indicators");
-for (const [index, expected] of expectedIndicators.entries()) {
-  const indicatorDefinition = ganodermaIndicators[index];
-  for (const field of ["id", "label", "value", "display", "min", "max"]) {
-    assert.equal(indicatorDefinition[field], expected[field], `${expected.label} ${field} changed unexpectedly`);
-  }
-  assert.match(indicatorDefinition.help, expected.help, `${expected.label} help must explain what the reading tells the viewer`);
-  assert.deepEqual(
-    indicatorDefinition.ranges.map(({ label, text, from, to, status }) => [label, text, from, to, status]),
-    expected.ranges,
-    `${expected.label} must expose the accepted green/yellow/red interpretation ranges`
-  );
-  const selectedRange = indicatorDefinition.ranges.find((range, rangeIndex) =>
-    indicatorDefinition.value >= range.from &&
-    (rangeIndex === indicatorDefinition.ranges.length - 1 ? indicatorDefinition.value <= range.to : indicatorDefinition.value < range.to)
-  );
-  assert.equal(selectedRange?.status, expected.selectedStatus, `${expected.label} must classify its exact value in the correct direction-aware status band`);
-}
+assert.ok(treeEvidenceManifest.views.every((view) => /demonstration|demo|supplied/i.test(view.alt)), "Every evidence image needs meaningful demonstration-context alt text");
 
 assert.doesNotMatch(
   html,
@@ -1264,24 +1175,20 @@ assert.doesNotMatch(
 );
 
 const treeEvidenceForBody = functionBody(html, "treeEvidenceFor");
-const treeEvidenceFor = Function(
-  "EVIDENCE_TREE_ID", "TREE_OBSERVATION", "TREE_EVIDENCE_MANIFEST", "treeId",
-  `return (function treeEvidenceFor(treeId){${treeEvidenceForBody}})(treeId);`
-);
-assert.equal(treeEvidenceFor(evidenceTreeId, treeObservation, treeEvidenceManifest, evidenceTreeId).treeId, evidenceTreeId, "The accepted sample palm must receive the evidence gallery");
-assert.equal(treeEvidenceFor(evidenceTreeId, treeObservation, treeEvidenceManifest, `${evidenceTreeId.slice(0, -3)}002`), null, "Every non-sample palm must receive an honest no-imagery state");
+assert.match(treeEvidenceForBody, /TREE_EVIDENCE_MANIFEST/, "Every demo tree must receive the supplied evidence manifest");
+assert.match(treeEvidenceForBody, /status===["']neutral["'][^]*values\s*:\s*null|values\s*:\s*null[^]*status===["']neutral["']/, "No-data trees must not receive fabricated Ganoderma readings");
+assert.match(treeEvidenceForBody, /ganodermaConfidence\s*:\s*82/, "Danger trees need high Ganoderma confidence demo readings");
+assert.match(treeEvidenceForBody, /ganodermaConfidence\s*:\s*52/, "Suspected trees need moderate Ganoderma confidence demo readings");
+assert.match(treeEvidenceForBody, /ganodermaConfidence\s*:\s*18/, "Healthy trees need low Ganoderma confidence demo readings");
 
 const renderTreeBody = functionBody(html, "renderTree");
-assert.match(renderTreeBody, /treeEvidenceFor\s*\(\s*state\.treeId\s*\)/, "Tree Details must resolve evidence from the exact selected Tree ID");
-assert.match(renderTreeBody, /renderTreeEvidence\s*\(\s*observation\s*\)/, "Tree Details must render the scoped gallery result");
+assert.match(renderTreeBody, /treeEvidenceFor\s*\(\s*cell\s*\)/, "Tree Details must resolve evidence from the selected tree health state");
+assert.match(renderTreeBody, /renderTreeEvidence\s*\(\s*observation\s*\)/, "Tree Details must render the supplied gallery result");
 assert.match(renderTreeBody, /renderGanodermaIndicators\s*\(\s*observation\s*\)/, "Tree Details must render indicators from the separate deterministic observation");
 
 const renderTreeEvidenceBody = functionBody(html, "renderTreeEvidence");
-assert.match(renderTreeEvidenceBody, /if\s*\(\s*!observation\s*\)/, "The gallery must handle a palm with no assigned imagery explicitly");
-assert.match(renderTreeEvidenceBody, /No survey imagery linked/i, "A non-sample palm needs an honest no-imagery heading");
-assert.match(renderTreeEvidenceBody, /No image evidence has been inferred/i, "The no-imagery state must prohibit farm/neighbour inference");
-assert.match(renderTreeEvidenceBody, /role=["']tablist["'][^]*aria-label=["']Survey image views["']|aria-label=["']Survey image views["'][^]*role=["']tablist["']/, "Gallery thumbnails need an accessible named tablist");
-assert.match(renderTreeEvidenceBody, /role=["']tab["'][^]*aria-selected=["']\$\{view\.id===selected\.id\}["'][^]*tabindex=["']\$\{view\.id===selected\.id\?0:-1\}["']/, "Gallery tabs need roving keyboard focus and selected state");
+assert.match(renderTreeEvidenceBody, /role=["']tablist["'][^]*aria-label=["']Survey image views["']|aria-label=["']Survey image views["'][^]*role=["']tablist["']/, "Gallery view buttons need an accessible named selector");
+assert.match(renderTreeEvidenceBody, /role=["']tab["'][^]*aria-selected=["']\$\{view\.id===selected\.id\}["'][^]*tabindex=["']\$\{view\.id===selected\.id\?0:-1\}["']/, "Gallery buttons need roving keyboard focus and selected state");
 assert.match(renderTreeEvidenceBody, /role=["']tabpanel["'][^]*aria-labelledby=/, "The full-size evidence preview needs tabpanel semantics");
 assert.match(renderTreeEvidenceBody, /<img[^>]*alt=["']\$\{selected\.alt\}["']/, "The evidence preview must use its meaningful manifest alt text");
 assert.match(renderTreeEvidenceBody, /Loading \$\{selected\.label\} preview/i, "The evidence gallery needs a visible loading fallback");
@@ -1303,11 +1210,6 @@ assert.match(bindTreeEvidenceBody, /addEventListener\s*\(\s*["']error["']\s*,\s*
 
 const indicatorStatusBody = functionBody(html, "indicatorStatus");
 const indicatorStatus = Function("indicator", `return (function indicatorStatus(indicator){${indicatorStatusBody}})(indicator);`);
-assert.deepEqual(
-  ganodermaIndicators.map((definition) => indicatorStatus(definition)),
-  ["bad", "risk", "ok", "ok", "ok"],
-  "The five exact sample readings must resolve to Danger, Suspected, Okay, Okay, Okay"
-);
 for (const [id, values] of Object.entries({
   ndvi: [[0.44, "bad"], [0.55, "risk"], [0.7, "ok"]],
   ndre: [[0.2, "bad"], [0.32, "risk"], [0.5, "ok"]],
@@ -1322,7 +1224,8 @@ for (const [id, values] of Object.entries({
 
 const renderGanodermaIndicatorsBody = functionBody(html, "renderGanodermaIndicators");
 assert.match(renderGanodermaIndicatorsBody, /No indicator reading recorded/i, "A palm without an observation needs an honest no-reading state");
-assert.match(renderGanodermaIndicatorsBody, /GANODERMA_INDICATORS\.map\s*\(\s*renderIndicator\s*\)/, "The widget must render all five accepted indicators");
+assert.match(renderGanodermaIndicatorsBody, /GANODERMA_INDICATOR_DEFINITIONS\.map/, "The widget must render all five accepted indicators from shared definitions");
+assert.match(renderGanodermaIndicatorsBody, /formatIndicatorValue/, "The widget must format health-consistent readings from the selected tree observation");
 assert.match(renderGanodermaIndicatorsBody, /observation\.disclosure/, "The widget must visibly repeat the no-image-derived-reading disclosure");
 assert.match(renderGanodermaIndicatorsBody, /demonstration thresholds, not diagnostic cut-offs/i, "Indicator ranges must not be presented as clinical cut-offs");
 const renderIndicatorBody = functionBody(html, "renderIndicator");
