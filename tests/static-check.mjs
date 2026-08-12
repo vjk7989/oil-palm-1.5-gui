@@ -243,6 +243,11 @@ assert.ok(companyPortfolios.gavl.districts.some((district) => district.mandals.s
 assert.deepEqual(companyPortfolios.nbl.districts.map((district) => district.name), ["Eluru", "East Godavari"], "NBL data must stay in its workbook districts");
 assert.deepEqual(companyPortfolios.tgoilfed.districts.map((district) => district.name), ["Bhadradri Kothagudem", "Khammam"], "TGOILFED data must use the workbook Telangana districts");
 assert.match(html, /\.company-card\{[^}]*grid-template-columns:76px 1fr auto/, "Company cards must reserve a separate logo column");
+assert.match(html, /\.landing\[hidden\]\{display:none\}/, "Hidden landing screen must not overlay the opened dashboard");
+for (const logo of ["godrej-agrovet.png", "nbl.png", "tgoilfed.png"]) {
+  assert.ok(existsSync(new URL(`../assets/company-logos/${logo}`, import.meta.url)), `${logo} must be bundled as a browser-ready company logo`);
+  assert.match(html, new RegExp(`assets/company-logos/${logo}`), `${logo} must be referenced by the company selector`);
+}
 assert.match(html, /\.htr\{[^}]*minmax\(132px,\s*\.95fr\)/, "Table health column must reserve enough width for status badges without overlap");
 
 assert.deepEqual(

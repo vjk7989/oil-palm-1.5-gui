@@ -38,6 +38,7 @@
     button,input,select{font:inherit}
     button{cursor:pointer}
     .landing{min-height:100vh;padding:40px 28px;display:grid;place-items:center;background:radial-gradient(circle at 18% 18%,oklch(0.94 0.055 350),transparent 30%),linear-gradient(135deg,var(--sidebar),var(--bg) 54%,oklch(0.99 0.01 326));color:var(--fg)}
+    .landing[hidden]{display:none}
     .landing-inner{width:min(1120px,100%);display:grid;grid-template-columns:minmax(280px,.9fr) minmax(420px,1.1fr);gap:34px;align-items:center}
     .landing-mark{display:inline-flex;align-items:center;gap:10px;font-weight:800;margin-bottom:18px}
     .landing-mark .logomark{width:42px;height:42px;border-radius:13px}
@@ -293,9 +294,9 @@
       return {id,name,lat,lon,acres,density,trees,surveyed,infected,suspected,pending,risk,lastSurvey:observations.lastSurvey||"2026-08-01",source:"deterministic-demo",ownershipClaim:false};
     }
     const COMPANY_PROFILES = {
-      gavl:{id:"gavl",shortName:"GAVL",name:"Godrej Agrovet Oil Palm",regionLabel:"Andhra Pradesh",subtitle:"Workbook-derived GAVL farms across Chintalapudi, Dwaraka Tirumala, and Kamavarapukota.",logo:"assets/company-logos/godrej-agrovet.svg",accent:"G",riskBase:.045,coverage:.91,baseLat:16.86,baseLon:81.12,districtFallback:"Eluru"},
-      nbl:{id:"nbl",shortName:"NBL",name:"Navabharat Limited / NBL",regionLabel:"Andhra Pradesh",subtitle:"Workbook-derived NBL farms across Eluru and East Godavari.",logo:"assets/company-logos/nbl.svg",accent:"N",riskBase:.056,coverage:.87,baseLat:16.92,baseLon:81.36,districtFallback:"Eluru"},
-      tgoilfed:{id:"tgoilfed",shortName:"TGOF",name:"TGOILFED",regionLabel:"Telangana",subtitle:"Workbook-derived Telangana Oilfed farms across Bhadradri Kothagudem and Khammam.",logo:"assets/company-logos/tgoilfed.svg",accent:"T",riskBase:.071,coverage:.84,baseLat:17.34,baseLon:80.78,districtFallback:"Bhadradri Kothagudem"}
+      gavl:{id:"gavl",shortName:"GAVL",name:"Godrej Agrovet Oil Palm",regionLabel:"Andhra Pradesh",subtitle:"Workbook-derived GAVL farms across Chintalapudi, Dwaraka Tirumala, and Kamavarapukota.",logo:"assets/company-logos/godrej-agrovet.png",accent:"G",riskBase:.045,coverage:.91,baseLat:16.86,baseLon:81.12,districtFallback:"Eluru"},
+      nbl:{id:"nbl",shortName:"NBL",name:"Navabharat Limited / NBL",regionLabel:"Andhra Pradesh",subtitle:"Workbook-derived NBL farms across Eluru and East Godavari.",logo:"assets/company-logos/nbl.png",accent:"N",riskBase:.056,coverage:.87,baseLat:16.92,baseLon:81.36,districtFallback:"Eluru"},
+      tgoilfed:{id:"tgoilfed",shortName:"TGOF",name:"TGOILFED",regionLabel:"Telangana",subtitle:"Workbook-derived Telangana Oilfed farms across Bhadradri Kothagudem and Khammam.",logo:"assets/company-logos/tgoilfed.png",accent:"T",riskBase:.071,coverage:.84,baseLat:17.34,baseLon:80.78,districtFallback:"Bhadradri Kothagudem"}
     };
     const COMPANY_AREA_ROWS = {
       gavl:["GAVL|AP||Chintalapudi|Chintalapudi|Subba Rao|GAVL_0001","GAVL|AP||Chintalapudi|Chintalapudi|Subba Rao|GAVL_0002","GAVL|AP||Chintalapudi|Recharla|Mangamma|GAVL_0119","GAVL|AP||Chintalapudi|Raghavapuram|Laxmana Rao|GAVL_1901","GAVL|AP||Chintalapudi|Erraguntapalli|Narasamma|GAVL_2091","GAVL|AP||Chintalapudi|Seethanagaram|Venkata Rao|GAVL_3139","GAVL|AP||Chintalapudi|Seethanagaram|Rama Rao|GAVL_3142","GAVL|AP||Chintalapudi|Seethanagaram|Venkata Rao|GAVL_3140","GAVL|AP||Chintalapudi|Gurubhatlagudem|Tata Rao|GAVL_4331","GAVL|AP||Chintalapudi|Gurubhatlagudem|Prasanna|GAVL_4359","GAVL|AP||Kamavarapukota|Kamavarapukota|Naresh|GAVL_5021","GAVL|AP||Kamavarapukota|Kamavarapukota|Durgamma|GAVL_5129","GAVL|AP||Kamavarapukota|Ravikampadu|Chandramma|GAVL_5221","GAVL|AP||Kamavarapukota|Tadikalapudi|Gautam Raju|GAVL_5423","GAVL|AP||Kamavarapukota|Kallacheruvu|Babu Rao|GAVL_5458","GAVL|AP||Kamavarapukota|Uppalapadu|Jagapathi Rao|GAVL_5833","GAVL|AP||Dwaraka Tirumala|Dwaraka Tirumala|Balakrishna|GAVL_6999","GAVL|AP||Dwaraka Tirumala|Dwaraka Tirumala|Hanumantha Rao|GAVL_6227","GAVL|AP||Dwaraka Tirumala|Pangidugudem|Jaya Lakshmi|GAVL_6448","GAVL|AP||Dwaraka Tirumala|Dorasanipadu|Lakshmi Devi|GAVL_6332"],
