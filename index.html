@@ -37,6 +37,22 @@
     body{font-family:var(--font-sans);color:var(--fg);background:var(--bg);-webkit-font-smoothing:antialiased}
     button,input,select{font:inherit}
     button{cursor:pointer}
+    .landing{min-height:100vh;padding:40px 28px;display:grid;place-items:center;background:radial-gradient(circle at 18% 18%,oklch(0.94 0.055 350),transparent 30%),linear-gradient(135deg,var(--sidebar),var(--bg) 54%,oklch(0.99 0.01 326));color:var(--fg)}
+    .landing-inner{width:min(1120px,100%);display:grid;grid-template-columns:minmax(280px,.9fr) minmax(420px,1.1fr);gap:34px;align-items:center}
+    .landing-mark{display:inline-flex;align-items:center;gap:10px;font-weight:800;margin-bottom:18px}
+    .landing-mark .logomark{width:42px;height:42px;border-radius:13px}
+    .landing h1{font-size:44px;line-height:1.05;letter-spacing:-.035em;margin:0;text-wrap:balance}
+    .landing-copy{color:var(--mfg);font-size:16px;line-height:1.55;max-width:58ch;margin:16px 0 0}
+    .company-grid{display:grid;gap:14px}
+    .company-card{width:100%;border:1px solid var(--bord2);background:oklch(1 0 0 / .82);box-shadow:var(--shadow);border-radius:18px;padding:18px;display:grid;grid-template-columns:76px 1fr auto;gap:16px;align-items:center;text-align:left;color:var(--fg);transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease}
+    .company-card:hover,.company-card:focus-visible{transform:translateY(-2px);border-color:var(--primary);box-shadow:0 14px 34px oklch(0.33 0.11 325 / .12)}
+    .company-card:focus-visible{outline:3px solid color-mix(in oklch,var(--primary) 42%,transparent);outline-offset:3px}
+    .company-logo{width:76px;height:58px;border-radius:14px;background:var(--card);border:1px solid var(--bord2);display:grid;place-items:center;overflow:hidden}
+    .company-logo img{max-width:68px;max-height:48px;display:block}
+    .company-card b{display:block;font-size:18px;letter-spacing:-.01em}.company-card span{display:block;color:var(--mfg);font-size:13px;margin-top:4px;line-height:1.4}
+    .company-card em{font-style:normal;color:var(--primary);font:800 19px var(--font-mono)}
+    .landing-note{margin-top:18px;border:1px solid var(--bord2);background:oklch(1 0 0 / .55);border-radius:12px;padding:13px 15px;color:var(--mfg);font-size:13px;line-height:1.45}
+    .app.is-landing-hidden{display:none}
     .app{display:grid;grid-template-columns:250px 1fr;height:100vh;overflow:hidden}
     .side{background:var(--sidebar);border-right:1px solid var(--bord2);display:flex;flex-direction:column;padding:20px 14px;gap:6px}
     .logo{display:flex;align-items:center;gap:10px;padding:6px 8px 18px}
@@ -169,7 +185,8 @@
   </style>
 </head>
 <body>
-  <div class="app">
+  <section class="landing" id="landing" aria-labelledby="landingTitle"></section>
+  <div class="app is-landing-hidden" id="appShell">
     <aside class="side" aria-label="Primary navigation">
       <div class="logo"><span class="logomark">P</span><span><span class="logotext">PalmWatch</span><span class="logosub">AP MONITORING</span></span></div>
       <div class="navlabel">Monitoring</div>
@@ -185,6 +202,7 @@
         </div>
         <div class="tb-right">
           <div class="toggle" id="viewToggle"><button class="tg on" data-view="map">Map</button><button class="tg" data-view="table">Table</button></div>
+          <button class="btn-ghost" id="companySwitch" type="button">Change company</button>
           <select class="csel" id="roleSelect" aria-label="Select demo role"></select>
           <div class="profile-wrap"><button class="avatar" id="profileBtn" title="Settings and sign out" aria-haspopup="menu" aria-expanded="false">SA</button><div class="profile-menu hidden" id="profileMenu" role="menu"></div></div>
         </div>
@@ -274,6 +292,42 @@
       const pending = Number.isInteger(observations.pending)?observations.pending:Math.max(2,Math.round(trees*(.015+risk*.25)));
       return {id,name,lat,lon,acres,density,trees,surveyed,infected,suspected,pending,risk,lastSurvey:observations.lastSurvey||"2026-08-01",source:"deterministic-demo",ownershipClaim:false};
     }
+    const COMPANY_PROFILES = {
+      gavl:{id:"gavl",shortName:"GAVL",name:"Godrej Agrovet Oil Palm",regionLabel:"Andhra Pradesh",subtitle:"Workbook-derived GAVL farms across Chintalapudi, Dwaraka Tirumala, and Kamavarapukota.",logo:"assets/company-logos/godrej-agrovet.svg",accent:"G",riskBase:.045,coverage:.91,baseLat:16.86,baseLon:81.12,districtFallback:"Eluru"},
+      nbl:{id:"nbl",shortName:"NBL",name:"Navabharat Limited / NBL",regionLabel:"Andhra Pradesh",subtitle:"Workbook-derived NBL farms across Eluru and East Godavari.",logo:"assets/company-logos/nbl.svg",accent:"N",riskBase:.056,coverage:.87,baseLat:16.92,baseLon:81.36,districtFallback:"Eluru"},
+      tgoilfed:{id:"tgoilfed",shortName:"TGOF",name:"TGOILFED",regionLabel:"Telangana",subtitle:"Workbook-derived Telangana Oilfed farms across Bhadradri Kothagudem and Khammam.",logo:"assets/company-logos/tgoilfed.svg",accent:"T",riskBase:.071,coverage:.84,baseLat:17.34,baseLon:80.78,districtFallback:"Bhadradri Kothagudem"}
+    };
+    const COMPANY_AREA_ROWS = {
+      gavl:["GAVL|AP||Chintalapudi|Chintalapudi|Subba Rao|GAVL_0001","GAVL|AP||Chintalapudi|Chintalapudi|Subba Rao|GAVL_0002","GAVL|AP||Chintalapudi|Recharla|Mangamma|GAVL_0119","GAVL|AP||Chintalapudi|Raghavapuram|Laxmana Rao|GAVL_1901","GAVL|AP||Chintalapudi|Erraguntapalli|Narasamma|GAVL_2091","GAVL|AP||Chintalapudi|Seethanagaram|Venkata Rao|GAVL_3139","GAVL|AP||Chintalapudi|Seethanagaram|Rama Rao|GAVL_3142","GAVL|AP||Chintalapudi|Seethanagaram|Venkata Rao|GAVL_3140","GAVL|AP||Chintalapudi|Gurubhatlagudem|Tata Rao|GAVL_4331","GAVL|AP||Chintalapudi|Gurubhatlagudem|Prasanna|GAVL_4359","GAVL|AP||Kamavarapukota|Kamavarapukota|Naresh|GAVL_5021","GAVL|AP||Kamavarapukota|Kamavarapukota|Durgamma|GAVL_5129","GAVL|AP||Kamavarapukota|Ravikampadu|Chandramma|GAVL_5221","GAVL|AP||Kamavarapukota|Tadikalapudi|Gautam Raju|GAVL_5423","GAVL|AP||Kamavarapukota|Kallacheruvu|Babu Rao|GAVL_5458","GAVL|AP||Kamavarapukota|Uppalapadu|Jagapathi Rao|GAVL_5833","GAVL|AP||Dwaraka Tirumala|Dwaraka Tirumala|Balakrishna|GAVL_6999","GAVL|AP||Dwaraka Tirumala|Dwaraka Tirumala|Hanumantha Rao|GAVL_6227","GAVL|AP||Dwaraka Tirumala|Pangidugudem|Jaya Lakshmi|GAVL_6448","GAVL|AP||Dwaraka Tirumala|Dorasanipadu|Lakshmi Devi|GAVL_6332"],
+      nbl:["NBL|AP|Eluru|Jangareddygudem|Jangareddygudem|Rambabu|NBL_0001","NBL|AP|Eluru|Jangareddygudem|Jangareddygudem|Gangadhar|NBL_0002","NBL|AP|Eluru|Jangareddygudem|Guravaigudem|Laxmana Rao|NBL_0119","NBL|AP|Eluru|Jangareddygudem|Devulapalle|Laxmana Rao|NBL_1901","NBL|AP|Eluru|Jangareddygudem|Mysannagudem|Gangadhar|NBL_2091","NBL|AP|Eluru|Jangareddygudem|Lakkavaram|Bapineedu|NBL_3139","NBL|AP|Eluru|Koyyalagudem|Koyyalagudem|Rama Rao|NBL_3142","NBL|AP|Eluru|Koyyalagudem|Rajavaram|Venkataswami|NBL_3140","NBL|AP|Eluru|Koyyalagudem|Ponguturu|Devi|NBL_4331","NBL|AP|Eluru|Koyyalagudem|Bayyanagudem|Rayudu|NBL_4359","NBL|AP|Eluru|Jangareddygudem|Taduvai|Srikanth|NBL_5021","NBL|AP|Eluru|Jangareddygudem|Vegavaram|Rajamma|NBL_5129","NBL|AP|Eluru|Jangareddygudem|Srinivasapuram|Chandramma|NBL_5221","NBL|AP|East Godavari|Gopalapuram|Gopalapuram|Gautam Raju|NBL_5423","NBL|AP|East Godavari|Gopalapuram|Gopalapuram|Babu Rao|NBL_5458","NBL|AP|East Godavari|Gopalapuram|Cherukumilli|Jagapathi Rao|NBL_5833","NBL|AP|East Godavari|Gopalapuram|Chityala|Balakrishna|NBL_6999","NBL|AP|East Godavari|Tallapudi|Annadevarapeta|Hanumantha Rao|NBL_6227","NBL|AP|East Godavari|Tallapudi|Ballipadu|Jaya Lakshmi|NBL_6448","NBL|AP|East Godavari|Tallapudi|Tirugudumetta|Lakshmi Devi|NBL_6332"],
+      tgoilfed:["TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Aswaraopeta|Rambabu|TGOF_0001","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Aswaraopeta|Gangadhar|TGOF_0002","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Aswaraopeta|Laxmana Rao|TGOF_0119","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Aswaraopeta|Laxmana Rao|TGOF_1901","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Ramannagudem|Gangadhar|TGOF_2091","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Ramannagudem|Bapineedu|TGOF_3139","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Ramannagudem|Rama Rao|TGOF_3142","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Vedanthapuram|Venkataswami|TGOF_3140","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Vedanthapuram|Devi|TGOF_4331","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Vedanthapuram|Rayudu|TGOF_4359","TGOF|TG|Khammam|Sathupalli|Sathupalli|Srikanth|TGOF_5021","TGOF|TG|Khammam|Sathupalli|Sathupalli|Rajamma|TGOF_5129","TGOF|TG|Khammam|Sathupalli|Bethupalle|Chandramma|TGOF_5221","TGOF|TG|Khammam|Sathupalli|Bethupalle|Gautam Raju|TGOF_5423","TGOF|TG|Khammam|Sathupalli|Kistaram|Babu Rao|TGOF_5458","TGOF|TG|Khammam|Sathupalli|Kistaram|Jagapathi Rao|TGOF_5833","TGOF|TG|Khammam|Sathupalli|Kakarlapally|Balakrishna|TGOF_6999","TGOF|TG|Khammam|Sathupalli|Kakarlapally|Hanumantha Rao|TGOF_6227","TGOF|TG|Khammam|Sathupalli|Siddharam|Jaya Lakshmi|TGOF_6448","TGOF|TG|Khammam|Sathupalli|Siddharam|Lakshmi Devi|TGOF_6332"]
+    };
+    function parseCompanyRows(rows){
+      return rows.map(line=>{const [company,state,district,mandal,village,farmer,farmId]=line.split("|");return {company,state,district,mandal,village,farmer,farmId};});
+    }
+    function coordinateFor(profile,index,spread=.18){
+      const ring=index%8, band=Math.floor(index/8);
+      return {lat:profile.baseLat+(ring-3.5)*spread*.12+band*.025,lon:profile.baseLon+(band-1)*spread*.18+(ring%4-.5)*spread*.1};
+    }
+    function buildCompanyDistricts(companyId){
+      const profile=COMPANY_PROFILES[companyId], groups=[];
+      parseCompanyRows(COMPANY_AREA_ROWS[companyId]).forEach((row,index)=>{
+        const districtName=row.district||profile.districtFallback, mandalName=row.mandal, villageName=row.village;
+        const pin=coordinateFor(profile,index), seed=[...row.farmId].reduce((sum,char)=>sum+char.charCodeAt(0),0);
+        const acres=5+(seed%7), density=52+(seed%6), risk=Math.min(.12,Math.max(.018,profile.riskBase+((seed%9)-4)*.006));
+        const companyFarm=farm(row.farmId,`${row.farmer} ${villageName} Farm`,pin.lat,pin.lon,acres,density,risk,{surveyed:Math.round(acres*density*(profile.coverage-((seed%5)*.01))),pending:Math.max(3,Math.round(acres*density*(.018+risk*.22))),lastSurvey:`2026-08-${String(1+(seed%8)).padStart(2,"0")}`});
+        companyFarm.companyId=companyId;companyFarm.company=row.company;companyFarm.farmer=row.farmer;companyFarm.source="workbook-derived-demo";
+        let district=groups.find(item=>item.name===districtName);
+        if(!district){const dPin=coordinateFor(profile,groups.length*7,.26);district={name:districtName,lat:dPin.lat,lon:dPin.lon,mandals:[]};groups.push(district);}
+        let mandal=district.mandals.find(item=>item.name===mandalName);
+        if(!mandal){const mPin=coordinateFor(profile,index,.22);mandal={name:mandalName,lat:mPin.lat,lon:mPin.lon,villages:[]};district.mandals.push(mandal);}
+        let village=mandal.villages.find(item=>item.name===villageName);
+        if(!village){village={name:villageName,lat:pin.lat,lon:pin.lon,farms:[]};mandal.villages.push(village);}
+        village.farms.push(companyFarm);
+      });
+      return groups;
+    }
+    const COMPANY_PORTFOLIOS = Object.fromEntries(Object.keys(COMPANY_PROFILES).map(id=>[id,{...COMPANY_PROFILES[id],districts:buildCompanyDistricts(id)}]));
     const alertRecords = [
       {id:"ALT-AP-001",farmId:"FRM-AP-WGD-0215",severity:"danger",affected:52,date:"2026-08-08",summary:"Recorded infection rate requires treatment review"},
       {id:"ALT-AP-002",farmId:"FRM-AP-ELR-0023",severity:"danger",affected:62,date:"2026-08-07",summary:"Field confirmation and containment action are due"},
@@ -466,14 +520,39 @@
       return demoState;
     }
     let demoState = loadDemoState();
-    let state = {role:"admin",page:"Overview",view:"map",path:[],farmId:null,treeId:null,evidenceView:"rgb",farmAcre:1,newFarmDraft:normalizeNewFarmDraft(DEFAULT_FARM_DRAFT),newFarmAcre:1,newFarmPreview:null,newFarmErrors:[],alertRead:"all",alertSeverity:"all",reportView:null,caseTab:"cases",caseStatus:"all",caseSearch:"",selectedCaseId:null,caseModalOpen:false,treatmentStatus:"all",treatmentSearch:"",selectedTreatmentId:null,statusMessage:"",profileOpen:false,signedOut:false,resetConfirm:false,customRolePreview:null};
+    let state = {companyId:null,role:"admin",page:"Overview",view:"map",path:[],farmId:null,treeId:null,evidenceView:"rgb",farmAcre:1,newFarmDraft:normalizeNewFarmDraft(DEFAULT_FARM_DRAFT),newFarmAcre:1,newFarmPreview:null,newFarmErrors:[],alertRead:"all",alertSeverity:"all",reportView:null,caseTab:"cases",caseStatus:"all",caseSearch:"",selectedCaseId:null,caseModalOpen:false,treatmentStatus:"all",treatmentSearch:"",selectedTreatmentId:null,statusMessage:"",profileOpen:false,signedOut:false,resetConfirm:false,customRolePreview:null};
     const AP_BOUNDS = [[12.55,76.70],[19.25,84.85]];
     let activeMap = null;
     const content = document.getElementById("content");
+    const landing = document.getElementById("landing");
+    const appShell = document.getElementById("appShell");
     const nav = document.getElementById("nav");
     const crumbs = document.getElementById("crumbs");
     const backBtn = document.getElementById("backBtn");
     const pageTitle = document.getElementById("pageTitle");
+    function activeCompany(){
+      return COMPANY_PORTFOLIOS[state.companyId]||COMPANY_PORTFOLIOS.gavl;
+    }
+    function activeDistricts(){
+      return activeCompany().districts;
+    }
+    function roleScope(roleId=state.role){
+      const ds=activeDistricts(), first=ds[0], second=ds[1], firstMandal=first?.mandals?.[0], firstFarm=firstMandal?.villages?.flatMap(v=>v.farms)?.[0];
+      if(roleId==="admin"||roleId==="ceo")return {districts:"all"};
+      if(roleId==="head")return {districts:[first?.name,second?.name].filter(Boolean)};
+      if(roleId==="manager")return {districts:first?[first.name]:[],mandals:firstMandal?[firstMandal.name]:[]};
+      if(roleId==="staff")return {farmIds:firstFarm?[firstFarm.id]:[]};
+      return {};
+    }
+    function resetOperationalScope(){
+      state.page="Overview";state.view=state.view||"map";state.path=[];state.farmId=null;state.treeId=null;state.farmAcre=1;state.evidenceView="rgb";state.reportView=null;state.caseTab="cases";state.caseStatus="all";state.caseSearch="";state.selectedCaseId=null;state.caseModalOpen=false;state.treatmentStatus="all";state.treatmentSearch="";state.selectedTreatmentId=null;state.alertRead="all";state.alertSeverity="all";state.statusMessage="";
+    }
+    function selectCompany(companyId){
+      if(!COMPANY_PORTFOLIOS[companyId])return;
+      state.companyId=companyId;
+      resetOperationalScope();
+      render();
+    }
     function localFarmVisibleForRole(farm,roleId){
       if(!farm||farm.source!=="local-user")return false;
       if(roleId==="admin"||roleId==="ceo")return true;
@@ -484,19 +563,19 @@
       return false;
     }
     function mergedDistricts(roleId=state.role){
-      const role=roles[roleId];
+      const role=roles[roleId], scope=typeof roleScope==="function"?roleScope(roleId):role, baseDistricts=typeof activeDistricts==="function"?activeDistricts():districts;
       if(!role)return [];
-      const all=JSON.parse(JSON.stringify(districts));
-      if(role.districts==="all"){
-        // Explicit portfolio-wide AP assignment; no district filter is needed.
-      }else if(Array.isArray(role.districts)){
-        all.splice(0,all.length,...all.filter(d=>role.districts.includes(d.name)));
-      }else if(!Array.isArray(role.farmIds))return [];
-      if(Array.isArray(role.mandals))all.forEach(d=>d.mandals=d.mandals.filter(m=>role.mandals.includes(m.name)));
-      if(Array.isArray(role.farmIds))all.forEach(d=>d.mandals.forEach(m=>m.villages.forEach(v=>v.farms=v.farms.filter(f=>role.farmIds.includes(f.id)))));
+      const all=JSON.parse(JSON.stringify(baseDistricts));
+      if(scope.districts==="all"){
+        // Explicit portfolio-wide company assignment; no district filter is needed.
+      }else if(Array.isArray(scope.districts)){
+        all.splice(0,all.length,...all.filter(d=>scope.districts.includes(d.name)));
+      }else if(!Array.isArray(scope.farmIds))return [];
+      if(Array.isArray(scope.mandals))all.forEach(d=>d.mandals=d.mandals.filter(m=>scope.mandals.includes(m.name)));
+      if(Array.isArray(scope.farmIds))all.forEach(d=>d.mandals.forEach(m=>m.villages.forEach(v=>v.farms=v.farms.filter(f=>scope.farmIds.includes(f.id)))));
       const localFarms=(demoState?.localFarms||[]).filter(farm=>farm.assignments&&localFarmVisibleForRole(farm,roleId));
       localFarms.forEach(farm=>{
-        const canonical=districts.find(item=>item.name===farm.district);
+        const canonical=baseDistricts.find(item=>item.name===farm.district);
         let district=all.find(item=>item.name===farm.district);
         if(!district){district={name:farm.district,lat:canonical?.lat||farm.lat,lon:canonical?.lon||farm.lon,mandals:[]};all.push(district);}
         let mandal=district.mandals.find(item=>item.name===farm.mandal);
@@ -556,8 +635,8 @@
     }
     function reportScopeLabel(){
       const ds=scopedDistricts();
-      if(!ds.length) return "No assigned AP geography";
-      if(roles[state.role].districts==="all") return "Andhra Pradesh portfolio";
+      if(!ds.length) return `No assigned ${activeCompany().regionLabel} geography`;
+      if(roleScope(state.role).districts==="all") return `${activeCompany().name} portfolio`;
       return ds.map(d=>d.name).join(", ");
     }
     function recordReportDownload(report,rowCount,format){
@@ -578,7 +657,7 @@
       if(state.role==="staff"){state.statusMessage="Excel export is not available for Field Staff.";render();return false;}
       const report=reportDefinitions.find(item=>item.id===reportId&&item.format==="excel");
       const rows=scopedReportRows(reportId);
-      if(!report||!rows.length){state.statusMessage="No authorized AP records are available for this report.";render();return false;}
+      if(!report||!rows.length){state.statusMessage=`No authorized ${activeCompany().shortName} records are available for this report.`;render();return false;}
       const workbook=buildReportExcel(reportId,rows);
       const blob=new Blob([workbook],{type:"application/vnd.ms-excel;charset=utf-8"});
       const url=URL.createObjectURL(blob);
@@ -620,7 +699,7 @@
       return {...user,active:typeof override.active==="boolean"?override.active:user.active,scope:typeof override.scope==="string"?override.scope:user.scope};
     }
     function scopeFarmIds(scope){
-      const farms=flatFarms(districts);
+      const farms=flatFarms(typeof activeDistricts==="function"?activeDistricts():districts);
       if(scope==="ap-all") return farms.map(farm=>farm.id);
       if(scope==="eluru-east-godavari") return farms.filter(farm=>["Eluru","East Godavari"].includes(farm.district)).map(farm=>farm.id);
       if(scope==="west-godavari-krishna") return farms.filter(farm=>["West Godavari","Krishna"].includes(farm.district)).map(farm=>farm.id);
@@ -629,7 +708,7 @@
       if(mandalByScope[scope]) return farms.filter(farm=>farm.mandal===mandalByScope[scope]).map(farm=>farm.id);
       return farms.some(farm=>farm.id===scope)?[scope]:[];
     }
-    function scopeLabel(user){return (ADMIN_SCOPE_OPTIONS[user.roleId]||[]).find(option=>option.id===user.scope)?.label||"No AP assignment";}
+    function scopeLabel(user){return (ADMIN_SCOPE_OPTIONS[user.roleId]||[]).find(option=>option.id===user.scope)?.label||`${activeCompany().shortName} assignment`;}
     function scopedManagedUsers(){
       if(!["admin","ceo"].includes(state.role)) return [];
       const allowed=new Set(flatFarms(scopedDistricts()).map(farm=>farm.id));
@@ -697,7 +776,16 @@
       state.statusMessage="Settings saved for this demo account.";
       if(!saveDemoState()) state.statusMessage="Browser storage was unavailable; the setting applies only for this tab.";
     }
+    function renderLanding(){
+      appShell.classList.add("is-landing-hidden");
+      landing.hidden=false;
+      landing.innerHTML=`<div class="landing-inner"><div><span class="landing-mark"><span class="logomark">P</span><span>PalmWatch</span></span><h1 id="landingTitle">PalmWatch By Buckleson X ESN LABS</h1><p class="landing-copy">Select a company dataset to enter the operational demo. Farm areas are seeded from the supplied workbook; health, survey, alert, case, and treatment figures remain realistic deterministic mock data.</p><div class="landing-note"><strong>Demo data notice:</strong> company logos identify selectable demo scopes only. Public place names and simulated coordinates do not imply ownership or diagnosis.</div></div><div class="company-grid" role="list" aria-label="Choose company portfolio">${Object.values(COMPANY_PORTFOLIOS).map(company=>`<button class="company-card" role="listitem" data-company="${company.id}" aria-label="Open ${escapeHtml(company.name)} demo portfolio"><span class="company-logo"><img src="${company.logo}" alt="${escapeHtml(company.name)} logo"></span><span><b>${escapeHtml(company.name)}</b><span>${escapeHtml(company.subtitle)}</span></span><em aria-hidden="true">›</em></button>`).join("")}</div></div>`;
+      landing.querySelectorAll("[data-company]").forEach(button=>button.addEventListener("click",()=>selectCompany(button.dataset.company)));
+    }
     function render(){
+      if(!state.companyId)return renderLanding();
+      landing.hidden=true;
+      appShell.classList.remove("is-landing-hidden");
       destroyMap();
       if(state.signedOut) return renderSignedOut();
       if(!roles[state.role].nav.includes(state.page)) state.page="Overview";
@@ -730,6 +818,9 @@
       document.getElementById("userInitials").textContent = r.initials;
       document.getElementById("profileBtn").textContent = r.initials;
       document.getElementById("userName").textContent = r.name;
+      document.querySelector(".urole").textContent = `${activeCompany().shortName} operations`;
+      document.getElementById("companySwitch").textContent = activeCompany().shortName;
+      document.getElementById("companySwitch").setAttribute("aria-label",`Change company from ${activeCompany().name}`);
       renderProfileMenu();
     }
     function renderProfileMenu(){
@@ -745,7 +836,7 @@
       document.getElementById("returnToDemo").addEventListener("click",()=>{state.signedOut=false;state.page="Overview";state.statusMessage="";render()});
     }
     function renderCrumbs(){
-      const items = ["Andhra Pradesh",...state.path.map(p=>p.name)];
+      const items = [activeCompany().name,...state.path.map(p=>p.name)];
       crumbs.innerHTML = items.map((name,i)=>`<button class="crumb" data-crumb="${i}">${name}</button>`).join("");
       crumbs.querySelectorAll("[data-crumb]").forEach(b=>b.addEventListener("click",()=>{const i=Number(b.dataset.crumb);state.path=state.path.slice(0,Math.max(0,i));state.farmId=null;state.treeId=null;render()}));
     }
@@ -761,6 +852,7 @@
     function canBack(){return state.treeId || state.farmId || state.path.length || state.page!=="Overview"}
     backBtn.addEventListener("click",()=>{if(state.reportView){state.reportView=null}else if(state.treeId){state.treeId=null}else if(state.farmId){state.farmId=null}else if(state.path.length){state.path.pop()}else{state.page="Overview"} render()});
     document.getElementById("roleSelect").addEventListener("change",e=>{state.role=e.target.value;state.path=[];state.farmId=null;state.treeId=null;state.alertRead="all";state.alertSeverity="all";state.reportView=null;state.statusMessage="";state.profileOpen=false;state.resetConfirm=false;render()});
+    document.getElementById("companySwitch").addEventListener("click",()=>{state.companyId=null;resetOperationalScope();render()});
     document.getElementById("profileBtn").addEventListener("click",event=>{event.stopPropagation();state.profileOpen=!state.profileOpen;renderProfileMenu();if(state.profileOpen) document.querySelector(".profile-action")?.focus()});
     document.addEventListener("click",event=>{if(state.profileOpen&&!event.target.closest(".profile-wrap")){state.profileOpen=false;renderProfileMenu()}});
     document.addEventListener("keydown",event=>{if(event.key==="Escape"&&state.caseModalOpen){event.preventDefault();closeCaseModal();return;}if(event.key==="Escape"&&state.profileOpen){state.profileOpen=false;renderProfileMenu();document.getElementById("profileBtn").focus()}});
@@ -771,7 +863,7 @@
       const m = metricsFor(farms);
       const level = state.path.length===0?"District":state.path.length===1?"Mandal":state.path.length===2?"Village":"Farm";
       content.innerHTML = `
-        <div class="pagehead"><div><h1 class="h1">${state.path.at(-1)?.name || "Andhra Pradesh Portfolio"}</h1><p class="sub">AP-only deterministic demo data; public place names do not imply farm ownership.</p></div><button class="btn-ghost" id="resetScope">Reset scope</button></div>
+        <div class="pagehead"><div><h1 class="h1">${state.path.at(-1)?.name || `${activeCompany().name} Portfolio`}</h1><p class="sub">${activeCompany().regionLabel} deterministic demo data from the supplied workbook; public place names do not imply farm ownership.</p></div><button class="btn-ghost" id="resetScope">Reset scope</button></div>
         ${metricStrip(m)}
         ${state.view==="map"?mapView(nodes,level):tableView(nodes,level)}
       `;
@@ -793,9 +885,9 @@
       return metricsFor(farms);
     }
     function mapView(nodes,level){
-      return `<div class="mapwrap"><div class="map" role="region" aria-label="Andhra Pradesh geographic map">
-        <div id="geoMap" class="leaflet-map" aria-label="Interactive Andhra Pradesh map with pan and zoom controls"><div class="map-fallback"><div><strong>Geographic map is unavailable</strong><span>The accessible region list remains available. Use Table view for the same role-scoped records while the map library or tiles are offline.</span></div></div></div>
-        <span class="maptag">AP ${level} map</span>
+      return `<div class="mapwrap"><div class="map" role="region" aria-label="${activeCompany().regionLabel} geographic map">
+        <div id="geoMap" class="leaflet-map" aria-label="Interactive ${activeCompany().regionLabel} map with pan and zoom controls"><div class="map-fallback"><div><strong>Geographic map is unavailable</strong><span>The accessible region list remains available. Use Table view for the same role-scoped records while the map library or tiles are offline.</span></div></div></div>
+        <span class="maptag">${activeCompany().shortName} ${level} map</span>
         <div class="legend"><span><span class="dot h-ok"></span>Healthy</span><span><span class="dot h-risk"></span>Suspected</span><span><span class="dot h-bad"></span>Danger</span></div>
       </div><div class="rail"><div class="railhd">${level}s in scope</div>${nodes.map(n=>rail(n)).join("")}</div></div>`;
     }
@@ -826,7 +918,7 @@
       setTimeout(()=>activeMap?.invalidateSize(),0);
     }
     window.addEventListener("leafletready",()=>{
-      if(state.page==="Overview" && state.view==="map" && !state.farmId && !state.treeId) initGeographicMap(levelData(),state.path.length===0?"District":state.path.length===1?"Mandal":state.path.length===2?"Village":"Farm");
+      if(state.companyId && state.page==="Overview" && state.view==="map" && !state.farmId && !state.treeId) initGeographicMap(levelData(),state.path.length===0?"District":state.path.length===1?"Mandal":state.path.length===2?"Village":"Farm");
     });
     function openNode(node){
       if(!node)return;
@@ -973,10 +1065,23 @@
       const status=indicatorStatus(indicator), label=status==="bad"?"Danger":status==="risk"?"Suspected":"Okay", marker=Math.max(0,Math.min(100,(indicator.value-indicator.min)/(indicator.max-indicator.min)*100));
       return `<div class="indicator"><div class="indicator-head"><span class="indicator-title">${indicator.label}<button type="button" class="help" title="${indicator.help}" aria-label="About ${indicator.label}" aria-describedby="${indicator.id}-help">?</button><span class="sr-only" id="${indicator.id}-help">${indicator.help}</span></span><span class="indicator-value">${indicator.display}<em class="badge h-${status}">${label}</em></span></div><div class="indicator-scale" role="img" aria-label="${indicator.label}: ${indicator.display}, ${label}. ${indicator.help} ${indicator.ranges.map(range=>`${range.label} ${range.text}`).join("; ")}">${indicator.ranges.map(range=>`<span class="indicator-segment h-${range.status}" style="width:${(range.to-range.from)/(indicator.max-indicator.min)*100}%"></span>`).join("")}<span class="indicator-marker" style="left:${marker}%"></span></div><div class="indicator-ranges">${indicator.ranges.map(range=>`<span class="h-${range.status}"><i></i>${range.label} ${range.text}</span>`).join("")}</div></div>`;
     }
+    function derivedAlertRecords(farms){
+      const ranked=[...farms].sort((a,b)=>b.risk-a.risk).slice(0,Math.min(10,farms.length));
+      return ranked.map((farm,index)=>({id:`ALT-${activeCompany().shortName}-${String(index+1).padStart(3,"0")}`,farmId:farm.id,severity:farm.risk>=.075?"danger":farm.risk>=.045?"suspected":index%5===0?"no-reading":"okay",affected:farm.infected||farm.suspected,date:`2026-08-${String(8-index).padStart(2,"0")}`,summary:"Company-scoped deterministic workflow signal"}));
+    }
+    function derivedCaseRecords(farms){
+      const statuses=["Confirmed","Under assessment","Treatment active","Monitoring","Closed"];
+      return [...farms].sort((a,b)=>b.risk-a.risk).slice(0,Math.min(8,farms.length)).map((farm,index)=>({id:`CASE-${activeCompany().shortName}-${String(index+1).padStart(3,"0")}`,farmId:farm.id,treeId:`${farm.id}-T001`,status:statuses[index%statuses.length],opened:`2026-08-${String(1+index).padStart(2,"0")}`,affectedPalms:Math.max(5,Math.round(farm.infected*.72)),owner:["Anil Kumar","Ravi Teja","M. Prasad","K. Devi","P. Srinu"][index%5],observation:"Workbook-derived farm area with deterministic Ganoderma workflow evidence for demo review."}));
+    }
+    function derivedTreatmentRecords(cases){
+      const statuses=["Recommended","In progress","Planned","Completed"];
+      return cases.slice(0,Math.min(6,cases.length)).map((record,index)=>({id:`TRT-${activeCompany().shortName}-${String(index+1).padStart(3,"0")}`,caseId:record.id,farmId:record.farmId,status:statuses[index%statuses.length],progress:[0,55,20,100][index%4],owner:record.owner,treatment:["Field sanitation and monitoring","Isolation trench and sanitation","Confirmatory inspection protocol","Sanitation response monitoring"][index%4],recommendation:"Follow the role-approved field workflow and record the next observation outcome.",outcome:index%4===3?"Monitoring cycle completed; no additional affected palms recorded.":""}));
+    }
     function scopedAlerts(){
       const farms=new Map(flatFarms(scopedDistricts()).map(farm=>[farm.id,farm]));
       const rank={danger:4,suspected:3,"no-reading":2,okay:1};
-      return alertRecords.filter(alert=>farms.has(alert.farmId)).map(alert=>({...alert,farm:farms.get(alert.farmId)})).sort((a,b)=>rank[b.severity]-rank[a.severity] || b.farm.risk-a.farm.risk || b.date.localeCompare(a.date));
+      const records=alertRecords.filter(alert=>farms.has(alert.farmId));
+      return (records.length?records:derivedAlertRecords([...farms.values()])).map(alert=>({...alert,farm:farms.get(alert.farmId)})).sort((a,b)=>rank[b.severity]-rank[a.severity] || b.farm.risk-a.farm.risk || b.date.localeCompare(a.date));
     }
     function alertAccount(){
       if(!demoState.accounts[state.role]) demoState.accounts[state.role]={readAlertIds:[]};
@@ -1021,13 +1126,15 @@
     function scopedCases(){
       const farmList=flatFarms(scopedDistricts()), allowedFarmIds=new Set(farmList.map(farm=>farm.id)), farms=new Map(farmList.map(farm=>[farm.id,farm])), caseOverrides=demoState.cases||{};
       const rank={Confirmed:5,"Under assessment":4,"Treatment active":3,Monitoring:2,Closed:1};
-      return caseRecords.filter(record=>allowedFarmIds.has(record.farmId)).map(record=>({...effectiveCase(record),hasLocalOverride:Boolean(caseOverrides[record.id]),farm:farms.get(record.farmId)})).sort((a,b)=>(rank[b.status]||0)-(rank[a.status]||0)||b.affectedPalms-a.affectedPalms||b.opened.localeCompare(a.opened));
+      const records=caseRecords.filter(record=>allowedFarmIds.has(record.farmId));
+      return (records.length?records:derivedCaseRecords(farmList)).map(record=>({...effectiveCase(record),hasLocalOverride:Boolean(caseOverrides[record.id]),farm:farms.get(record.farmId)})).sort((a,b)=>(rank[b.status]||0)-(rank[a.status]||0)||b.affectedPalms-a.affectedPalms||b.opened.localeCompare(a.opened));
     }
     function scopedTreatments(){
       const farmList=flatFarms(scopedDistricts()), allowedFarmIds=new Set(farmList.map(farm=>farm.id)), farms=new Map(farmList.map(farm=>[farm.id,farm])), treatmentOverrides=demoState.treatments||{};
       const cases=new Map(scopedCases().map(record=>[record.id,record]));
       const rank={"In progress":4,Planned:3,Recommended:2,Completed:1};
-      return treatmentRecords.filter(record=>allowedFarmIds.has(record.farmId)&&cases.has(record.caseId)).map(record=>({...effectiveTreatment(record),hasLocalOverride:Boolean(treatmentOverrides[record.id]),farm:farms.get(record.farmId),caseRecord:cases.get(record.caseId)})).sort((a,b)=>(rank[b.status]||0)-(rank[a.status]||0)||b.farm.risk-a.farm.risk);
+      const records=treatmentRecords.filter(record=>allowedFarmIds.has(record.farmId)&&cases.has(record.caseId));
+      return (records.length?records:derivedTreatmentRecords([...cases.values()])).filter(record=>allowedFarmIds.has(record.farmId)&&cases.has(record.caseId)).map(record=>({...effectiveTreatment(record),hasLocalOverride:Boolean(treatmentOverrides[record.id]),farm:farms.get(record.farmId),caseRecord:cases.get(record.caseId)})).sort((a,b)=>(rank[b.status]||0)-(rank[a.status]||0)||b.farm.risk-a.farm.risk);
     }
     function getCaseRecord(id){return scopedCases().find(record=>record.id===id)||null}
     function getTreatmentRecord(id){return scopedTreatments().find(record=>record.id===id)||null}

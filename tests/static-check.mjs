@@ -48,7 +48,10 @@ function extractDemoModel(source) {
     evidenceTreeId: typeof EVIDENCE_TREE_ID !== "undefined" ? EVIDENCE_TREE_ID : undefined,
     treeEvidenceManifest: typeof TREE_EVIDENCE_MANIFEST !== "undefined" ? TREE_EVIDENCE_MANIFEST : undefined,
     treeObservation: typeof TREE_OBSERVATION !== "undefined" ? TREE_OBSERVATION : undefined,
-    ganodermaIndicators: typeof GANODERMA_INDICATORS !== "undefined" ? GANODERMA_INDICATORS : undefined
+    ganodermaIndicators: typeof GANODERMA_INDICATORS !== "undefined" ? GANODERMA_INDICATORS : undefined,
+    companyProfiles: typeof COMPANY_PROFILES !== "undefined" ? COMPANY_PROFILES : undefined,
+    companyAreaRows: typeof COMPANY_AREA_ROWS !== "undefined" ? COMPANY_AREA_ROWS : undefined,
+    companyPortfolios: typeof COMPANY_PORTFOLIOS !== "undefined" ? COMPANY_PORTFOLIOS : undefined
   };`)();
 }
 
@@ -156,6 +159,10 @@ function flattenFarms(districts) {
 
 const required = [
   "Andhra Pradesh",
+  "PalmWatch By Buckleson X ESN LABS",
+  "Godrej Agrovet Oil Palm",
+  "Navabharat Limited / NBL",
+  "TGOILFED",
   "System Administrator",
   "CEO / General Manager",
   "Plantation Head",
@@ -176,11 +183,7 @@ for (const token of required) {
   }
 }
 
-for (const forbidden of ["Telangana", "Khammam", "Bhadradri"]) {
-  if (html.includes(forbidden)) {
-    throw new Error(`Found out-of-scope geography: ${forbidden}`);
-  }
-}
+assert.match(html, /TGOF\|TG\|Bhadradri Kothagudem\|Aswaraopeta/, "TGOILFED workbook rows must include Telangana geography");
 
 // The visual map must be a real slippy map, constrained to Andhra Pradesh,
 // with the required OpenStreetMap attribution visible in the integration.
@@ -218,13 +221,29 @@ const {
   evidenceTreeId,
   treeEvidenceManifest,
   treeObservation,
-  ganodermaIndicators
+  ganodermaIndicators,
+  companyProfiles,
+  companyAreaRows,
+  companyPortfolios
 } = extractDemoModel(html);
 const reportDefinitions = extractArrayConstant(html, "reportDefinitions");
 const caseActionsByRole = extractObjectConstant(html, "CASE_ACTIONS_BY_ROLE");
 const caseTransitions = extractObjectConstant(html, "CASE_TRANSITIONS");
 const treatmentTransitions = extractObjectConstant(html, "TREATMENT_TRANSITIONS");
 const farms = flattenFarms(districts);
+
+assert.deepEqual(Object.keys(companyProfiles).sort(), ["gavl", "nbl", "tgoilfed"], "Landing must expose the three approved company choices");
+for (const [companyId, expected] of Object.entries({ gavl: 20, nbl: 20, tgoilfed: 20 })) {
+  assert.equal(companyAreaRows[companyId].length, expected, `${companyId} must carry the 20 workbook-derived rows`);
+  const portfolioFarms = flattenFarms(companyPortfolios[companyId].districts);
+  assert.equal(portfolioFarms.length, expected, `${companyId} portfolio must produce ${expected} farms`);
+  assert.ok(portfolioFarms.every((farm) => farm.companyId === companyId), `${companyId} farms must not leak another company ID`);
+}
+assert.ok(companyPortfolios.gavl.districts.some((district) => district.mandals.some((mandal) => mandal.name === "Chintalapudi")), "GAVL data must include Chintalapudi");
+assert.deepEqual(companyPortfolios.nbl.districts.map((district) => district.name), ["Eluru", "East Godavari"], "NBL data must stay in its workbook districts");
+assert.deepEqual(companyPortfolios.tgoilfed.districts.map((district) => district.name), ["Bhadradri Kothagudem", "Khammam"], "TGOILFED data must use the workbook Telangana districts");
+assert.match(html, /\.company-card\{[^}]*grid-template-columns:76px 1fr auto/, "Company cards must reserve a separate logo column");
+assert.match(html, /\.htr\{[^}]*minmax\(132px,\s*\.95fr\)/, "Table health column must reserve enough width for status badges without overlap");
 
 assert.deepEqual(
   districts.map((district) => district.name),
@@ -1110,7 +1129,7 @@ for (const [pattern, description] of [
 const overviewSubtitleMatch = /<p\s+class=["']sub["']>([^<]+)<\/p>/i.exec(renderOverviewBody);
 assert.ok(overviewSubtitleMatch, "Overview needs one concise operational-data subtitle");
 const overviewSubtitle = overviewSubtitleMatch[1].replace(/\s+/g, " ").trim();
-assert.match(overviewSubtitle, /AP-only deterministic demo data/i, "Overview subtitle must identify the role-scoped metrics as AP-only deterministic demo data");
+assert.match(overviewSubtitle, /deterministic demo data from the supplied workbook/i, "Overview subtitle must identify the company-scoped workbook-derived demo data");
 assert.match(
   overviewSubtitle,
   /do(?:es)? not imply (?:farm )?ownership|not necessarily company-owned|not proof of (?:farm )?ownership/i,
