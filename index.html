@@ -234,12 +234,9 @@
         {id:"near-infrared",label:"NIR",band:"Near-infrared",src:"assets/tree-evidence/near-infrared.webp",alt:"Independently stretched near-infrared-band demonstration preview of an oil-palm survey capture."}
       ]
     };
-    const TREE_OBSERVATION = {treeId:"demo-all-trees",values:{ndvi:.76,ndre:.48,ganodermaConfidence:18,canopyTemperature:30.8,recentRiskTrend:.02},disclosure:"Demo interpretation bands and simulated readings only. No NDVI, NDRE, diagnosis, Ganoderma confidence, canopy temperature, or recent trend is derived from the supplied images."};
+    const TREE_OBSERVATION = {treeId:"demo-all-trees",values:{ganodermaConfidence:18,recentRiskTrend:.02}};
     const GANODERMA_INDICATOR_DEFINITIONS = [
-      {id:"ndvi",label:"NDVI",min:0,max:1,help:"What it means: normalized vegetation vigor from 0 to 1. Good is above 0.65; below 0.45 is adverse stress context, not a Ganoderma diagnosis.",ranges:[{label:"Danger",text:"< 0.45",from:0,to:.45,status:"bad"},{label:"Suspected",text:"0.45-0.65",from:.45,to:.65,status:"risk"},{label:"Okay",text:"> 0.65",from:.65,to:1,status:"ok"}]},
-      {id:"ndre",label:"NDRE",min:0,max:1,help:"What it means: red-edge chlorophyll stress context for mature canopy. Good is above 0.40; below 0.25 is adverse. This is not diagnostic on its own.",ranges:[{label:"Danger",text:"< 0.25",from:0,to:.25,status:"bad"},{label:"Suspected",text:"0.25-0.40",from:.25,to:.40,status:"risk"},{label:"Okay",text:"> 0.40",from:.40,to:1,status:"ok"}]},
-      {id:"ganodermaConfidence",label:"Ganoderma confidence",min:0,max:100,help:"What it means: deterministic demo confidence for workflow training. Good is under 35%; over 65% is a high-priority simulated case.",ranges:[{label:"Okay",text:"< 35%",from:0,to:35,status:"ok"},{label:"Suspected",text:"35-65%",from:35,to:65,status:"risk"},{label:"Danger",text:"> 65%",from:65,to:100,status:"bad"}]},
-      {id:"canopyTemperature",label:"Canopy temperature",min:20,max:45,help:"What it means: simulated canopy temperature. Good is 32\u00b0C or lower; over 35\u00b0C is adverse heat or water-stress context, not disease-specific proof.",ranges:[{label:"Okay",text:"<= 32\u00b0C",from:20,to:32,status:"ok"},{label:"Suspected",text:"> 32-35\u00b0C",from:32,to:35,status:"risk"},{label:"Danger",text:"> 35\u00b0C",from:35,to:45,status:"bad"}]},
+      {id:"ganodermaConfidence",label:"Ganoderma infection",min:0,max:100,help:"What it means: deterministic demo infection likelihood for workflow training. Good is under 35%; over 65% is a high-priority simulated case.",ranges:[{label:"Okay",text:"< 35%",from:0,to:35,status:"ok"},{label:"Suspected",text:"35-65%",from:35,to:65,status:"risk"},{label:"Danger",text:"> 65%",from:65,to:100,status:"bad"}]},
       {id:"recentRiskTrend",label:"Recent risk trend",min:-.10,max:.25,help:"What it means: simulated change in composite risk across recent observations. Good is stable or <= +0.05; above +0.15 is adverse.",ranges:[{label:"Okay",text:"<= +0.05",from:-.10,to:.05,status:"ok"},{label:"Suspected",text:"> +0.05-0.15",from:.05,to:.15,status:"risk"},{label:"Danger",text:"> +0.15",from:.15,to:.25,status:"bad"}]}
     ];
     const districts = [
@@ -995,9 +992,9 @@
     function treeEvidenceFor(cell){
       const base={...TREE_OBSERVATION,treeId:cell?.id||state.treeId,manifest:TREE_EVIDENCE_MANIFEST};
       if(!cell || cell.status==="neutral") return {...base,values:null};
-      if(cell.status==="bad") return {...base,values:{ndvi:.38,ndre:.22,ganodermaConfidence:82,canopyTemperature:36.4,recentRiskTrend:.18}};
-      if(cell.status==="risk") return {...base,values:{ndvi:.56,ndre:.34,ganodermaConfidence:52,canopyTemperature:33.7,recentRiskTrend:.10}};
-      return {...base,values:{ndvi:.76,ndre:.48,ganodermaConfidence:18,canopyTemperature:30.8,recentRiskTrend:.02}};
+      if(cell.status==="bad") return {...base,values:{ganodermaConfidence:82,recentRiskTrend:.18}};
+      if(cell.status==="risk") return {...base,values:{ganodermaConfidence:52,recentRiskTrend:.10}};
+      return {...base,values:{ganodermaConfidence:18,recentRiskTrend:.02}};
     }
     function renderTreeEvidence(observation){
       if(!observation)return `<section class="card evidence" aria-labelledby="evidenceTitle"><div class="evidence-head"><h3 class="cardt" id="evidenceTitle">Survey evidence</h3></div><div class="empty-state"><strong>No survey imagery linked</strong><span>This simulated tree has no demonstration capture assigned. No image evidence has been inferred from its farm or neighbours.</span></div></section>`;
@@ -1045,20 +1042,16 @@
     }
     function indicatorStatus(indicator){
       const value=indicator.value;
-      if(indicator.id==="ndvi")return value<.45?"bad":value<=.65?"risk":"ok";
-      if(indicator.id==="ndre")return value<.25?"bad":value<=.40?"risk":"ok";
       if(indicator.id==="ganodermaConfidence")return value<35?"ok":value<=65?"risk":"bad";
-      if(indicator.id==="canopyTemperature")return value<=32?"ok":value<=35?"risk":"bad";
       return value<=.05?"ok":value<=.15?"risk":"bad";
     }
     function renderGanodermaIndicators(observation){
-      if(!observation?.values)return `<section class="card" aria-labelledby="indicatorTitle"><h3 class="cardt" id="indicatorTitle">Ganoderma indicators</h3><div class="empty-state"><strong>No indicator reading recorded</strong><span>This palm is unsurveyed in the deterministic demo, so no NDVI, NDRE, confidence, temperature, or trend reading is fabricated.</span></div><p class="sub">${TREE_OBSERVATION.disclosure}</p></section>`;
+      if(!observation?.values)return `<section class="card" aria-labelledby="indicatorTitle"><h3 class="cardt" id="indicatorTitle">Ganoderma indicators</h3><div class="empty-state"><strong>No indicator reading recorded</strong><span>This palm is unsurveyed in the deterministic demo, so no Ganoderma infection or recent risk trend reading is fabricated.</span></div></section>`;
       const indicators=GANODERMA_INDICATOR_DEFINITIONS.map(definition=>({...definition,value:observation.values[definition.id],display:formatIndicatorValue(definition.id,observation.values[definition.id])}));
-      return `<section class="card" aria-labelledby="indicatorTitle"><h3 class="cardt" id="indicatorTitle">Ganoderma indicators</h3><div class="indicator-list">${indicators.map(renderIndicator).join("")}</div><p class="sub">${observation.disclosure} These bands are demonstration thresholds, not diagnostic cut-offs.</p></section>`;
+      return `<section class="card" aria-labelledby="indicatorTitle"><h3 class="cardt" id="indicatorTitle">Ganoderma indicators</h3><div class="indicator-list">${indicators.map(renderIndicator).join("")}</div></section>`;
     }
     function formatIndicatorValue(id,value){
       if(id==="ganodermaConfidence")return `${Math.round(value)}%`;
-      if(id==="canopyTemperature")return `${value.toFixed(1)}\u00b0C`;
       if(id==="recentRiskTrend")return `${value>=0?"+":""}${value.toFixed(2)}`;
       return value.toFixed(2);
     }

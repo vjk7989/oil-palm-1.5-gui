@@ -48,7 +48,7 @@ function extractDemoModel(source) {
     evidenceTreeId: typeof EVIDENCE_TREE_ID !== "undefined" ? EVIDENCE_TREE_ID : undefined,
     treeEvidenceManifest: typeof TREE_EVIDENCE_MANIFEST !== "undefined" ? TREE_EVIDENCE_MANIFEST : undefined,
     treeObservation: typeof TREE_OBSERVATION !== "undefined" ? TREE_OBSERVATION : undefined,
-    ganodermaIndicators: typeof GANODERMA_INDICATORS !== "undefined" ? GANODERMA_INDICATORS : undefined,
+    ganodermaIndicators: typeof GANODERMA_INDICATOR_DEFINITIONS !== "undefined" ? GANODERMA_INDICATOR_DEFINITIONS : undefined,
     companyProfiles: typeof COMPANY_PROFILES !== "undefined" ? COMPANY_PROFILES : undefined,
     companyAreaRows: typeof COMPANY_AREA_ROWS !== "undefined" ? COMPANY_AREA_ROWS : undefined,
     companyPortfolios: typeof COMPANY_PORTFOLIOS !== "undefined" ? COMPANY_PORTFOLIOS : undefined
@@ -174,7 +174,7 @@ const required = [
   "Black means no tree",
   "New Farm Preview",
   "Preview only - not saved yet",
-  "No NDVI, NDRE, diagnosis, Ganoderma confidence, canopy temperature, or recent trend is derived from the supplied images"
+  "Ganoderma infection"
 ];
 
 for (const token of required) {
@@ -1186,8 +1186,20 @@ for (const item of evidenceManifest.views) {
   assert.deepEqual(webpDimensions(readFileSync(derivativeUrl)), item.derivativeDimensions, `${item.id} derivative dimensions must match the manifest`);
 }
 assert.equal(treeObservation.treeId, "demo-all-trees", "The deterministic observation template must be reusable across demo trees");
-assert.match(treeObservation.disclosure, /Demo interpretation bands and simulated readings only/i, "Tree indicators must disclose their simulated interpretation basis");
-assert.match(treeObservation.disclosure, /No NDVI, NDRE, diagnosis, Ganoderma confidence, canopy temperature, or recent trend is derived from the supplied images/i, "Tree indicators must explicitly separate every reading from the supplied imagery");
+assert.deepEqual(Object.keys(treeObservation.values), ["ganodermaConfidence", "recentRiskTrend"], "The reusable observation template must only carry the two displayed Ganoderma readings");
+assert.deepEqual(
+  ganodermaIndicators.map(({ id, label }) => ({ id, label })),
+  [
+    { id: "ganodermaConfidence", label: "Ganoderma infection" },
+    { id: "recentRiskTrend", label: "Recent risk trend" },
+  ],
+  "The Ganoderma panel must show only Ganoderma infection and Recent risk trend"
+);
+assert.ok(
+  ganodermaIndicators.every((indicator) => !["ndvi", "ndre", "canopyTemperature"].includes(indicator.id)),
+  "NDVI, NDRE, and Canopy temperature must not be Ganoderma panel indicators"
+);
+assert.doesNotMatch(html, /Demo interpretation bands and simulated readings only\. No NDVI, NDRE, diagnosis, Ganoderma confidence, canopy temperature, or recent trend is derived from the supplied images\. These bands are demonstration thresholds, not diagnostic cut-offs\./i, "The old long Ganoderma indicator disclosure must be removed from the UI bundle");
 assert.equal(treeEvidenceManifest.captureId, evidenceManifest.captureId, "The rendered gallery must use the audited manifest capture");
 assert.equal(treeEvidenceManifest.classification, "demo", "The rendered gallery must retain demo classification");
 assert.deepEqual(
@@ -1240,10 +1252,7 @@ assert.match(bindTreeEvidenceBody, /addEventListener\s*\(\s*["']error["']\s*,\s*
 const indicatorStatusBody = functionBody(html, "indicatorStatus");
 const indicatorStatus = Function("indicator", `return (function indicatorStatus(indicator){${indicatorStatusBody}})(indicator);`);
 for (const [id, values] of Object.entries({
-  ndvi: [[0.44, "bad"], [0.55, "risk"], [0.7, "ok"]],
-  ndre: [[0.2, "bad"], [0.32, "risk"], [0.5, "ok"]],
   ganodermaConfidence: [[20, "ok"], [50, "risk"], [80, "bad"]],
-  canopyTemperature: [[31, "ok"], [33, "risk"], [36, "bad"]],
   recentRiskTrend: [[0.03, "ok"], [0.1, "risk"], [0.2, "bad"]],
 })) {
   for (const [value, status] of values) {
@@ -1253,10 +1262,10 @@ for (const [id, values] of Object.entries({
 
 const renderGanodermaIndicatorsBody = functionBody(html, "renderGanodermaIndicators");
 assert.match(renderGanodermaIndicatorsBody, /No indicator reading recorded/i, "A palm without an observation needs an honest no-reading state");
-assert.match(renderGanodermaIndicatorsBody, /GANODERMA_INDICATOR_DEFINITIONS\.map/, "The widget must render all five accepted indicators from shared definitions");
+assert.match(renderGanodermaIndicatorsBody, /GANODERMA_INDICATOR_DEFINITIONS\.map/, "The widget must render the two accepted indicators from shared definitions");
 assert.match(renderGanodermaIndicatorsBody, /formatIndicatorValue/, "The widget must format health-consistent readings from the selected tree observation");
-assert.match(renderGanodermaIndicatorsBody, /observation\.disclosure/, "The widget must visibly repeat the no-image-derived-reading disclosure");
-assert.match(renderGanodermaIndicatorsBody, /demonstration thresholds, not diagnostic cut-offs/i, "Indicator ranges must not be presented as clinical cut-offs");
+assert.doesNotMatch(renderGanodermaIndicatorsBody, /observation\.disclosure|TREE_OBSERVATION\.disclosure/, "The widget must not render the removed long disclosure paragraph");
+assert.doesNotMatch(renderGanodermaIndicatorsBody, /NDVI|NDRE|canopy temperature|demonstration thresholds, not diagnostic cut-offs/i, "The simplified widget must not mention removed indicators or the deleted disclosure copy");
 const renderIndicatorBody = functionBody(html, "renderIndicator");
 assert.match(renderIndicatorBody, /indicatorStatus\s*\(\s*indicator\s*\)/, "Every indicator's text badge must use the direction-aware classifier");
 assert.match(renderIndicatorBody, /role=["']img["'][^]*aria-label=/, "Each visual scale needs an equivalent accessible value/range description");
