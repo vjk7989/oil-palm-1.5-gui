@@ -5,9 +5,10 @@
 - Repository: `D:\drone-mapping\oil-palm-1.5-gui`; upstream: <https://github.com/vjk7989/oil-palm-1.5-gui>.
 - The Survey Area 001 Google Satellite geofence editor, infected-tree selector, and Add Marker workflow are implemented and independently verified. `npm test`, `npm run build`, and `git diff --check` pass; line-ending messages are warnings only.
 - Hosted fix commit `0f6fdab` was pushed. The GitHub Pages Actions workflow completed successfully, and the deployed Survey Area 001 now reports **Google Satellite map ready**.
+- Tree-detail image sections are removed across the active AP and Mapped POC routes, and the Mapped POC tree-level camera-position map is removed. Metadata, Ganoderma indicators, provenance, and observation/history content remain available.
 - The feature is intentionally limited to `MPOC-SURVEY-001`. Areas 002–005 retain their existing Leaflet maps and camera-footprint geofences.
 - The implementation is pushed; this handoff refresh may remain as a local documentation change. Inspect `git status --short` and preserve unrelated user work before any future commit.
-- The Add Marker increment is complete. Tree-detail and image/pin presentation changes requested for a later increment remain deferred as recorded below.
+- The Add Marker and tree-detail simplification increments are complete. Wait for the user's next concrete goal and avoid speculative expansion.
 
 ## Authoritative references
 
@@ -33,10 +34,7 @@ Read those artifacts directly rather than duplicating their detailed contracts h
 - Missing, rejected, disabled-API, billing, timeout, and network failures produce targeted guidance while leaving the Area 001 tree grid usable.
 - Live acceptance confirmed Google Satellite loading, exact default coordinate display, 27 infected markers, editable handles, Cancel/Save/Reset status transitions, Reset restoring exact defaults, Field Staff access to edit controls, and Area 002 remaining on Leaflet. Reload persistence is covered by the static state contract; it was not manually exercised in this pass.
 - Independent final verification passed `npm test`, `npm run build`, and `git diff --check`. Credential and runtime-drive scans were clean; `config/maps.local.js` remains ignored and untracked.
-
-## Deferred request
-
-- Deferred: tree-detail page changes, including the requested removal of the screenshot-highlighted detail sections and any image/pin presentation changes for the newly positioned `TREE-0113` through `TREE-0137`. Do not implement those changes in this workflow, and do not infer image assets for the added trees.
+- The tree-detail simplification independently passed `npm test`, `npm run build`, and `git diff --check`, plus a manual browser check. Survey-area Google/Leaflet maps, geofences, infected-tree selection, and Add Marker behavior remain unchanged.
 
 ## Continuation rules
 
@@ -51,7 +49,7 @@ Read those artifacts directly rather than duplicating their detailed contracts h
 
 1. Read `AGENTS.md`, this file, and the relevant Google geofence section of `docs/ARCHITECTURE_RECORD.md`.
 2. Preserve repository-secret injection for hosted builds and keep the local Maps key ignored and untracked.
-3. If the user resumes the deferred tree-detail request, confirm the screenshot-highlighted sections and evidence expectations before changing presentation; otherwise receive the next goal normally. Retain the Area 001-only boundary unless explicitly expanded.
+3. Receive the user's next goal normally. Retain the Area 001-only map/editing boundary unless explicitly expanded.
 4. Repeat the independent green gate and refresh the two context artifacts after material changes.
 
 ## Suggested skills

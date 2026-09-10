@@ -470,9 +470,11 @@ assert.match(functionBody(html, "renderTree"), /mapped-poc-camera[^]*renderMappe
 assert.match(renderTreeMappedBody, /ganodermaRiskScore/, "Mapped POC Tree Details must use the exact static risk score");
 assert.match(renderTreeMappedBody, /modelled/i, "Mapped POC Tree Details must label the Ganoderma score as modelled risk");
 assert.match(renderTreeMappedBody, /(?:single score|no (?:historical )?trend|trend unavailable)/i, "Mapped POC Tree Details must disclose that no historical trend exists");
-assert.match(renderTreeMappedBody, /displayStatus\s*!==?\s*["']Healthy["']|["']Healthy["']\s*!==?\s*observation\.displayStatus/, "Mapped POC Tree Details must condition evidence and coordinate maps on a non-Healthy status");
-assert.match(renderTreeMappedBody, /evidenceImage/, "Infected and suspected Tree Details must render their repository evidence derivative");
-assert.match(renderTreeMappedBody, /latitude[^]*longitude/, "Infected and suspected Tree Details must render their camera position map");
+assert.doesNotMatch(renderTreeMappedBody, /<h[1-6][^>]*>\s*Tree image\s*<\/h[1-6]>/i, "Mapped POC Tree Details must not render the removed Tree image section");
+assert.doesNotMatch(renderTreeMappedBody, /<h[1-6][^>]*>\s*Tree camera position\s*<\/h[1-6]>/i, "Mapped POC Tree Details must not render the removed Tree camera position section");
+assert.doesNotMatch(renderTreeMappedBody, /evidenceImage|evidenceCard/, "Mapped POC Tree Details must not render or bind an evidence image card");
+assert.doesNotMatch(renderTreeMappedBody, /treeLocationMap|mapCard|initMappedPocTreeMap/, "Mapped POC Tree Details must not render or initialize a tree-location map card");
+assert.match(renderTreeMappedBody, /Tree ID[^]*Survey area[^]*Display status[^]*Ganoderma score/i, "Removing tree media must preserve the core Mapped POC tree metadata");
 const cellsForMappedBody = functionBody(html, "cellsFor");
 assert.match(cellsForMappedBody, /mapped-poc-camera[^]*(?:farm\.)?observations/, "Mapped POC 8 x 8 layouts must be sourced from ordered camera observations");
 assert.match(cellsForMappedBody, /64|8\s*\*\s*8/, "Mapped POC layouts must retain exactly 64 cells with unused cells black");
@@ -1578,30 +1580,11 @@ assert.match(treeEvidenceForBody, /ganodermaConfidence\s*:\s*18/, "Healthy trees
 
 const renderTreeBody = functionBody(html, "renderTree");
 assert.match(renderTreeBody, /treeEvidenceFor\s*\(\s*cell\s*\)/, "Tree Details must resolve evidence from the selected tree health state");
-assert.match(renderTreeBody, /renderTreeEvidence\s*\(\s*observation\s*\)/, "Tree Details must render the supplied gallery result");
 assert.match(renderTreeBody, /renderGanodermaIndicators\s*\(\s*observation\s*\)/, "Tree Details must render indicators from the separate deterministic observation");
-
-const renderTreeEvidenceBody = functionBody(html, "renderTreeEvidence");
-assert.match(renderTreeEvidenceBody, /role=["']tablist["'][^]*aria-label=["']Survey image views["']|aria-label=["']Survey image views["'][^]*role=["']tablist["']/, "Gallery view buttons need an accessible named selector");
-assert.match(renderTreeEvidenceBody, /role=["']tab["'][^]*aria-selected=["']\$\{view\.id===selected\.id\}["'][^]*tabindex=["']\$\{view\.id===selected\.id\?0:-1\}["']/, "Gallery buttons need roving keyboard focus and selected state");
-assert.match(renderTreeEvidenceBody, /role=["']tabpanel["'][^]*aria-labelledby=/, "The full-size evidence preview needs tabpanel semantics");
-assert.match(renderTreeEvidenceBody, /<img[^>]*alt=["']\$\{selected\.alt\}["']/, "The evidence preview must use its meaningful manifest alt text");
-assert.match(renderTreeEvidenceBody, /Loading \$\{selected\.label\} preview/i, "The evidence gallery needs a visible loading fallback");
-assert.match(renderTreeEvidenceBody, /preview could not be loaded/i, "The evidence gallery needs an actionable image-error fallback");
-assert.match(renderTreeEvidenceBody, /real demonstration survey context/i, "The gallery must visibly identify the real imagery as demo context");
-assert.match(renderTreeEvidenceBody, /identifying overlays cropped/i, "The gallery must disclose the privacy crop");
-assert.match(renderTreeEvidenceBody, /spectral bands are independently display-stretched/i, "The gallery must disclose independent TIFF display stretching");
-
-const handleEvidenceKeydownBody = functionBody(html, "handleEvidenceKeydown");
-for (const key of ["ArrowRight", "ArrowLeft", "Home", "End"]) {
-  assert.match(handleEvidenceKeydownBody, new RegExp(`["']${key}["']`), `Gallery keyboard navigation must support ${key}`);
-}
-assert.match(handleEvidenceKeydownBody, /preventDefault\s*\(\s*\)/, "Handled gallery navigation keys must not scroll the page");
-assert.match(handleEvidenceKeydownBody, /setEvidenceView\s*\([^,]+,\s*true\s*\)/, "Keyboard gallery navigation must move focus with selection");
-const bindTreeEvidenceBody = functionBody(html, "bindTreeEvidence");
-assert.match(bindTreeEvidenceBody, /addEventListener\s*\(\s*["']keydown["']\s*,\s*handleEvidenceKeydown\s*\)/, "Every gallery tab must bind keyboard navigation");
-assert.match(bindTreeEvidenceBody, /addEventListener\s*\(\s*["']load["']\s*,\s*markEvidenceReady\s*\)/, "Evidence loading state must resolve on image load");
-assert.match(bindTreeEvidenceBody, /addEventListener\s*\(\s*["']error["']\s*,\s*markEvidenceError\s*\)/, "Evidence image failure must reveal the fallback");
+assert.doesNotMatch(renderTreeBody, /renderTreeEvidence|evidenceImage|evidencePanel/, "Non-Mapped tree details must not render the removed tree-image gallery");
+assert.doesNotMatch(renderTreeBody, /treeLocationMap|Tree camera position/i, "Non-Mapped tree details must not render a tree camera-position section");
+assert.match(renderTreeBody, /Tree ID[^]*Farm[^]*Health[^]*Last scan/i, "Removing tree media must preserve the standard tree metadata");
+assert.match(renderTreeBody, /Scan history[^]*Recommended action/i, "Removing tree media must preserve scan history and the recommended action");
 
 const indicatorStatusBody = functionBody(html, "indicatorStatus");
 const indicatorStatus = Function("indicator", `return (function indicatorStatus(indicator){${indicatorStatusBody}})(indicator);`);
