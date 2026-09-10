@@ -475,18 +475,18 @@ assert.match(functionBody(html, "renderTree"), /mapped-poc-camera[^]*renderMappe
 assert.match(renderTreeMappedBody, /ganodermaRiskScore/, "Mapped POC Tree Details must use the exact static risk score");
 assert.match(renderTreeMappedBody, /modelled/i, "Mapped POC Tree Details must label the Ganoderma score as modelled risk");
 assert.match(renderTreeMappedBody, /(?:single score|no (?:historical )?trend|trend unavailable)/i, "Mapped POC Tree Details must disclose that no historical trend exists");
-assert.match(renderTreeMappedBody, /origin\s*===?\s*["']source-folder["'][^]*(?:evidenceImage|Tree image)|(?:evidenceImage|Tree image)[^]*origin\s*===?\s*["']source-folder["']/i, "Tree Details must restore photographs only through an explicit source-folder condition");
-assert.match(renderTreeMappedBody, /<img\b[^>]*(?:src|alt)=/i, "A source-backed Area 001 Tree Details page must render its corresponding photograph accessibly");
-assert.doesNotMatch(renderTreeMappedBody, /origin\s*===?\s*["']layout-only["'][^]*<img\b/i, "An added marker tree must never render a photograph");
+assert.match(renderTreeMappedBody, /nearestAreaOneImageObservation\s*\(\s*observation\s*\)/, "Every Area 001 Tree Details page must resolve its single photograph through the approved-image selector");
+assert.match(renderTreeMappedBody, /<img\b[^>]*(?:src|alt)=/i, "An Area 001 Tree Details page with an approved selection must render that photograph accessibly");
+assert.match(renderTreeMappedBody, /isExactEvidence|displayEvidence\?\.treeId\s*===?\s*observation\.treeId/, "Tree Details must distinguish an exact linked photograph from nearby non-exact imagery");
 assert.doesNotMatch(renderTreeMappedBody, /<h[1-6][^>]*>\s*Tree camera position\s*<\/h[1-6]>/i, "Mapped POC Tree Details must not render the removed Tree camera position section");
 assert.doesNotMatch(renderTreeMappedBody, /treeLocationMap|mapCard|initMappedPocTreeMap/, "Mapped POC Tree Details must not render or initialize a tree-location map card");
 assert.match(renderTreeMappedBody, /Tree ID[^]*Survey area[^]*Display status[^]*Ganoderma score/i, "Tree Details must preserve the core Mapped POC tree metadata");
 assert.match(renderTreeMappedBody, /Latitude[^]*Longitude|latitude[^]*longitude/i, "Tree Details must display the selected marker's exact latitude and longitude");
 
-// Survey Area 001 added markers reuse one nearby, repository-owned source
-// photograph. The eligible set is intentionally limited to the 19 compatible
-// captures supplied for this workflow; source-backed records keep their own
-// one-to-one photographs.
+// Every Survey Area 001 tree resolves exactly one repository-owned photograph
+// from the 19 captures supplied for this workflow. TREE-0001 through TREE-0019
+// retain their exact linked photographs; every other Area 001 tree uses the
+// nearest approved image with a deterministic Tree ID tie-break.
 const areaOneNearbyImageTreeIds = extractArrayConstant(html, "AREA_ONE_NEARBY_IMAGE_TREE_IDS");
 assert.deepEqual(
   areaOneNearbyImageTreeIds,
@@ -539,13 +539,38 @@ assert.equal(
   "An inactive Area 001 capacity record without a saved marker position must not receive an image"
 );
 
-const sourceImageSelection = nearestAreaOneImageObservation(areaOneSourceObservations[7]);
-assert.equal(sourceImageSelection.treeId, areaOneSourceObservations[7].treeId, "A source-backed Area 001 tree must retain its own one-to-one photograph");
-assert.equal(sourceImageSelection.evidenceImage, areaOneSourceObservations[7].evidenceImage, "Source-backed image selection must not replace the tree's linked photograph");
+for (const observation of areaOneSourceObservations.slice(0, 19)) {
+  const selected = nearestAreaOneImageObservation(observation);
+  assert.ok(selected, `${observation.treeId} must resolve exactly one approved photograph`);
+  assert.equal(selected.treeId, observation.treeId, `${observation.treeId} must retain its exact linked photograph`);
+  assert.equal(selected.evidenceImage, observation.evidenceImage, `${observation.treeId} must retain its own repository image path`);
+}
+for (const observation of areaOneSourceObservations.slice(19)) {
+  const expected = nearestExpected(observation.latitude, observation.longitude);
+  const selected = nearestAreaOneImageObservation(observation);
+  assert.ok(selected, `${observation.treeId} must resolve exactly one approved nearby photograph`);
+  assert.equal(selected.treeId, expected.treeId, `${observation.treeId} must use the deterministic nearest approved photograph`);
+  assert.ok(areaOneNearbyImageTreeIds.includes(selected.treeId), `${observation.treeId} must not use its out-of-allowlist source image`);
+}
+const allActiveAreaOneTrees = [
+  ...areaOneSourceObservations,
+  ...areaOneLayoutOnly.map((observation, index) => ({
+    ...observation,
+    latitude: 16.91222 + ((index % 8) * 0.00007),
+    longitude: 81.16981 + ((index % 5) * 0.00002),
+  })),
+];
+assert.equal(allActiveAreaOneTrees.length, 64, "The image rule must cover the full possible 64-tree Area 001 grid");
+for (const observation of allActiveAreaOneTrees) {
+  const selected = nearestAreaOneImageObservation(observation);
+  assert.ok(selected?.evidenceImage, `${observation.treeId} must resolve one approved image when active`);
+  assert.ok(areaOneNearbyImageTreeIds.includes(selected.treeId), `${observation.treeId} must resolve only from TREE-0001 through TREE-0019`);
+}
 assert.equal((renderTreeMappedBody.match(/<img\b/gi) || []).length, 1, "Mapped POC Tree Details must render at most one tree photograph");
-assert.match(renderTreeMappedBody, /nearestAreaOneImageObservation\s*\(/, "Added Area 001 Tree Details must resolve their nearby photograph through the deterministic selector");
+assert.match(renderTreeMappedBody, /nearestAreaOneImageObservation\s*\(/, "All Area 001 Tree Details must resolve their photograph through the deterministic selector");
+assert.match(renderTreeMappedBody, /(?:linked one-to-one|exact linked|source photograph)/i, "Exact TREE-0001 through TREE-0019 image copy must identify the direct linkage");
 assert.match(renderTreeMappedBody, /nearby source (?:image|photograph)|source (?:image|photograph)[^]*nearby/i, "Added-tree image copy must disclose that the photograph comes from a nearby source observation");
-assert.match(renderTreeMappedBody, /not (?:a photograph|an image) of (?:this|the) (?:exact )?tree|does not depict (?:this|the) (?:exact )?tree|not the (?:exact|same) tree|not evidence of (?:this|the) (?:exact )?(?:added )?tree/i, "Added-tree image copy must explicitly avoid claiming that nearby imagery depicts the added tree itself");
+assert.match(renderTreeMappedBody, /not (?:a photograph|an image) of (?:this|the) (?:exact )?tree|does not depict (?:this|the) (?:exact )?tree|not the (?:exact|same) tree|not evidence of (?:this|the) (?:exact )?(?:added )?tree/i, "Nearby-image copy must explicitly avoid claiming that it depicts the selected tree itself");
 assert.doesNotMatch(`${html}\n${mappedPocDataSource}`, /D:[\\/]hio01(?:[\\/]|\b)/i, "Tracked runtime sources must not depend on the operator's D:\\hio01 folder");
 const cellsForMappedBody = functionBody(html, "cellsFor");
 assert.match(cellsForMappedBody, /mapped-poc-camera[^]*(?:farm\.)?observations/, "Mapped POC 8 x 8 layouts must be sourced from ordered camera observations");
