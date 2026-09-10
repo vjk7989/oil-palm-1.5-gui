@@ -4,11 +4,12 @@
 
 - Repository: `D:\drone-mapping\oil-palm-1.5-gui`; upstream: <https://github.com/vjk7989/oil-palm-1.5-gui>.
 - The Dynamic Survey Area 001 Marker-to-Tree Workflow is implemented and independently green. `npm test`, `npm run build`, and `git diff --check` pass; line-ending messages are warnings only.
+- Survey Area 002 is now replaced by the deterministic `frm02` snapshot: 35 source-backed healthy DJI observations, exact camera metadata, a coordinate-derived geofence, and one repository-owned WebP per tree. Areas 003–005 remain unchanged.
 - Hosted fix commit `0f6fdab` was pushed. The GitHub Pages Actions workflow completed successfully, and the deployed Survey Area 001 now reports **Google Satellite map ready**.
 - Every Survey Area 001 Tree Details image is restricted to the repository allowlist derived from `D:\hio01` for `TREE-0001` through `TREE-0019`. Matching trees use their exact allowed image; `TREE-0020` through `TREE-0027` and dynamically added trees use a deterministic nearest allowed image with explicit disclosure that it does not depict the exact tree. The per-tree camera-position map remains removed; metadata, coordinates, indicators, provenance, and observation/history content remain.
-- The feature is intentionally limited to `MPOC-SURVEY-001`. Areas 002–005 retain their existing Leaflet maps and camera-footprint geofences.
+- Area 001 retains its Google workflow. Area 002 continues to use Leaflet with its new `frm02` camera-footprint geofence; Areas 003–005 retain their previous data and behavior.
 - The implementation is pushed; this handoff refresh may remain as a local documentation change. Inspect `git status --short` and preserve unrelated user work before any future commit.
-- The implementation change set is `data/mapped-poc-data.js`, `scripts/build_mapped_poc_snapshot.py`, `index.html`, and `tests/static-check.mjs`; context is maintained separately in this handoff and `docs/ARCHITECTURE_RECORD.md`.
+- The Area 002 implementation change set is `data/survey-002-farm-data.js`, `scripts/build_survey_two_farm_snapshot.py`, 35 derivatives under `assets/mapped-poc/evidence/`, `index.html`, and `tests/static-check.mjs`; context is maintained separately in this handoff and `docs/ARCHITECTURE_RECORD.md`.
 - Implementation, automated tests, and manual Google Maps/browser acceptance are complete. The remaining release action, if not already performed for this working tree, is to commit, push, and verify the resulting GitHub Pages deployment live.
 
 ## Authoritative references
@@ -17,6 +18,7 @@
 - Runtime integration and browser-local state: `index.html`.
 - Deterministic Mapped POC records: `data/mapped-poc-data.js`.
 - Snapshot generation boundary: `scripts/build_mapped_poc_snapshot.py`.
+- Survey Area 002 snapshot and generator: `data/survey-002-farm-data.js` and `scripts/build_survey_two_farm_snapshot.py`.
 - Geofence, marker-placement, configuration, migration, isolation, and regression contracts: `tests/static-check.mjs`.
 - GitHub Pages secret injection and deployment: `.github/workflows/deploy-pages.yml`.
 - Persistent project workflow: `docs/architecture/0001-project-context-and-agent-workflow.md`.
@@ -38,7 +40,9 @@ Read those artifacts directly rather than duplicating their detailed contracts h
 - The application has no runtime dependency on `D:\hio01`; browser presentation uses only the repository-owned allowlist derived from those sources.
 - Missing, rejected, disabled-API, billing, timeout, and network failures produce targeted guidance while leaving the Area 001 tree grid usable.
 - Independent final verification passed `npm test`, `npm run build`, and `git diff --check`. Tests cover capacity versus active state, version-5 migration, marker editing and persistence, exact versus nearest allowlisted image selection and disclosure, no per-tree map, unchanged Areas 002–005, and the rectangle's edit-mode-only clickability. The local Maps key remains ignored and untracked.
-- Manual Google Satellite and Tree Details QA passed for exact allowlisted images, deterministic nearest-image fallbacks and their disclosure, the dynamic marker workflow, and cleanup back to a clean 27-tree browser state. Areas 002–005 remain unchanged.
+- Manual Google Satellite and Tree Details QA passed for exact allowlisted images, deterministic nearest-image fallbacks and their disclosure, the dynamic Area 001 workflow, and cleanup back to a clean 27-tree browser state.
+- Area 002 manual QA passed: the Mapped POC portfolio reconciles to 134 active trees (87 healthy, 27 infected, 20 suspected); Area 002 reports 35 source-backed trees in a 35/64 grid with the correct `DJI_202606201109_004_DJI-SmartFarm-Web` mission and geofence. `TREE-0029` displayed its exact image, capture time `2026-06-20 11:12:33`, latitude `16.926447222`, longitude `81.164588333`, UUID `c1ecc67ab4a44af9896ae415f850e4c`, Healthy status, and 17% modelled risk.
+- Independent `npm test`, `npm run build`, and `git diff --check` were green before a later wording-only patch; `npm test` passed again afterward. Final full test/build/diff gates after documentation updates remain pending.
 
 ## Continuation rules
 
@@ -53,8 +57,9 @@ Read those artifacts directly rather than duplicating their detailed contracts h
 
 1. Read `AGENTS.md`, this file, and the relevant Google geofence section of `docs/ARCHITECTURE_RECORD.md`.
 2. Preserve repository-secret injection for hosted builds and keep the local Maps key ignored and untracked.
-3. Commit and push the dynamic marker workflow, then verify the resulting GitHub Pages build live before calling the increment released.
-4. Receive the user's next goal normally. Retain the Area 001-only map/editing boundary unless explicitly expanded, and repeat the independent green gate after material changes.
+3. Run the final full `npm test`, `npm run build`, and `git diff --check` gate after documentation updates.
+4. Commit and push the Area 002 integration, then verify the resulting GitHub Pages build live before calling the increment released.
+5. Receive the user's next goal normally and repeat the independent green gate after material changes.
 
 ## Suggested skills
 
@@ -63,3 +68,4 @@ Read those artifacts directly rather than duplicating their detailed contracts h
 - `understand-anything:understand-diff` for regression-impact review after future changes.
 - `impeccable` for future map-editor layout, responsiveness, or interaction polish.
 - `computer-use:computer-use` for hosted GitHub Pages acceptance after push and any future Google Maps or tree-detail visual verification.
+- `spreadsheets:Spreadsheets` only if a future task changes workbook-derived risk values; the current Area 002 values come from its deterministic repository snapshot.

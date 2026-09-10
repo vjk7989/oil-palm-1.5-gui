@@ -6,7 +6,22 @@ const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const mappedPocDataUrl = new URL("../data/mapped-poc-data.js", import.meta.url);
 assert.ok(existsSync(mappedPocDataUrl), "Mapped POC must ship an inspectable repository-owned data snapshot");
 const mappedPocDataSource = readFileSync(mappedPocDataUrl, "utf8");
-const mappedPocData = Function(`${mappedPocDataSource}\nreturn MAPPED_POC_DATA;`)();
+const baseMappedPocData = Function(`${mappedPocDataSource}\nreturn MAPPED_POC_DATA;`)();
+const surveyTwoDataUrl = new URL("../data/survey-002-farm-data.js", import.meta.url);
+const surveyTwoGeneratorUrl = new URL("../scripts/build_survey_two_farm_snapshot.py", import.meta.url);
+assert.ok(existsSync(surveyTwoDataUrl), "Survey Area 002 must ship an inspectable repository-owned farm snapshot");
+assert.ok(existsSync(surveyTwoGeneratorUrl), "Survey Area 002 must ship its deterministic snapshot generator");
+const surveyTwoDataSource = readFileSync(surveyTwoDataUrl, "utf8");
+const surveyTwoGeneratorSource = readFileSync(surveyTwoGeneratorUrl, "utf8");
+const surveyTwoData = Function(`${surveyTwoDataSource}\nreturn SURVEY_TWO_FARM_DATA;`)();
+const mappedPocData = {
+  ...baseMappedPocData,
+  areas: baseMappedPocData.areas.map((area) => area.id === surveyTwoData.area.id ? { ...area, ...surveyTwoData.area } : area),
+  observations: [
+    ...baseMappedPocData.observations.filter((observation) => observation.areaId !== surveyTwoData.area.id),
+    ...surveyTwoData.observations,
+  ],
+};
 const mapsExampleUrl = new URL("../config/maps.example.js", import.meta.url);
 const pagesWorkflowUrl = new URL("../.github/workflows/deploy-pages.yml", import.meta.url);
 const gitignore = readFileSync(new URL("../.gitignore", import.meta.url), "utf8");
@@ -64,7 +79,7 @@ function extractDemoModel(source) {
   const end = source.indexOf("let state =", start);
   assert.ok(start >= 0 && end > start, "The embedded AP demo model must remain inspectable");
   const modelSource = source.slice(start, end);
-  return Function("MAPPED_POC_DATA", "flatFarms", `${modelSource}\nreturn {
+  return Function("MAPPED_POC_DATA", "SURVEY_TWO_FARM_DATA", "flatFarms", `${modelSource}\nreturn {
     roles,
     districts,
     alerts: typeof alertRecords !== "undefined"
@@ -86,7 +101,7 @@ function extractDemoModel(source) {
     companyPortfolios: typeof COMPANY_PORTFOLIOS !== "undefined" ? COMPANY_PORTFOLIOS : undefined,
     areaOnePlaceholderTreeIds: typeof AREA_ONE_PLACEHOLDER_TREE_IDS !== "undefined" ? AREA_ONE_PLACEHOLDER_TREE_IDS : undefined,
     deterministicAreaOneRiskScore: typeof deterministicAreaOneRiskScore !== "undefined" ? deterministicAreaOneRiskScore : undefined
-  };`)(mappedPocData, flattenFarms);
+  };`)(mappedPocData, surveyTwoData, flattenFarms);
 }
 
 function extractArrayConstant(source, name) {
@@ -312,12 +327,14 @@ assert.equal(mappedPocFarms.length, 5, "Mapped POC must build exactly five surve
 assert.ok(mappedPocFarms.every((farm) => farm.companyId === "mappedpoc"), "Mapped POC farms must not leak another company ID");
 assert.ok(mappedPocFarms.every((farm) => typeof farm.id === "string" && farm.id.trim().length > 0), "Every Mapped POC farm must have a nonempty ID");
 assert.equal(new Set(mappedPocFarms.map((farm) => farm.id)).size, mappedPocFarms.length, "Mapped POC farm IDs must be unique within its portfolio");
-assert.deepEqual(mappedPocFarms.map((farm) => farm.trees), [27, 13, 17, 53, 2], "Fresh runtime state must activate only Area 001's 27 immutable source-backed trees");
+assert.deepEqual(mappedPocFarms.map((farm) => farm.trees), [27, 35, 17, 53, 2], "Fresh runtime state must use the 35-record Survey Area 002 farm snapshot");
 
 // Mapped POC is a frozen, repository-owned snapshot: the browser must never
 // depend on the operator's workbook path or DJI storage drive at runtime.
 assert.match(html, /<script\b[^>]*src=["']data\/mapped-poc-data\.js["'][^>]*><\/script>/i, "The app must load the repository-owned Mapped POC snapshot");
+assert.match(html, /<script\b[^>]*src=["']data\/survey-002-farm-data\.js["'][^>]*><\/script>/i, "The app must load the repository-owned Survey Area 002 snapshot");
 assert.doesNotMatch(`${html}\n${mappedPocDataSource}`, /(?:C:|G:)[\\/]/i, "Runtime sources must not contain absolute C: or G: paths");
+assert.doesNotMatch(`${html}\n${mappedPocDataSource}\n${surveyTwoDataSource}`, /D:[\\/]frm02(?:[\\/]|\b)/i, "Runtime sources must not depend on the operator's D:\\frm02 folder");
 assert.doesNotMatch(`${html}\n${mappedPocDataSource}`, /MPOC_000[1-4]/, "The four old synthetic Mapped POC IDs must be removed");
 
 assert.ok(mappedPocData && typeof mappedPocData === "object", "MAPPED_POC_DATA must expose one inspectable object");
@@ -335,20 +352,19 @@ const mappedObservations = mappedPocData.observations;
 assert.ok(Array.isArray(mappedAreas), "MAPPED_POC_DATA.areas must be an array");
 assert.ok(Array.isArray(mappedObservations), "MAPPED_POC_DATA.observations must be an array");
 assert.equal(mappedAreas.length, 5, "Mapped POC must contain exactly five survey areas");
-assert.equal(mappedObservations.length, 149, "Mapped POC must contain 112 source-folder observations plus 37 Area 001 layout-capacity trees");
+assert.equal(mappedObservations.length, 171, "Mapped POC runtime data must contain 134 source-folder observations plus 37 Area 001 layout-capacity trees");
 assert.deepEqual(mappedAreas.map((area) => area.id), ["MPOC-SURVEY-001", "MPOC-SURVEY-002", "MPOC-SURVEY-003", "MPOC-SURVEY-004", "MPOC-SURVEY-005"], "Survey-area IDs must be stable and ordered");
 assert.deepEqual(mappedAreas.map((area) => area.name), ["Survey Area 001", "Survey Area 002", "Survey Area 003", "Survey Area 004", "Survey Area 005"], "Survey-area names must be stable and ordered");
-assert.deepEqual(mappedAreas.map((area) => area.observationIds.length), [64, 13, 17, 53, 2], "Survey Area 001 must expose 64 deterministic capacity IDs while Areas 002-005 retain their approved source counts");
+assert.deepEqual(mappedAreas.map((area) => area.observationIds.length), [64, 35, 17, 53, 2], "Survey Area 002 must expose all 35 farm captures while the other survey counts remain unchanged");
 
 const treeIds = mappedObservations.map((observation) => observation.treeId);
 const sourceFolderObservations = mappedObservations.filter((observation) => observation.origin === "source-folder");
 const layoutOnlyObservations = mappedObservations.filter((observation) => observation.origin === "layout-only");
 const captureUuids = sourceFolderObservations.map((observation) => observation.captureUuid);
-assert.equal(new Set(treeIds).size, 149, "Every mapped grid-capacity tree must have a unique tree ID");
-assert.equal(sourceFolderObservations.length, 112, "The snapshot must retain exactly 112 unique source-folder observations");
+assert.equal(new Set(treeIds).size, 171, "Every mapped grid-capacity tree must have a unique tree ID");
+assert.equal(sourceFolderObservations.length, 134, "The runtime snapshot must retain exactly 134 source-folder observations");
 assert.equal(layoutOnlyObservations.length, 37, "Only the 37 approved Area 001 capacity trees may be layout-only");
-assert.equal(new Set(captureUuids).size, 112, "Copied DJI acquisitions must be globally deduplicated by capture UUID");
-assert.deepEqual(sourceFolderObservations.map((observation) => observation.treeId), Array.from({ length: 112 }, (_, index) => `TREE-${String(index + 1).padStart(4, "0")}`), "Workbook rows must map deterministically from TREE-0001 through TREE-0112");
+assert.deepEqual(new Set(sourceFolderObservations.map((observation) => observation.treeId)), new Set([...Array.from({ length: 112 }, (_, index) => `TREE-${String(index + 1).padStart(4, "0")}`), ...Array.from({ length: 22 }, (_, index) => `TREE-${String(index + 150).padStart(4, "0")}`)]), "Source-backed tree identities must retain TREE-0001 through TREE-0112 and add TREE-0150 through TREE-0171");
 const missionFourObservations = mappedObservations.filter((observation) => observation.areaId === "MPOC-SURVEY-004");
 for (const expected of [
   { captureNumber: 20, captureUuid: "b323d4000aba4918831ce4c2d7c6e345", latitude: 16.926570706, longitude: 81.16464361 },
@@ -390,7 +406,7 @@ for (const area of mappedAreas) {
     assert.ok(vertex.longitude >= Math.min(...longitudes) - .001 && vertex.longitude <= Math.max(...longitudes) + .001, `${area.id} geofence longitude must stay near its camera footprint`);
   }
 }
-assert.equal(new Set(mappedAreas.flatMap((area) => area.observationIds)).size, 149, "Every source-backed and layout-capacity tree must belong to exactly one survey area");
+assert.equal(new Set(mappedAreas.flatMap((area) => area.observationIds)).size, 171, "Every source-backed and layout-capacity tree must belong to exactly one survey area");
 
 for (const observation of mappedObservations) {
   assert.match(observation.areaId, /^MPOC-SURVEY-00[1-5]$/, `${observation.treeId} must reference a stable survey-area ID`);
@@ -401,11 +417,65 @@ for (const observation of mappedObservations) {
   assert.ok(typeof observation.severity === "string" && observation.severity.trim(), `${observation.treeId} must retain workbook severity`);
   assert.ok(!Object.hasOwn(observation, "recentRiskTrend"), `${observation.treeId} must not contain a simulated risk trend`);
 }
-const ganodermaFixtureHash = createHash("sha256")
-  .update(JSON.stringify(sourceFolderObservations.filter((observation) => observation.areaId !== "MPOC-SURVEY-001").map((observation) => [observation.treeId, observation.ganodermaRiskScore, observation.healthStatus, observation.severity])))
-  .digest("hex");
-assert.equal(ganodermaFixtureHash, "ab094b03966201d442c47e188f96a45c962ebe5d63ac6947d2509f97b891d08b", "The 85 source observations outside Area 001 must retain their approved workbook risk values and classifications");
-assert.equal(sourceFolderObservations.filter((observation) => observation.areaId !== "MPOC-SURVEY-001" && observation.healthStatus === "Healthy" && observation.severity === "Healthy").length, 65, "The source subset must retain exactly 65 healthy observations outside Area 001");
+// Survey Area 002 is replaced by the complete natural-colour capture inventory
+// from the supplied farm. The compact repository snapshot keeps the runtime
+// independent from the operator's source directory.
+assert.equal(surveyTwoData.version, 1, "Survey Area 002 snapshot must publish a version");
+assert.equal(surveyTwoData.provenance.sourceMission, "DJI_202606201109_004_DJI-SmartFarm-Web", "Survey Area 002 must retain the supplied mission identity");
+assert.equal(surveyTwoData.provenance.sourceCaptureCount, 35, "Survey Area 002 provenance must reconcile to 35 source captures");
+assert.match(surveyTwoData.provenance.sourceInventorySha256, /^[a-f0-9]{64}$/i, "Survey Area 002 source inventory must publish a SHA-256 checksum");
+assert.match(surveyTwoData.provenance.coordinateKind, /camera/i, "Survey Area 002 coordinates must be identified as camera exposure positions");
+assert.match(surveyTwoData.provenance.imageKind, /natural-colour|dji-d/i, "Survey Area 002 photographs must be identified as DJI natural-colour captures");
+const areaTwoObservations = mappedObservations.filter((observation) => observation.areaId === "MPOC-SURVEY-002");
+const areaTwo = mappedAreas.find((area) => area.id === "MPOC-SURVEY-002");
+const expectedAreaTwoTreeIds = [
+  ...Array.from({ length: 13 }, (_, index) => `TREE-${String(index + 28).padStart(4, "0")}`),
+  ...Array.from({ length: 22 }, (_, index) => `TREE-${String(index + 150).padStart(4, "0")}`),
+];
+assert.equal(areaTwoObservations.length, 35, "Survey Area 002 must contain exactly 35 source observations");
+assert.deepEqual(areaTwoObservations.map((observation) => observation.captureNumber), Array.from({ length: 35 }, (_, index) => index + 2), "Survey Area 002 must preserve capture order 0002 through 0036");
+assert.deepEqual(areaTwoObservations.map((observation) => observation.treeId), expectedAreaTwoTreeIds, "Survey Area 002 must preserve TREE-0028 through TREE-0040 and continue with TREE-0150 through TREE-0171");
+assert.deepEqual(areaTwo.observationIds, expectedAreaTwoTreeIds, "Survey Area 002 membership and observation order must agree exactly");
+assert.equal(new Set(areaTwoObservations.map((observation) => observation.captureUuid)).size, 35, "Survey Area 002 capture UUIDs must be unique");
+assert.equal(new Set(areaTwoObservations.map((observation) => observation.evidenceImage)).size, 35, "Every Survey Area 002 tree must have a unique repository WebP path");
+assert.equal(new Set(areaTwoObservations.map((observation) => observation.sourceSha256.toLowerCase())).size, 35, "Every Survey Area 002 source image must retain its own checksum");
+assert.equal(new Set(areaTwoObservations.map((observation) => observation.evidenceSha256.toLowerCase())).size, 35, "Every Survey Area 002 derivative must retain its own checksum");
+const areaTwoCaptureThree = areaTwoObservations.find((observation) => observation.captureNumber === 3);
+assert.equal(areaTwoCaptureThree?.latitude, 16.926447222, "Survey Area 002 capture 0003 must retain its exact XMP latitude");
+assert.equal(areaTwoCaptureThree?.longitude, 81.164588333, "Survey Area 002 capture 0003 must retain its exact XMP longitude");
+assert.equal(areaTwoCaptureThree?.capturedAt, "2026-06-20 11:12:33", "Survey Area 002 capture 0003 must retain its filename timestamp");
+for (const [index, observation] of areaTwoObservations.entries()) {
+  assert.equal(observation.origin, "source-folder", `${observation.treeId} must be source-backed`);
+  assert.ok(Number.isFinite(observation.latitude) && Number.isFinite(observation.longitude), `${observation.treeId} must retain finite XMP coordinates`);
+  assert.ok(!Number.isNaN(Date.parse(observation.capturedAt)), `${observation.treeId} must retain a parseable capture timestamp`);
+  assert.equal(observation.ganodermaRiskScore, 10 + ((index * 7) % 25), `${observation.treeId} must retain its deterministic 10-34 modelled score`);
+  assert.equal(observation.displayStatus, "Healthy", `${observation.treeId} must display Healthy`);
+  assert.equal(observation.healthStatus, "Healthy", `${observation.treeId} must retain Healthy health status`);
+  assert.equal(observation.severity, "Okay", `${observation.treeId} must retain Okay severity`);
+  assert.equal(observation.statusSource, "deterministic-modelled", `${observation.treeId} must disclose deterministic modelled status`);
+  assert.match(observation.sourceFile, /^DJI_\d{14}_\d{4}_D\.JPG$/, `${observation.treeId} must identify its natural-colour source file`);
+  assert.match(observation.sourceSha256, /^[a-f0-9]{64}$/i, `${observation.treeId} source checksum must be valid`);
+}
+const expectedAreaTwoLatitude = areaTwoObservations.reduce((sum, observation) => sum + observation.latitude, 0) / areaTwoObservations.length;
+const expectedAreaTwoLongitude = areaTwoObservations.reduce((sum, observation) => sum + observation.longitude, 0) / areaTwoObservations.length;
+assert.ok(Math.abs(areaTwo.centroid.latitude - expectedAreaTwoLatitude) < 1e-9, "Survey Area 002 centroid latitude must be derived from its 35 positions");
+assert.ok(Math.abs(areaTwo.centroid.longitude - expectedAreaTwoLongitude) < 1e-9, "Survey Area 002 centroid longitude must be derived from its 35 positions");
+assert.equal(areaTwo.geofenceKind, "camera-footprint-convex-hull", "Survey Area 002 must disclose its camera-position-derived geofence");
+assert.ok(areaTwo.geofence.length >= 3, "Survey Area 002 must retain a visible geofence polygon");
+const areaTwoLatitudeRange = [Math.min(...areaTwoObservations.map((observation) => observation.latitude)), Math.max(...areaTwoObservations.map((observation) => observation.latitude))];
+const areaTwoLongitudeRange = [Math.min(...areaTwoObservations.map((observation) => observation.longitude)), Math.max(...areaTwoObservations.map((observation) => observation.longitude))];
+assert.ok(areaTwo.geofence.every((point) => point.latitude >= areaTwoLatitudeRange[0] - .00002 && point.latitude <= areaTwoLatitudeRange[1] + .00002), "Survey Area 002 geofence latitude must be derived from its camera footprint");
+assert.ok(areaTwo.geofence.every((point) => point.longitude >= areaTwoLongitudeRange[0] - .00002 && point.longitude <= areaTwoLongitudeRange[1] + .00002), "Survey Area 002 geofence longitude must be derived from its camera footprint");
+for (const areaId of ["MPOC-SURVEY-001", "MPOC-SURVEY-003", "MPOC-SURVEY-004", "MPOC-SURVEY-005"]) {
+  assert.deepEqual(mappedAreas.find((area) => area.id === areaId), baseMappedPocData.areas.find((area) => area.id === areaId), `${areaId} metadata must remain unchanged by the Area 002 replacement`);
+  assert.deepEqual(mappedObservations.filter((observation) => observation.areaId === areaId), baseMappedPocData.observations.filter((observation) => observation.areaId === areaId), `${areaId} observations must remain unchanged by the Area 002 replacement`);
+}
+assert.match(surveyTwoGeneratorSource, /parser\.add_argument\(["']--source-dir["'][^\n]*required\s*=\s*True/, "Survey Area 002 generator must require an explicit source directory");
+assert.match(surveyTwoGeneratorSource, /drone-dji:[^]*GpsLatitude[^]*GpsLongitude|xmp_value[^]*GpsLatitude[^]*GpsLongitude/, "Survey Area 002 generator must extract DJI XMP coordinates");
+assert.match(surveyTwoGeneratorSource, /EXPECTED_CAPTURE_NUMBERS[^]*range\(2,\s*37\)/, "Survey Area 002 generator must enforce captures 0002 through 0036");
+assert.doesNotMatch(surveyTwoGeneratorSource, /D:[\\/]frm02(?:[\\/]|\b)/i, "Survey Area 002 generator must not hard-code the operator's source directory");
+
+assert.equal(sourceFolderObservations.filter((observation) => observation.areaId !== "MPOC-SURVEY-001" && observation.healthStatus === "Healthy").length, 87, "The source subset must retain 87 healthy observations outside Area 001 after the Area 002 replacement");
 assert.equal(sourceFolderObservations.filter((observation) => observation.areaId !== "MPOC-SURVEY-001" && observation.healthStatus === "Unhealthy" && observation.severity === "Severe").length, 20, "The source subset outside Area 001 must retain exactly 20 workbook severe observations");
 
 const areaOneObservations = mappedObservations.filter((observation) => observation.areaId === "MPOC-SURVEY-001");
@@ -444,18 +514,19 @@ assert.equal(severeOutsideAreaOne.length, 20, "The existing source data must ret
 assert.ok(severeOutsideAreaOne.every((observation) => observation.displayStatus === "Suspected" && observation.statusSource === "modelled-risk"), "Existing severe modelled observations outside Area 001 must render as Suspected, not infected");
 assert.deepEqual(
   ["Infected", "Suspected", "Healthy"].map((status) => mappedObservations.filter((observation) => observation.displayStatus === status).length),
-  [64, 20, 65],
-  "The capacity snapshot must reconcile to 64 potentially active Area 001 infected records, 20 suspected, and 65 healthy trees"
+  [64, 20, 87],
+  "The capacity snapshot must reconcile to 64 potentially active Area 001 infected records, 20 suspected, and 87 healthy trees"
 );
 
 const riskEvidenceObservations = sourceFolderObservations.filter((observation) => observation.displayStatus !== "Healthy");
 assert.equal(riskEvidenceObservations.length, 47, "Only the 27 source-backed infected and 20 suspected trees may carry risk evidence");
-assert.ok(mappedObservations.filter((observation) => observation.displayStatus === "Healthy").every((observation) => observation.evidenceImage === null && observation.evidenceSha256 === null), "Healthy trees must not expose evidence images");
+assert.ok(mappedObservations.filter((observation) => observation.displayStatus === "Healthy" && observation.areaId !== "MPOC-SURVEY-002").every((observation) => observation.evidenceImage === null && observation.evidenceSha256 === null), "Healthy trees outside Survey Area 002 must retain their image-free behavior");
+assert.ok(areaTwoObservations.every((observation) => observation.evidenceImage && observation.evidenceSha256), "Every healthy Survey Area 002 tree must retain its supplied farm photograph");
 assert.ok(areaOneLayoutOnly.every((observation) => observation.evidenceImage === null && observation.evidenceSha256 === null), "Positioned layout-only trees must not invent source evidence images");
 assert.equal(new Set(areaOneSourceObservations.map((observation) => observation.evidenceImage)).size, 27, "Each of Area 001's 27 immutable source-backed trees must retain its own photograph");
 assert.ok(areaOneSourceObservations.every((observation) => typeof observation.evidenceImage === "string" && observation.evidenceImage.endsWith(".webp")), "Every immutable Area 001 source tree must retain a repository-owned photograph");
 assert.equal(new Set(riskEvidenceObservations.map((observation) => observation.evidenceImage)).size, 47, "Every source-backed infected or suspected tree must have its own evidence derivative");
-for (const observation of riskEvidenceObservations) {
+for (const observation of [...riskEvidenceObservations, ...areaTwoObservations]) {
   assert.match(observation.evidenceImage, /^(?![A-Za-z]:[\\/])(?![\\/])(?!.*(?:^|[\\/])\.\.(?:[\\/]|$)).+\.webp$/i, `${observation.treeId} evidence must use a repository-relative WebP path`);
   assert.match(observation.evidenceSha256, /^[a-f0-9]{64}$/i, `${observation.treeId} evidence must publish a SHA-256 checksum`);
   const evidenceUrl = new URL(`../${observation.evidenceImage}`, import.meta.url);
@@ -482,6 +553,9 @@ assert.doesNotMatch(renderTreeMappedBody, /<h[1-6][^>]*>\s*Tree camera position\
 assert.doesNotMatch(renderTreeMappedBody, /treeLocationMap|mapCard|initMappedPocTreeMap/, "Mapped POC Tree Details must not render or initialize a tree-location map card");
 assert.match(renderTreeMappedBody, /Tree ID[^]*Survey area[^]*Display status[^]*Ganoderma score/i, "Tree Details must preserve the core Mapped POC tree metadata");
 assert.match(renderTreeMappedBody, /Latitude[^]*Longitude|latitude[^]*longitude/i, "Tree Details must display the selected marker's exact latitude and longitude");
+assert.match(renderTreeMappedBody, /observation\.areaId\s*===?\s*AREA_ONE_ID[^:]*(?:\?|[^]*nearestAreaOneImageObservation)[^:]*(?::)[^;]*observation\.evidenceImage\s*\?\s*observation\s*:\s*null/i, "Mapped POC trees outside Area 001 must use their own exact linked photograph when one exists");
+assert.match(renderTreeMappedBody, /displayEvidence\?\.treeId\s*===?\s*observation\.treeId/, "Survey Area 002 Tree Details must preserve exact tree-to-image identity");
+assert.match(renderTreeMappedBody, /src=["']\$\{escapeHtml\(displayEvidence\.evidenceImage\)\}/, "Survey Area 002 Tree Details must render the selected tree's repository image path");
 
 // Every Survey Area 001 tree resolves exactly one repository-owned photograph
 // from the 19 captures supplied for this workflow. TREE-0001 through TREE-0019
@@ -583,6 +657,11 @@ assert.equal(areaOneCells.filter((cell) => cell.occupied).length, 27, "Fresh Are
 assert.equal(areaOneCells.filter((cell) => !cell.occupied).length, 37, "Fresh Area 001 runtime state must leave all 37 optional slots black");
 assert.ok(areaOneCells.filter((cell) => !cell.occupied).every((cell) => cell.status === "empty" && !cell.id), "Every unused Area 001 grid cell must remain an empty black cell with no tree identity");
 assert.deepEqual(areaOneCells.filter((cell) => cell.occupied).map((cell) => cell.id), areaOneSourceObservations.map((observation) => observation.treeId), "Fresh Area 001 occupied cells must follow the immutable source observation order");
+const areaTwoFarm = mappedPocFarms.find((farm) => farm.id === "MPOC-SURVEY-002");
+const areaTwoCells = mappedCellsFor(areaTwoFarm, 1);
+assert.equal(areaTwoCells.length, 64, "Survey Area 002 must retain the shared 8 x 8 grid capacity");
+assert.equal(areaTwoCells.filter((cell) => cell.occupied).length, 35, "Survey Area 002 grid must contain exactly its 35 supplied farm trees");
+assert.deepEqual(areaTwoCells.filter((cell) => cell.occupied).map((cell) => cell.id), expectedAreaTwoTreeIds, "Survey Area 002 grid identity must match its ordered capture-to-tree mapping");
 assert.match(html, /\.h-empty\{[^}]*--c:var\(--empty\)/, "Unused grid cells must retain the black empty-state colour token");
 
 const geographicMapBody = functionBody(html, "initGeographicMap");

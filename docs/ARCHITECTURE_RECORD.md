@@ -314,6 +314,14 @@ Manual acceptance on 2026-09-11 verified that source-backed `TREE-0020` selected
 
 Final independent `npm test`, `npm run build`, and `git diff --check` gates were green. Automated verification covered version-5 migration, zero through 37 optional records, lowest-ID reuse, add/remove/undo/cancel/save behavior, storage rollback, geofence and source-pin collision protection, 27-through-64 synchronized map/grid/detail identities, exact added-tree coordinates and indicators, exact and deterministic nearest allowlisted-image selection with disclosure, no per-tree map, unchanged Areas 002-005, and continued tree-grid access when Google Maps is unavailable.
 
+## Decision: Survey Area 002 `frm02` source integration
+
+This decision supersedes the earlier Area 002 snapshot count while leaving Areas 001, 003, 004, and 005 unchanged. The deterministic build-time inventory reads `D:\frm02` as a read-only source and selects 35 unique natural-colour captures numbered `0002...0036`. XMP supplies each camera exposure coordinate, and each record keeps an exact one-to-one optimized WebP derived from its matching `D.JPG`. No source file is copied, and the browser has no runtime dependency on `D:\frm02`.
+
+The stable records use the existing `TREE-0028...TREE-0040` IDs plus `TREE-0150...TREE-0171`, avoiding any renumbering of the other survey areas. All 35 are **Healthy** with deterministic modelled Ganoderma scores from 10 through 34 because no diagnosis was supplied. Their source mission is `DJI_202606201109_004_DJI-SmartFarm-Web`. [`scripts/build_survey_two_farm_snapshot.py`](../scripts/build_survey_two_farm_snapshot.py) produces the inspectable [`data/survey-002-farm-data.js`](../data/survey-002-farm-data.js) snapshot consumed by the existing UI. Area 002 now has 35 records and the active five-area portfolio ranges from 134 through 171 trees as Area 001 changes from 27 through 64.
+
+Manual browser acceptance verified the 35/64 Area 002 grid and `TREE-0029` at its exact XMP-derived location with its matching image. Independent `npm test`, `npm run build`, and `git diff --check` gates were green.
+
 ## Verification record
 
 The current increment passed the following gates on 2026-08-09:
