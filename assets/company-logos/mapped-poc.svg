@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 136 96" role="img" aria-labelledby="title description">
+  <title id="title">Mapped POC</title>
+  <desc id="description">Mapped POC initials on the PalmWatch rose background.</desc>
+  <rect width="136" height="96" rx="20" fill="#a82764"/>
+  <path d="M29 69V27h10l13 22 13-22h10v42H64V45L52 64 40 45v24H29Z" fill="#fff"/>
+  <path d="M84 69V27h17c11 0 18 6 18 16s-7 16-18 16h-6v10H84Zm11-20h6c5 0 7-2 7-6s-2-6-7-6h-6v12Z" fill="#fff"/>
+</svg>

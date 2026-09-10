@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>PalmWatch AP Portal</title>
+  <script src="config/maps.local.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" onload="window.dispatchEvent(new Event('leafletready'))"></script>
   <style>
@@ -140,13 +141,16 @@
     .tcell:hover:not(:disabled){border-color:var(--fg);transform:scale(1.12);z-index:2}
     .tcell:disabled{cursor:not-allowed;opacity:1}
     .hbar{display:flex;height:16px;border-radius:8px;overflow:hidden;background:var(--muted);margin-bottom:14px}.hseg{height:100%;background:var(--c)}
-    .legrow{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bord2);font-size:13px}.legrow:last-child{border:none}.legL{display:flex;align-items:center;gap:9px}.legN{font:700 13px var(--font-mono)}
+    .legrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--bord2);font-size:13px;min-width:0}.legrow>*{min-width:0}.legrow b,.legrow span{overflow-wrap:anywhere}.legrow:last-child{border:none}.legL{display:flex;align-items:center;gap:9px}.legN{font:700 13px var(--font-mono);flex:none}
     .trend{display:flex;align-items:flex-end;gap:9px;height:150px;margin-top:6px}.trendcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end}.tbarwrap{width:100%;flex:1;display:flex;align-items:flex-end;justify-content:center}.tbar{width:66%;background:var(--primary);border-radius:5px 5px 0 0;min-height:3px}.tbar.hot{background:var(--bad)}.tlab{font:10.5px var(--font-mono);color:var(--mfg)}
-    .tree-hero{display:grid;grid-template-columns:320px 1fr;gap:22px}
+    .tree-hero{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:22px}
+    .tree-hero>*{min-width:0}
     .ph{background:repeating-linear-gradient(45deg,var(--muted),var(--muted) 11px,transparent 11px,transparent 22px);border:1px dashed var(--border);border-radius:var(--r);display:flex;align-items:center;justify-content:center;color:var(--mfg);font-family:var(--font-mono);font-size:12px;text-align:center;padding:20px}
     .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
-    .evidence{padding:0;overflow:hidden}.evidence-head{padding:16px 18px 0}.evidence-stage{position:relative;aspect-ratio:4/3;background:var(--muted);display:grid;place-items:center;overflow:hidden}.evidence-stage img{width:100%;height:100%;object-fit:cover;display:block;opacity:0}.evidence-stage.is-ready img{opacity:1}.evidence-loading,.evidence-error{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--mfg);font:600 12px var(--font-mono);background:var(--muted)}.evidence-tabs{display:flex;gap:5px;padding:10px 12px;overflow-x:auto;border-top:1px solid var(--bord2)}.evidence-tab{border:1px solid var(--bord2);background:var(--card);color:var(--mfg);border-radius:7px;padding:7px 10px;font-size:11px;font-weight:700;white-space:nowrap}.evidence-tab[aria-selected="true"]{border-color:var(--primary);background:var(--primsoft);color:var(--primary)}.evidence-tab:focus-visible,.help:focus-visible{outline:3px solid color-mix(in oklch,var(--primary) 42%,transparent);outline-offset:2px}.evidence-caption{padding:0 18px 16px}.evidence-caption b{display:block;font-size:13px}.evidence-caption span{display:block;color:var(--mfg);font-size:11.5px;line-height:1.45;margin-top:3px}.evidence-notice{margin:0 18px 16px;padding:11px 12px;background:var(--card2);border:1px solid var(--bord2);border-radius:9px;color:var(--mfg);font-size:11.5px;line-height:1.45}
-    .tdetail{display:grid;grid-template-columns:1fr 1fr;gap:2px 26px}.tdrow{display:flex;flex-direction:column;gap:3px;padding:12px 0;border-bottom:1px solid var(--bord2)}.tdk{font:600 10.5px var(--font-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mfg)}.tdv{font-size:16px;font-weight:700}
+    .evidence{padding:0;overflow:hidden}.evidence-head{padding:16px 18px 0}.evidence-stage{position:relative;aspect-ratio:4/3;background:var(--muted);display:grid;place-items:center;overflow:hidden}.evidence-stage img{width:100%;height:100%;object-fit:cover;display:block;opacity:0}.evidence-stage.is-ready img{opacity:1}.evidence-loading,.evidence-error{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--mfg);font:600 12px var(--font-mono);background:var(--muted)}.evidence-tabs{display:flex;gap:5px;padding:10px 12px;overflow-x:auto;border-top:1px solid var(--bord2)}.evidence-tab{border:1px solid var(--bord2);background:var(--card);color:var(--mfg);border-radius:7px;padding:7px 10px;font-size:11px;font-weight:700;white-space:nowrap}.evidence-tab[aria-selected="true"]{border-color:var(--primary);background:var(--primsoft);color:var(--primary)}.evidence-tab:focus-visible,.help:focus-visible{outline:3px solid color-mix(in oklch,var(--primary) 42%,transparent);outline-offset:2px}.evidence-caption{padding:0 18px 16px}.evidence-caption b{display:block;font-size:13px}.evidence-caption span{display:block;color:var(--mfg);font-size:11.5px;line-height:1.45;margin-top:3px;overflow-wrap:anywhere}.evidence-notice{margin:0 18px 16px;padding:11px 12px;background:var(--card2);border:1px solid var(--bord2);border-radius:9px;color:var(--mfg);font-size:11.5px;line-height:1.45;overflow-wrap:anywhere}
+    .tdetail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 26px;min-width:0}.tdrow{display:flex;flex-direction:column;gap:3px;padding:12px 0;border-bottom:1px solid var(--bord2);min-width:0}.tdk{font:600 10.5px var(--font-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mfg)}.tdv{font-size:16px;font-weight:700;min-width:0;overflow-wrap:anywhere;word-break:break-word}
+    .survey-map-card{padding:0;overflow:hidden}.survey-map-head{padding:16px 18px 12px}.survey-map-head .cardt{margin-bottom:4px}.survey-map,.tree-location-map{height:360px;min-height:360px;background:oklch(0.95 0.014 244)}.tree-location-map{height:260px;min-height:260px}.tree-pin-wrap{background:transparent;border:0}.tree-pin{display:block;width:19px;height:19px;border:3px solid #fff;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px color-mix(in oklch,var(--c) 55%,transparent),0 2px 6px oklch(0.2 0.03 325 / .36)}.geofence-note{padding:10px 18px 14px;color:var(--mfg);font-size:11.5px;line-height:1.45;overflow-wrap:anywhere}.source-mission{overflow-wrap:anywhere;word-break:break-word}.mapped-tree-stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+    .geofence-toolbar{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:0 18px 14px}.geofence-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.geofence-actions .btn,.geofence-actions .btn-ghost{font-size:12px;padding:8px 12px}.geofence-coordinate-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 14px;min-width:0}.geofence-coordinate-list span{display:flex;gap:6px;min-width:0;color:var(--mfg);font:11px var(--font-mono)}.geofence-coordinate-list b{color:var(--fg);overflow-wrap:anywhere}.geofence-status{min-height:18px;margin:0;padding:0 18px 12px;color:var(--mfg);font-size:11.5px;line-height:1.4}.geofence-status.is-error{color:var(--bad);font-weight:650}.geofence-status.is-success{color:var(--healthy);font-weight:650}.google-map-error{height:100%;min-height:360px;display:grid;place-items:center;padding:28px;text-align:center;background:var(--card2)}.google-map-error strong,.google-map-error span{display:block}.google-map-error span{max-width:54ch;margin-top:7px;color:var(--mfg);font-size:12.5px;line-height:1.5}
     .gauge{height:9px;border-radius:6px;background:var(--muted);overflow:hidden;margin-top:5px}.gaugefill{height:100%;background:var(--c);border-radius:6px}
     .indicator-list{display:flex;flex-direction:column;gap:15px}.indicator{padding-bottom:14px;border-bottom:1px solid var(--bord2)}.indicator:last-child{padding-bottom:0;border-bottom:0}.indicator-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.indicator-title{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700}.indicator-value{display:flex;align-items:center;gap:8px;font:800 12px var(--font-mono)}.indicator-value .badge{font-size:9px;padding:3px 7px}.indicator-scale{position:relative;display:flex;height:12px;margin:9px 0 7px;border-radius:99px;overflow:visible;background:var(--muted)}.indicator-segment{height:100%;background:var(--c)}.indicator-segment:first-child{border-radius:99px 0 0 99px}.indicator-segment:nth-last-child(2){border-radius:0 99px 99px 0}.indicator-marker{position:absolute;top:-4px;width:3px;height:20px;border-radius:2px;background:var(--fg);box-shadow:0 0 0 2px var(--card);transform:translateX(-50%)}.indicator-ranges{display:flex;gap:8px;justify-content:space-between;color:var(--mfg);font:9.5px var(--font-mono);line-height:1.3}.indicator-ranges span{display:flex;align-items:center;gap:4px}.indicator-ranges i{width:7px;height:7px;border-radius:50%;background:var(--c);flex:none}.help{border:1px solid var(--border);background:var(--card2);color:var(--mfg);width:19px;height:19px;border-radius:50%;font:700 11px var(--font-mono);padding:0;display:inline-grid;place-items:center}
     .formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field label{display:block;font:600 11px var(--font-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mfg);margin-bottom:7px}.field input,.field select{width:100%}
@@ -179,7 +183,7 @@
     .hidden{display:none!important}
     @media(max-width:980px){.app{grid-template-columns:82px 1fr}.logotext,.logosub,.navitem span:not(.nico),.sidefoot span:not(.avatar),.navlabel{display:none}.side{padding:16px 10px}.navitem{justify-content:center}.mapwrap,.grid2,.tree-hero,.workgrid,.admin-grid,.settings-grid,.farm-builder{grid-template-columns:1fr}.workside{position:static}.mrow,.mrow5{grid-template-columns:repeat(2,1fr)}.htr{grid-template-columns:minmax(260px,1.8fr) minmax(120px,1fr) minmax(100px,.85fr) minmax(100px,.85fr) minmax(110px,.9fr) minmax(128px,.95fr);min-width:820px}.user-row{grid-template-columns:minmax(190px,1.3fr) minmax(150px,1fr) auto}.user-row .scope-cell{grid-column:1/-1}}
     @media(max-width:980px){.alertrow{grid-template-columns:minmax(210px,1.5fr) 1fr .7fr auto}.alertrow .alert-date{display:none}}
-    @media(max-width:620px){.app{display:block;height:auto}.side{position:sticky;top:0;z-index:5;display:flex;flex-direction:row;overflow:auto;border-right:0;border-bottom:1px solid var(--bord2);scrollbar-width:thin}.logo,.sidefoot,.navlabel{display:none}.navitem{flex:0 0 auto}.main{min-height:100vh;overflow:visible}.topbar{height:auto;min-height:64px;padding:12px;align-items:flex-start;gap:12px;flex-wrap:wrap}.tb-left{flex:1 1 220px}.tb-right{flex:1 1 220px;flex-wrap:wrap;justify-content:flex-end}.content{padding:18px 14px 40px}.pagehead{align-items:flex-start;flex-direction:column;gap:12px}.mrow,.mrow5,.formgrid,.preview-meta,.assessment-fields{grid-template-columns:1fr}.assessment-fields .wide{grid-column:auto}.map{min-height:420px}.leaflet-map,.map-fallback{min-height:420px}.mapwrap{min-height:0}.htr{grid-template-columns:1fr;gap:6px;padding:12px 14px}.num{text-align:left}.treegrid{gap:4px}.tdetail{grid-template-columns:1fr}.indicator-ranges{flex-direction:column;gap:4px}.alertrow{grid-template-columns:1fr;gap:10px;padding:14px}.alertrow .alert-date{display:block}.alertactions{justify-content:flex-start}.filters{align-items:stretch}.filter,.filter select,.searchfield{width:100%;min-width:0}.report-item{grid-template-columns:40px 1fr}.report-meta{grid-column:1/-1;justify-content:flex-start}.history-table{display:block;overflow-x:auto}.tabs{width:100%}.tab{flex:1;padding-inline:8px}.detail-pair{grid-template-columns:90px 1fr}.user-row{grid-template-columns:1fr}.user-actions{justify-content:flex-start}.user-row .scope-cell{grid-column:auto}.role-matrix{grid-template-columns:150px repeat(4,74px)}.profile-menu{position:fixed;top:66px;right:12px;left:12px;width:auto}.acre-nav{width:100%;justify-content:space-between}.builder-actions>*{flex:1}.preview-banner{align-items:flex-start;flex-direction:column}}
+    @media(max-width:620px){.app{display:block;height:auto}.side{position:sticky;top:0;z-index:5;display:flex;flex-direction:row;overflow:auto;border-right:0;border-bottom:1px solid var(--bord2);scrollbar-width:thin}.logo,.sidefoot,.navlabel{display:none}.navitem{flex:0 0 auto}.main{min-height:100vh;overflow:visible}.topbar{height:auto;min-height:64px;padding:12px;align-items:flex-start;gap:12px;flex-wrap:wrap}.tb-left{flex:1 1 220px}.tb-right{flex:1 1 220px;flex-wrap:wrap;justify-content:flex-end}.content{padding:18px 14px 40px}.pagehead{align-items:flex-start;flex-direction:column;gap:12px}.mrow,.mrow5,.formgrid,.preview-meta,.assessment-fields{grid-template-columns:1fr}.assessment-fields .wide{grid-column:auto}.map{min-height:420px}.leaflet-map,.map-fallback{min-height:420px}.survey-map{height:320px;min-height:320px}.tree-location-map{height:240px;min-height:240px}.mapwrap{min-height:0}.htr{grid-template-columns:1fr;gap:6px;padding:12px 14px}.num{text-align:left}.treegrid{gap:4px}.tdetail{grid-template-columns:1fr}.indicator-ranges{flex-direction:column;gap:4px}.alertrow{grid-template-columns:1fr;gap:10px;padding:14px}.alertrow .alert-date{display:block}.alertactions{justify-content:flex-start}.filters{align-items:stretch}.filter,.filter select,.searchfield{width:100%;min-width:0}.report-item{grid-template-columns:40px 1fr}.report-meta{grid-column:1/-1;justify-content:flex-start}.history-table{display:block;overflow-x:auto}.tabs{width:100%}.tab{flex:1;padding-inline:8px}.detail-pair{grid-template-columns:90px 1fr}.user-row{grid-template-columns:1fr}.user-actions{justify-content:flex-start}.user-row .scope-cell{grid-column:auto}.role-matrix{grid-template-columns:150px repeat(4,74px)}.profile-menu{position:fixed;top:66px;right:12px;left:12px;width:auto}.acre-nav{width:100%;justify-content:space-between}.builder-actions>*{flex:1}.preview-banner{align-items:flex-start;flex-direction:column}.geofence-toolbar{align-items:stretch;flex-direction:column}.geofence-actions{justify-content:flex-start}.geofence-actions>*{flex:1}.geofence-coordinate-list{grid-template-columns:1fr}}
     @media(max-width:380px){.content{padding-inline:10px}.topbar{padding-inline:10px}.btn,.btn-ghost{padding-inline:11px}.tg{padding-inline:10px}.csel{max-width:168px}.treegrid{gap:3px}.tcell{font-size:8px;border-radius:4px}.mcard,.card{padding:14px}.detail-pair{grid-template-columns:1fr;gap:4px}.report-item{grid-template-columns:1fr}.report-icon{width:34px;height:34px}.acre-nav .btn-ghost{flex:1}.profile-menu{right:8px;left:8px}}
     @page{size:A4;margin:14mm}
     @media print{body{background:#fff}.side,.topbar,.no-print{display:none!important}.app{display:block;height:auto}.main,.content{display:block;overflow:visible;padding:0}.print-report{max-width:none}.card,.mcard,.panel{box-shadow:none;break-inside:avoid}.mrow{grid-template-columns:repeat(4,1fr)}.history-table{font-size:10pt}}
@@ -211,6 +215,7 @@
       <section class="content" id="content" aria-live="polite"></section>
     </main>
   </div>
+  <script src="data/mapped-poc-data.js"></script>
   <script>
     const roles = {
       admin:{name:"System Administrator",initials:"SA",districts:"all",nav:["Overview","New Farm","Alerts","Reports","Cases & Treatments","Administration","Settings"]},
@@ -236,7 +241,7 @@
     };
     const TREE_OBSERVATION = {treeId:"demo-all-trees",values:{ganodermaConfidence:18,recentRiskTrend:.02}};
     const GANODERMA_INDICATOR_DEFINITIONS = [
-      {id:"ganodermaConfidence",label:"Ganoderma infection",min:0,max:100,help:"What it means: deterministic demo infection likelihood for workflow training. Good is under 35%; over 65% is a high-priority simulated case.",ranges:[{label:"Okay",text:"< 35%",from:0,to:35,status:"ok"},{label:"Suspected",text:"35-65%",from:35,to:65,status:"risk"},{label:"Danger",text:"> 65%",from:65,to:100,status:"bad"}]},
+      {id:"ganodermaConfidence",label:"Ganoderma risk score",min:0,max:100,help:"What it means: a deterministic modelled POC score, not a field or laboratory diagnosis. Good is under 35%; over 65% is a high-priority review signal.",ranges:[{label:"Okay",text:"< 35%",from:0,to:35,status:"ok"},{label:"Suspected",text:"35-65%",from:35,to:65,status:"risk"},{label:"Danger",text:"> 65%",from:65,to:100,status:"bad"}]},
       {id:"recentRiskTrend",label:"Recent risk trend",min:-.10,max:.25,help:"What it means: simulated change in composite risk across recent observations. Good is stable or <= +0.05; above +0.15 is adverse.",ranges:[{label:"Okay",text:"<= +0.05",from:-.10,to:.05,status:"ok"},{label:"Suspected",text:"> +0.05-0.15",from:.05,to:.15,status:"risk"},{label:"Danger",text:"> +0.15",from:.15,to:.25,status:"bad"}]}
     ];
     const districts = [
@@ -292,11 +297,13 @@
     }
     const COMPANY_PROFILES = {
       gavl:{id:"gavl",shortName:"GAVL",name:"Godrej Agrovet Oil Palm",regionLabel:"Andhra Pradesh",subtitle:"Workbook-derived GAVL farms across Chintalapudi, Dwaraka Tirumala, and Kamavarapukota.",logo:"assets/company-logos/godrej-agrovet.png",accent:"G",riskBase:.045,coverage:.91,baseLat:16.86,baseLon:81.12,districtFallback:"Eluru"},
+      mappedpoc:{id:"mappedpoc",shortName:"MPOC",name:"Mapped POC",regionLabel:"Andhra Pradesh",subtitle:"137 trees across five survey areas: 27 user-designated infected, 20 modelled suspected, and 90 healthy.",logo:"assets/company-logos/mapped-poc.svg",accent:"M",source:"mapped-poc-survey",riskBase:0,coverage:1,baseLat:16.92,baseLon:81.16,districtFallback:"DJI Survey Areas"},
       nbl:{id:"nbl",shortName:"NBL",name:"Navabharat Limited / NBL",regionLabel:"Andhra Pradesh",subtitle:"Workbook-derived NBL farms across Eluru and East Godavari.",logo:"assets/company-logos/nbl.png",accent:"N",riskBase:.056,coverage:.87,baseLat:16.92,baseLon:81.36,districtFallback:"Eluru"},
       tgoilfed:{id:"tgoilfed",shortName:"TGOF",name:"TGOILFED",regionLabel:"Telangana",subtitle:"Workbook-derived Telangana Oilfed farms across Bhadradri Kothagudem and Khammam.",logo:"assets/company-logos/tgoilfed.png",accent:"T",riskBase:.071,coverage:.84,baseLat:17.34,baseLon:80.78,districtFallback:"Bhadradri Kothagudem"}
     };
     const COMPANY_AREA_ROWS = {
       gavl:["GAVL|AP||Chintalapudi|Chintalapudi|Subba Rao|GAVL_0001","GAVL|AP||Chintalapudi|Chintalapudi|Subba Rao|GAVL_0002","GAVL|AP||Chintalapudi|Recharla|Mangamma|GAVL_0119","GAVL|AP||Chintalapudi|Raghavapuram|Laxmana Rao|GAVL_1901","GAVL|AP||Chintalapudi|Erraguntapalli|Narasamma|GAVL_2091","GAVL|AP||Chintalapudi|Seethanagaram|Venkata Rao|GAVL_3139","GAVL|AP||Chintalapudi|Seethanagaram|Rama Rao|GAVL_3142","GAVL|AP||Chintalapudi|Seethanagaram|Venkata Rao|GAVL_3140","GAVL|AP||Chintalapudi|Gurubhatlagudem|Tata Rao|GAVL_4331","GAVL|AP||Chintalapudi|Gurubhatlagudem|Prasanna|GAVL_4359","GAVL|AP||Kamavarapukota|Kamavarapukota|Naresh|GAVL_5021","GAVL|AP||Kamavarapukota|Kamavarapukota|Durgamma|GAVL_5129","GAVL|AP||Kamavarapukota|Ravikampadu|Chandramma|GAVL_5221","GAVL|AP||Kamavarapukota|Tadikalapudi|Gautam Raju|GAVL_5423","GAVL|AP||Kamavarapukota|Kallacheruvu|Babu Rao|GAVL_5458","GAVL|AP||Kamavarapukota|Uppalapadu|Jagapathi Rao|GAVL_5833","GAVL|AP||Dwaraka Tirumala|Dwaraka Tirumala|Balakrishna|GAVL_6999","GAVL|AP||Dwaraka Tirumala|Dwaraka Tirumala|Hanumantha Rao|GAVL_6227","GAVL|AP||Dwaraka Tirumala|Pangidugudem|Jaya Lakshmi|GAVL_6448","GAVL|AP||Dwaraka Tirumala|Dorasanipadu|Lakshmi Devi|GAVL_6332"],
+      mappedpoc:[],
       nbl:["NBL|AP|Eluru|Jangareddygudem|Jangareddygudem|Rambabu|NBL_0001","NBL|AP|Eluru|Jangareddygudem|Jangareddygudem|Gangadhar|NBL_0002","NBL|AP|Eluru|Jangareddygudem|Guravaigudem|Laxmana Rao|NBL_0119","NBL|AP|Eluru|Jangareddygudem|Devulapalle|Laxmana Rao|NBL_1901","NBL|AP|Eluru|Jangareddygudem|Mysannagudem|Gangadhar|NBL_2091","NBL|AP|Eluru|Jangareddygudem|Lakkavaram|Bapineedu|NBL_3139","NBL|AP|Eluru|Koyyalagudem|Koyyalagudem|Rama Rao|NBL_3142","NBL|AP|Eluru|Koyyalagudem|Rajavaram|Venkataswami|NBL_3140","NBL|AP|Eluru|Koyyalagudem|Ponguturu|Devi|NBL_4331","NBL|AP|Eluru|Koyyalagudem|Bayyanagudem|Rayudu|NBL_4359","NBL|AP|Eluru|Jangareddygudem|Taduvai|Srikanth|NBL_5021","NBL|AP|Eluru|Jangareddygudem|Vegavaram|Rajamma|NBL_5129","NBL|AP|Eluru|Jangareddygudem|Srinivasapuram|Chandramma|NBL_5221","NBL|AP|East Godavari|Gopalapuram|Gopalapuram|Gautam Raju|NBL_5423","NBL|AP|East Godavari|Gopalapuram|Gopalapuram|Babu Rao|NBL_5458","NBL|AP|East Godavari|Gopalapuram|Cherukumilli|Jagapathi Rao|NBL_5833","NBL|AP|East Godavari|Gopalapuram|Chityala|Balakrishna|NBL_6999","NBL|AP|East Godavari|Tallapudi|Annadevarapeta|Hanumantha Rao|NBL_6227","NBL|AP|East Godavari|Tallapudi|Ballipadu|Jaya Lakshmi|NBL_6448","NBL|AP|East Godavari|Tallapudi|Tirugudumetta|Lakshmi Devi|NBL_6332"],
       tgoilfed:["TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Aswaraopeta|Rambabu|TGOF_0001","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Aswaraopeta|Gangadhar|TGOF_0002","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Aswaraopeta|Laxmana Rao|TGOF_0119","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Aswaraopeta|Laxmana Rao|TGOF_1901","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Ramannagudem|Gangadhar|TGOF_2091","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Ramannagudem|Bapineedu|TGOF_3139","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Ramannagudem|Rama Rao|TGOF_3142","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Vedanthapuram|Venkataswami|TGOF_3140","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Vedanthapuram|Devi|TGOF_4331","TGOF|TG|Bhadradri Kothagudem|Aswaraopeta|Vedanthapuram|Rayudu|TGOF_4359","TGOF|TG|Khammam|Sathupalli|Sathupalli|Srikanth|TGOF_5021","TGOF|TG|Khammam|Sathupalli|Sathupalli|Rajamma|TGOF_5129","TGOF|TG|Khammam|Sathupalli|Bethupalle|Chandramma|TGOF_5221","TGOF|TG|Khammam|Sathupalli|Bethupalle|Gautam Raju|TGOF_5423","TGOF|TG|Khammam|Sathupalli|Kistaram|Babu Rao|TGOF_5458","TGOF|TG|Khammam|Sathupalli|Kistaram|Jagapathi Rao|TGOF_5833","TGOF|TG|Khammam|Sathupalli|Kakarlapally|Balakrishna|TGOF_6999","TGOF|TG|Khammam|Sathupalli|Kakarlapally|Hanumantha Rao|TGOF_6227","TGOF|TG|Khammam|Sathupalli|Siddharam|Jaya Lakshmi|TGOF_6448","TGOF|TG|Khammam|Sathupalli|Siddharam|Lakshmi Devi|TGOF_6332"]
     };
@@ -307,14 +314,28 @@
       const ring=index%8, band=Math.floor(index/8);
       return {lat:profile.baseLat+(ring-3.5)*spread*.12+band*.025,lon:profile.baseLon+(band-1)*spread*.18+(ring%4-.5)*spread*.1};
     }
+    function buildMappedPocDistricts(){
+      const farms=MAPPED_POC_DATA.areas.map(area=>{
+        const observations=MAPPED_POC_DATA.observations.filter(item=>item.areaId===area.id);
+        const confirmedInfected=observations.filter(item=>item.displayStatus==="Infected").length;
+        const suspectedOnly=observations.filter(item=>item.displayStatus==="Suspected").length;
+        const flagged=confirmedInfected+suspectedOnly;
+        const riskReadings=observations.filter(item=>Number.isFinite(item.ganodermaRiskScore));
+        const meanRisk=riskReadings.length?riskReadings.reduce((sum,item)=>sum+item.ganodermaRiskScore,0)/riskReadings.length:0;
+        return {id:area.id,name:area.name,lat:area.centroid.latitude,lon:area.centroid.longitude,acres:1,density:observations.length,trees:observations.length,surveyed:observations.filter(item=>item.origin==="source-folder").length,infected:flagged,confirmedInfected,suspectedOnly,suspected:flagged,pending:0,risk:flagged/observations.length,meanRisk,lastSurvey:MAPPED_POC_DATA.provenance.captureDate,source:"mapped-poc-camera",companyId:"mappedpoc",company:"MPOC",sourceMission:area.sourceMission,geofence:area.geofence,geofenceKind:area.geofenceKind,observations,ownershipClaim:false};
+      });
+      const lat=farms.reduce((sum,item)=>sum+item.lat,0)/farms.length,lon=farms.reduce((sum,item)=>sum+item.lon,0)/farms.length;
+      return [{name:"DJI Survey Areas",lat,lon,mandals:[{name:"June 2026 Missions",lat,lon,villages:[{name:"Camera observations",lat,lon,farms}]}]}];
+    }
     function buildCompanyDistricts(companyId){
+      if(companyId==="mappedpoc")return buildMappedPocDistricts();
       const profile=COMPANY_PROFILES[companyId], groups=[];
       parseCompanyRows(COMPANY_AREA_ROWS[companyId]).forEach((row,index)=>{
         const districtName=row.district||profile.districtFallback, mandalName=row.mandal, villageName=row.village;
         const pin=coordinateFor(profile,index), seed=[...row.farmId].reduce((sum,char)=>sum+char.charCodeAt(0),0);
         const acres=5+(seed%7), density=52+(seed%6), risk=Math.min(.12,Math.max(.018,profile.riskBase+((seed%9)-4)*.006));
         const companyFarm=farm(row.farmId,`${row.farmer} ${villageName} Farm`,pin.lat,pin.lon,acres,density,risk,{surveyed:Math.round(acres*density*(profile.coverage-((seed%5)*.01))),pending:Math.max(3,Math.round(acres*density*(.018+risk*.22))),lastSurvey:`2026-08-${String(1+(seed%8)).padStart(2,"0")}`});
-        companyFarm.companyId=companyId;companyFarm.company=row.company;companyFarm.farmer=row.farmer;companyFarm.source="workbook-derived-demo";
+        companyFarm.companyId=companyId;companyFarm.company=row.company;companyFarm.farmer=row.farmer;companyFarm.source=profile.source||"workbook-derived-demo";
         let district=groups.find(item=>item.name===districtName);
         if(!district){const dPin=coordinateFor(profile,groups.length*7,.26);district={name:districtName,lat:dPin.lat,lon:dPin.lon,mandals:[]};groups.push(district);}
         let mandal=district.mandals.find(item=>item.name===mandalName);
@@ -429,7 +450,10 @@
     const TREATMENT_TRANSITIONS = {Recommended:"Planned",Planned:"In progress","In progress":"Completed"};
     const TREATMENT_PROGRESS = {Recommended:0,Planned:20,"In progress":60,Completed:100};
     const ALERT_STATE_KEY = "palmwatch.ap.v1.demoState";
-    const DEMO_STATE_VERSION = 2;
+    const DEMO_STATE_VERSION = 3;
+    const AP_BOUNDS = [[12.55,76.70],[19.25,84.85]];
+    const AREA_ONE_ID = "MPOC-SURVEY-001";
+    const AREA_ONE_DEFAULT_GEOFENCE_BOUNDS = Object.freeze({south:16.912209794,west:81.169804433,north:16.912805551,east:81.169912437});
     const DEFAULT_FARM_DRAFT = Object.freeze({name:"",district:"Eluru",mandal:"Pedavegi",village:"Munduru",lat:16.8792,lon:81.1471,acres:1,headUserId:"usr-head",managerUserId:"usr-manager",staffUserId:"usr-staff"});
     function createDefaultAcreLayout(acre,target=54){
       const safeAcre=Math.max(1,Math.trunc(Number(acre)||1)), safeTarget=Math.max(50,Math.min(57,Math.trunc(Number(target)||54)));
@@ -478,9 +502,35 @@
         return {...cell,treeId:`${farmId}-A${String(layout.acre).padStart(2,"0")}-R${String(cell.row).padStart(2,"0")}-C${String(cell.column).padStart(2,"0")}`};
       })}));
     }
+    function normalizeAreaOneGeofenceBounds(bounds){
+      return bounds&&typeof bounds==="object"?{south:Number(bounds.south),west:Number(bounds.west),north:Number(bounds.north),east:Number(bounds.east)}:null;
+    }
+    function validAreaOneGeofenceBounds(bounds){
+      const value=normalizeAreaOneGeofenceBounds(bounds);
+      return Boolean(value&&Object.values(value).every(Number.isFinite)&&value.south>=AP_BOUNDS[0][0]&&value.north<=AP_BOUNDS[1][0]&&value.west>=AP_BOUNDS[0][1]&&value.east<=AP_BOUNDS[1][1]&&value.south<value.north&&value.west<value.east);
+    }
+    function getAreaOneGeofenceBounds(){
+      const saved=demoState?.geofenceOverrides?.[AREA_ONE_ID];
+      return {...(validAreaOneGeofenceBounds(saved)?normalizeAreaOneGeofenceBounds(saved):AREA_ONE_DEFAULT_GEOFENCE_BOUNDS)};
+    }
+    function saveAreaOneGeofence(bounds){
+      if(!validAreaOneGeofenceBounds(bounds))return false;
+      demoState.geofenceOverrides={[AREA_ONE_ID]:normalizeAreaOneGeofenceBounds(bounds)};
+      return saveDemoState();
+    }
+    function resetAreaOneGeofence(){
+      demoState.geofenceOverrides={};
+      saveDemoState();
+      return {...AREA_ONE_DEFAULT_GEOFENCE_BOUNDS};
+    }
+    function cancelAreaOneGeofenceEdit(){
+      state.areaOneGeofenceEditing=false;
+      state.areaOneGeofenceDraft=getAreaOneGeofenceBounds();
+      return {...state.areaOneGeofenceDraft};
+    }
     function defaultPreferences(){return Object.fromEntries(Object.keys(roles).map(id=>[id,{notifications:true,density:"comfortable"}]));}
     function defaultDemoState(){
-      return {version:DEMO_STATE_VERSION,accounts:Object.fromEntries(Object.keys(roles).map(id=>[id,{readAlertIds:[]}])) ,cases:{},caseActions:[],treatments:{},administration:{users:{},events:[]},reportHistory:[],preferences:defaultPreferences(),localFarms:[]};
+      return {version:DEMO_STATE_VERSION,accounts:Object.fromEntries(Object.keys(roles).map(id=>[id,{readAlertIds:[]}])) ,cases:{},caseActions:[],treatments:{},administration:{users:{},events:[]},reportHistory:[],preferences:defaultPreferences(),localFarms:[],geofenceOverrides:{}};
     }
     function migrateDemoState(saved){
       const fallback=defaultDemoState();
@@ -497,6 +547,8 @@
       migrated.reportHistory=Array.isArray(saved.reportHistory)?saved.reportHistory:[];
       migrated.preferences=saved.preferences&&typeof saved.preferences==="object"?saved.preferences:{};
       Object.keys(roles).forEach(id=>{const pref=migrated.preferences[id]&&typeof migrated.preferences[id]==="object"?migrated.preferences[id]:{};migrated.preferences[id]={notifications:pref.notifications!==false,density:pref.density==="compact"?"compact":"comfortable"};});
+      const areaOneBounds=saved.geofenceOverrides?.[AREA_ONE_ID];
+      migrated.geofenceOverrides=validAreaOneGeofenceBounds(areaOneBounds)?{[AREA_ONE_ID]:normalizeAreaOneGeofenceBounds(areaOneBounds)}:{};
       return migrated;
     }
     function loadDemoState(){
@@ -518,9 +570,11 @@
       return demoState;
     }
     let demoState = loadDemoState();
-    let state = {companyId:null,role:"admin",page:"Overview",view:"map",path:[],farmId:null,treeId:null,evidenceView:"rgb",farmAcre:1,newFarmDraft:normalizeNewFarmDraft(DEFAULT_FARM_DRAFT),newFarmAcre:1,newFarmPreview:null,newFarmErrors:[],alertRead:"all",alertSeverity:"all",reportView:null,caseTab:"cases",caseStatus:"all",caseSearch:"",selectedCaseId:null,caseModalOpen:false,treatmentStatus:"all",treatmentSearch:"",selectedTreatmentId:null,statusMessage:"",profileOpen:false,signedOut:false,resetConfirm:false,customRolePreview:null};
-    const AP_BOUNDS = [[12.55,76.70],[19.25,84.85]];
+    let state = {companyId:null,role:"admin",page:"Overview",view:"map",path:[],farmId:null,treeId:null,evidenceView:"rgb",farmAcre:1,newFarmDraft:normalizeNewFarmDraft(DEFAULT_FARM_DRAFT),newFarmAcre:1,newFarmPreview:null,newFarmErrors:[],alertRead:"all",alertSeverity:"all",reportView:null,caseTab:"cases",caseStatus:"all",caseSearch:"",selectedCaseId:null,caseModalOpen:false,treatmentStatus:"all",treatmentSearch:"",selectedTreatmentId:null,statusMessage:"",profileOpen:false,signedOut:false,resetConfirm:false,customRolePreview:null,areaOneGeofenceEditing:false,areaOneGeofenceDraft:null};
     let activeMap = null;
+    let activeGoogleRectangle = null;
+    let activeGoogleMarkers = [];
+    let googleMapsApiPromise = null;
     const content = document.getElementById("content");
     const landing = document.getElementById("landing");
     const appShell = document.getElementById("appShell");
@@ -777,7 +831,7 @@
     function renderLanding(){
       appShell.classList.add("is-landing-hidden");
       landing.hidden=false;
-      landing.innerHTML=`<div class="landing-inner"><div><span class="landing-mark"><span class="logomark">P</span><span>PalmWatch</span></span><h1 id="landingTitle">PalmWatch By Buckleson X ESN LABS</h1><p class="landing-copy">Select a company dataset to enter the operational demo. Farm areas are seeded from the supplied workbook; health, survey, alert, case, and treatment figures remain realistic deterministic mock data.</p><div class="landing-note"><strong>Demo data notice:</strong> company logos identify selectable demo scopes only. Public place names and simulated coordinates do not imply ownership or diagnosis.</div></div><div class="company-grid" role="list" aria-label="Choose company portfolio">${Object.values(COMPANY_PORTFOLIOS).map(company=>`<button class="company-card" role="listitem" data-company="${company.id}" aria-label="Open ${escapeHtml(company.name)} demo portfolio"><span class="company-logo"><img src="${company.logo}" alt="${escapeHtml(company.name)} logo"></span><span><b>${escapeHtml(company.name)}</b><span>${escapeHtml(company.subtitle)}</span></span><em aria-hidden="true">›</em></button>`).join("")}</div></div>`;
+      landing.innerHTML=`<div class="landing-inner"><div><span class="landing-mark"><span class="logomark">P</span><span>PalmWatch</span></span><h1 id="landingTitle">PalmWatch By Buckleson X ESN LABS</h1><p class="landing-copy">Select a company dataset to enter the operational demo. Mapped POC uses repository-backed DJI camera positions with modelled risk scores; the other company portfolios remain deterministic demonstrations.</p><div class="landing-note"><strong>Data notice:</strong> camera coordinates are exposure positions, not tree bases or farm boundaries. Modelled scores do not establish ownership or diagnosis.</div></div><div class="company-grid" role="list" aria-label="Choose company portfolio">${Object.values(COMPANY_PORTFOLIOS).map(company=>`<button class="company-card" role="listitem" data-company="${company.id}" aria-label="Open ${escapeHtml(company.name)} demo portfolio"><span class="company-logo"><img src="${company.logo}" alt="${escapeHtml(company.name)} logo"></span><span><b>${escapeHtml(company.name)}</b><span>${escapeHtml(company.subtitle)}</span></span><em aria-hidden="true">›</em></button>`).join("")}</div></div>`;
       landing.querySelectorAll("[data-company]").forEach(button=>button.addEventListener("click",()=>selectCompany(button.dataset.company)));
     }
     function render(){
@@ -839,6 +893,7 @@
       crumbs.querySelectorAll("[data-crumb]").forEach(b=>b.addEventListener("click",()=>{const i=Number(b.dataset.crumb);state.path=state.path.slice(0,Math.max(0,i));state.farmId=null;state.treeId=null;render()}));
     }
     function levelData(){
+      if(state.companyId==="mappedpoc" && state.path.length===0)return flatFarms(scopedDistricts());
       let nodes = scopedDistricts();
       for(const p of state.path){
         const found = nodes.find(n=>n.name===p.name);
@@ -859,9 +914,11 @@
       const nodes = levelData();
       const farms = flatFarms(scopedDistricts());
       const m = metricsFor(farms);
-      const level = state.path.length===0?"District":state.path.length===1?"Mandal":state.path.length===2?"Village":"Farm";
+      const level = state.companyId==="mappedpoc"&&state.path.length===0?"Survey area":state.path.length===0?"District":state.path.length===1?"Mandal":state.path.length===2?"Village":"Farm";
+      const company = activeCompany();
+      const dataBasis = company.source==="mapped-poc-survey"?"uses DJI camera exposure positions and modelled Ganoderma risk scores; no farm boundaries or diagnoses are claimed from those sources. Survey Area 001 infected status is user-designated; modelled high-risk records are suspected":"uses deterministic demo data from the supplied workbook";
       content.innerHTML = `
-        <div class="pagehead"><div><h1 class="h1">${state.path.at(-1)?.name || `${activeCompany().name} Portfolio`}</h1><p class="sub">${activeCompany().regionLabel} deterministic demo data from the supplied workbook; public place names do not imply farm ownership.</p></div><button class="btn-ghost" id="resetScope">Reset scope</button></div>
+        <div class="pagehead"><div><h1 class="h1">${state.path.at(-1)?.name || `${company.name} Portfolio`}</h1><p class="sub">${company.regionLabel} ${dataBasis}; public place names do not imply farm ownership.</p></div><button class="btn-ghost" id="resetScope">Reset scope</button></div>
         ${metricStrip(m)}
         ${state.view==="map"?mapView(nodes,level):tableView(nodes,level)}
       `;
@@ -870,6 +927,10 @@
       if(state.view==="map") requestAnimationFrame(()=>initGeographicMap(nodes,level));
     }
     function metricStrip(m){
+      if(state.companyId==="mappedpoc"){
+        const scopedFarms=flatFarms(scopedDistricts()),farms=state.farmId?scopedFarms.filter(farm=>farm.id===state.farmId):scopedFarms,observations=farms.flatMap(farm=>farm.observations||[]),infected=observations.filter(item=>item.displayStatus==="Infected").length,suspected=observations.filter(item=>item.displayStatus==="Suspected").length,healthy=observations.length-infected-suspected;
+        return `<div class="mrow mrow5"><div class="mcard"><span class="mlabel">Survey areas</span><span class="mval">${fmt(farms.length)}</span><span class="msub">DJI mission groupings</span></div><div class="mcard"><span class="mlabel">Trees</span><span class="mval">${fmt(observations.length)}</span><span class="msub">survey and layout records</span></div><div class="mcard"><span class="mlabel">Healthy</span><span class="mval tone-ok">${fmt(healthy)}</span><span class="msub">no pin or image required</span></div><div class="mcard"><span class="mlabel">Infected</span><span class="mval tone-bad">${fmt(infected)}</span><span class="msub">user-designated records</span></div><div class="mcard"><span class="mlabel">Suspected</span><span class="mval tone-risk">${fmt(suspected)}</span><span class="msub">modelled high-risk records</span></div></div>`;
+      }
       return `<div class="mrow mrow5">
         <div class="mcard"><span class="mlabel">Farms</span><span class="mval">${fmt(m.farms)}</span><span class="msub">within role scope</span></div>
         <div class="mcard"><span class="mlabel">Planted area</span><span class="mval">${fmt(m.acres)} ac</span><span class="msub">${(m.acres*.404686).toFixed(1)} ha · reconciled demo area</span></div>
@@ -883,14 +944,72 @@
       return metricsFor(farms);
     }
     function mapView(nodes,level){
+      const mapped=state.companyId==="mappedpoc";
       return `<div class="mapwrap"><div class="map" role="region" aria-label="${activeCompany().regionLabel} geographic map">
         <div id="geoMap" class="leaflet-map" aria-label="Interactive ${activeCompany().regionLabel} map with pan and zoom controls"><div class="map-fallback"><div><strong>Geographic map is unavailable</strong><span>The accessible region list remains available. Use Table view for the same role-scoped records while the map library or tiles are offline.</span></div></div></div>
         <span class="maptag">${activeCompany().shortName} ${level} map</span>
-        <div class="legend"><span><span class="dot h-ok"></span>Healthy</span><span><span class="dot h-risk"></span>Suspected</span><span><span class="dot h-bad"></span>Danger</span></div>
+        <div class="legend"><span><span class="dot h-ok"></span>Healthy</span><span><span class="dot h-risk"></span>Suspected</span><span><span class="dot h-bad"></span>${mapped?"Infected":"Danger"}</span></div>
       </div><div class="rail"><div class="railhd">${level}s in scope</div>${nodes.map(n=>rail(n)).join("")}</div></div>`;
     }
     function destroyMap(){
-      if(activeMap){activeMap.remove();activeMap=null;}
+      if(activeGoogleRectangle&&window.google?.maps){google.maps.event.clearInstanceListeners(activeGoogleRectangle);activeGoogleRectangle.setMap(null);activeGoogleRectangle=null;}
+      activeGoogleMarkers.forEach(marker=>{if(window.google?.maps)google.maps.event.clearInstanceListeners(marker);marker.setMap(null);});
+      activeGoogleMarkers=[];
+      if(activeMap){if(typeof activeMap.remove==="function")activeMap.remove();else if(window.google?.maps)google.maps.event.clearInstanceListeners(activeMap);activeMap=null;}
+    }
+    function googleMapsFailureMessage(code){
+      if(code==="missing")return "Google Maps is not configured. Add a restricted Maps JavaScript API key to config/maps.local.js.";
+      if(code==="referrer")return "Google Maps rejected this website origin. Add the current HTTP referrer to the API key restrictions.";
+      if(code==="api")return "Maps JavaScript API is not enabled for this Google Cloud project.";
+      if(code==="billing")return "Google Maps billing is not enabled for this Google Cloud project.";
+      if(code==="timeout")return "Google Maps did not finish loading. Check the network connection and API configuration.";
+      if(code==="auth")return "Google Maps rejected the key. Check its allowed referrers, Maps JavaScript API access, and billing configuration.";
+      return "Google Maps could not load over the current network connection.";
+    }
+    function googleMapsErrorCode(message=""){
+      if(message.includes("RefererNotAllowedMapError"))return "referrer";
+      if(message.includes("ApiNotActivatedMapError"))return "api";
+      if(message.includes("BillingNotEnabledMapError"))return "billing";
+      return "auth";
+    }
+    function loadGoogleMapsApi(){
+      if(window.google?.maps?.Map)return Promise.resolve(window.google.maps);
+      if(googleMapsApiPromise)return googleMapsApiPromise;
+      const key=String(window.PALMWATCH_CONFIG?.googleMapsApiKey||"").trim();
+      if(!key)return Promise.reject({code:"missing"});
+      googleMapsApiPromise=new Promise((resolve,reject)=>{
+        const callback=`palmWatchGoogleMapsReady${Date.now()}`,script=document.createElement("script");
+        let settled=false;
+        const finish=(error)=>{if(settled)return;settled=true;clearTimeout(timer);window.removeEventListener("error",onWindowError);delete window[callback];if(error){googleMapsApiPromise=null;reject(error);}else resolve(window.google.maps);};
+        const onWindowError=event=>{const message=String(event.message||event.error?.message||"");if(message.includes("MapError"))finish({code:googleMapsErrorCode(message)});};
+        const previousAuthFailure=window.gm_authFailure;
+        window.gm_authFailure=()=>{finish({code:"auth"});if(typeof previousAuthFailure==="function")previousAuthFailure();};
+        window[callback]=()=>finish(window.google?.maps?.Map?null:{code:"api"});
+        script.id="palmwatchGoogleMapsApi";
+        script.async=true;
+        script.defer=true;
+        script.onerror=()=>finish({code:"network"});
+        script.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&v=weekly&callback=${callback}`;
+        window.addEventListener("error",onWindowError);
+        document.head.appendChild(script);
+        const timer=setTimeout(()=>finish({code:"timeout"}),15000);
+      });
+      return googleMapsApiPromise;
+    }
+    function areaOneBoundsLabel(bounds){
+      return `<span>South <b>${bounds.south.toFixed(9)}</b></span><span>West <b>${bounds.west.toFixed(9)}</b></span><span>North <b>${bounds.north.toFixed(9)}</b></span><span>East <b>${bounds.east.toFixed(9)}</b></span>`;
+    }
+    function updateAreaOneGeofenceUi(bounds,message="",tone=""){
+      const coordinates=document.getElementById("areaOneGeofenceCoordinates"),status=document.getElementById("areaOneGeofenceStatus");
+      if(coordinates)coordinates.innerHTML=areaOneBoundsLabel(bounds);
+      if(status){status.textContent=message;status.className=`geofence-status${tone?` is-${tone}`:""}`;}
+    }
+    function setAreaOneGeofenceEditingUi(editing){
+      state.areaOneGeofenceEditing=editing;
+      document.getElementById("areaOneGeofenceViewActions")?.classList.toggle("hidden",editing);
+      document.getElementById("areaOneGeofenceEditActions")?.classList.toggle("hidden",!editing);
+      activeGoogleRectangle?.setEditable(editing);
+      activeGoogleRectangle?.setDraggable(editing);
     }
     function initGeographicMap(nodes,level){
       const target=document.getElementById("geoMap");
@@ -903,10 +1022,25 @@
       }).addTo(activeMap);
       const markerBounds=[];
       nodes.forEach(node=>{
+        if(state.companyId==="mappedpoc"&&Array.isArray(node.geofence)){
+          const geofence=node.geofence.map(point=>[point.latitude,point.longitude]);
+          if(geofence.length>=3){
+            L.polygon(geofence,{color:"#b3447b",weight:2,fillColor:"#f4bfdc",fillOpacity:.13,dashArray:"7 5"}).addTo(activeMap).bindTooltip(`${node.name} camera-footprint geofence`);
+            markerBounds.push(...geofence);
+          }
+          node.observations.filter(observation=>observation.displayStatus!=="Healthy").forEach(observation=>{
+            const status=observation.displayStatus==="Infected"?"bad":"risk";
+            const icon=L.divIcon({className:"tree-pin-wrap",html:`<span class="tree-pin h-${status}" aria-hidden="true"></span>`,iconSize:[19,19],iconAnchor:[10,10]});
+            const treePin=L.marker([observation.latitude,observation.longitude],{icon,keyboard:true,title:`Open ${observation.treeId}, ${observation.displayStatus}`}).addTo(activeMap);
+            treePin.bindTooltip(`${observation.treeId}: ${observation.displayStatus}`,{direction:"top",offset:[0,-8]});
+            treePin.on("click",()=>{state.farmId=node.id;state.treeId=observation.treeId;render()});
+            markerBounds.push([observation.latitude,observation.longitude]);
+          });
+        }
         const mm=nodeMetrics(node), cls=hclass(mm.rate);
         const icon=L.divIcon({className:"geo-pin-wrap",html:`<span class="geo-pin ${cls}"><span class="geo-dot"></span><span class="geo-label">${node.name}</span></span>`,iconSize:[150,30],iconAnchor:[8,8]});
         const pin=L.marker([node.lat,node.lon],{icon,keyboard:true,title:`Open ${node.name}`}).addTo(activeMap);
-        pin.bindTooltip(`${node.name}: ${fmt(mm.farms)} farms, ${fmt(mm.totalTrees)} palms, ${pct(mm.rate)} recorded infection`,{direction:"top",offset:[0,-8]});
+        pin.bindTooltip(state.companyId==="mappedpoc"?`${node.name}: ${fmt(mm.totalTrees)} trees, ${fmt(node.confirmedInfected||0)} infected, ${fmt(node.suspectedOnly||0)} suspected`:`${node.name}: ${fmt(mm.farms)} farms, ${fmt(mm.totalTrees)} palms, ${pct(mm.rate)} recorded infection`,{direction:"top",offset:[0,-8]});
         pin.on("click",()=>openNode(node));
         markerBounds.push([node.lat,node.lon]);
       });
@@ -915,8 +1049,93 @@
       else activeMap.fitBounds(AP_BOUNDS,{padding:[24,24]});
       setTimeout(()=>activeMap?.invalidateSize(),0);
     }
+    function addMappedPocGeofence(map,farm){
+      const points=(farm.geofence||[]).map(point=>[point.latitude,point.longitude]);
+      if(points.length<3)return points;
+      L.polygon(points,{color:"#b3447b",weight:2,fillColor:"#f4bfdc",fillOpacity:.15,dashArray:"7 5"}).addTo(map).bindTooltip(`${farm.name} camera-footprint geofence`);
+      return points;
+    }
+    function mappedPocTreeIcon(observation){
+      const status=observation.displayStatus==="Infected"?"bad":"risk";
+      return L.divIcon({className:"tree-pin-wrap",html:`<span class="tree-pin h-${status}" aria-hidden="true"></span>`,iconSize:[19,19],iconAnchor:[10,10]});
+    }
+    async function initAreaOneGoogleMap(farm){
+      const target=document.getElementById("surveyAreaMap");
+      if(!target||activeMap)return;
+      const initialBounds=getAreaOneGeofenceBounds();
+      state.areaOneGeofenceDraft={...initialBounds};
+      updateAreaOneGeofenceUi(initialBounds,"Loading Google Satellite map...");
+      try{
+        await loadGoogleMapsApi();
+        if(!document.getElementById("surveyAreaMap")||state.farmId!==AREA_ONE_ID)return;
+        target.innerHTML="";
+        activeMap=new google.maps.Map(target,{center:{lat:farm.lat,lng:farm.lon},zoom:19,mapTypeId:"satellite",mapTypeControl:true,streetViewControl:false,fullscreenControl:true,gestureHandling:"greedy"});
+        activeGoogleRectangle=new google.maps.Rectangle({map:activeMap,bounds:initialBounds,editable:false,draggable:false,clickable:true,strokeColor:"#b3447b",strokeOpacity:1,strokeWeight:3,fillColor:"#f4bfdc",fillOpacity:.16});
+        activeGoogleMarkers=farm.observations.filter(observation=>observation.displayStatus==="Infected").map(observation=>{
+          const marker=new google.maps.Marker({map:activeMap,position:{lat:observation.latitude,lng:observation.longitude},title:`Open ${observation.treeId}, Infected`});
+          marker.addListener("click",()=>{state.treeId=observation.treeId;render();});
+          return marker;
+        });
+        activeMap.fitBounds(initialBounds,42);
+        activeGoogleRectangle.addListener("bounds_changed",()=>{
+          if(!state.areaOneGeofenceEditing)return;
+          const next=activeGoogleRectangle.getBounds()?.toJSON();
+          if(!next)return;
+          state.areaOneGeofenceDraft=normalizeAreaOneGeofenceBounds(next);
+          updateAreaOneGeofenceUi(state.areaOneGeofenceDraft,validAreaOneGeofenceBounds(state.areaOneGeofenceDraft)?"New rectangle ready to save.":"The rectangle must stay inside Andhra Pradesh and have a non-zero size.",validAreaOneGeofenceBounds(state.areaOneGeofenceDraft)?"":"error");
+          const saveButton=document.getElementById("saveAreaOneGeofence");
+          if(saveButton)saveButton.disabled=!validAreaOneGeofenceBounds(state.areaOneGeofenceDraft);
+        });
+        const editButton=document.getElementById("editAreaOneGeofence"),saveButton=document.getElementById("saveAreaOneGeofence"),cancelButton=document.getElementById("cancelAreaOneGeofence"),resetButton=document.getElementById("resetAreaOneGeofence");
+        [editButton,resetButton].forEach(button=>{if(button)button.disabled=false;});
+        editButton?.addEventListener("click",()=>{state.areaOneGeofenceDraft=getAreaOneGeofenceBounds();setAreaOneGeofenceEditingUi(true);updateAreaOneGeofenceUi(state.areaOneGeofenceDraft,"Drag the rectangle or its handles, then save.");});
+        saveButton?.addEventListener("click",()=>{
+          const next=activeGoogleRectangle?.getBounds()?.toJSON();
+          if(!validAreaOneGeofenceBounds(next)){updateAreaOneGeofenceUi(state.areaOneGeofenceDraft||initialBounds,"The rectangle is invalid and was not saved.","error");return;}
+          if(!saveAreaOneGeofence(next)){updateAreaOneGeofenceUi(normalizeAreaOneGeofenceBounds(next),"Browser storage is unavailable; the rectangle was not saved.","error");return;}
+          state.areaOneGeofenceDraft=normalizeAreaOneGeofenceBounds(next);setAreaOneGeofenceEditingUi(false);updateAreaOneGeofenceUi(state.areaOneGeofenceDraft,"Geofence saved for Survey Area 001.","success");
+        });
+        cancelButton?.addEventListener("click",()=>{const saved=cancelAreaOneGeofenceEdit();activeGoogleRectangle.setBounds(saved);setAreaOneGeofenceEditingUi(false);updateAreaOneGeofenceUi(saved,"Unsaved changes cancelled.");});
+        resetButton?.addEventListener("click",()=>{const fallback=resetAreaOneGeofence();state.areaOneGeofenceDraft={...fallback};activeGoogleRectangle.setBounds(fallback);setAreaOneGeofenceEditingUi(false);activeMap.fitBounds(fallback,42);updateAreaOneGeofenceUi(fallback,"Default camera-bounds rectangle restored.","success");});
+        updateAreaOneGeofenceUi(initialBounds,"Google Satellite map ready.","success");
+      }catch(error){
+        if(activeMap)return;
+        const message=googleMapsFailureMessage(error?.code);
+        target.innerHTML=`<div class="google-map-error" role="status"><div><strong>Google Satellite map unavailable</strong><span>${escapeHtml(message)} The 52-tree survey grid remains available.</span></div></div>`;
+        updateAreaOneGeofenceUi(initialBounds,message,"error");
+      }
+    }
+    function initMappedPocAreaMap(farm){
+      const target=document.getElementById("surveyAreaMap");
+      if(!target||!window.L||activeMap)return;
+      target.innerHTML="";
+      activeMap=L.map(target,{zoomControl:true,keyboard:true,minZoom:6,maxZoom:20,maxBounds:AP_BOUNDS,maxBoundsViscosity:.82});
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(activeMap);
+      const bounds=addMappedPocGeofence(activeMap,farm);
+      farm.observations.filter(observation=>observation.displayStatus!=="Healthy").forEach(observation=>{
+        const pin=L.marker([observation.latitude,observation.longitude],{icon:mappedPocTreeIcon(observation),keyboard:true,title:`Open ${observation.treeId}, ${observation.displayStatus}`}).addTo(activeMap);
+        pin.bindTooltip(`${observation.treeId}: ${observation.displayStatus}`,{direction:"top",offset:[0,-8]});
+        pin.on("click",()=>{state.treeId=observation.treeId;render()});
+        bounds.push([observation.latitude,observation.longitude]);
+      });
+      if(bounds.length)activeMap.fitBounds(bounds,{padding:[34,34],maxZoom:18});else activeMap.setView([farm.lat,farm.lon],17);
+      setTimeout(()=>activeMap?.invalidateSize(),0);
+    }
+    function initMappedPocTreeMap(farm,observation){
+      const target=document.getElementById("treeLocationMap");
+      if(!target||!window.L||activeMap||observation.displayStatus==="Healthy")return;
+      target.innerHTML="";
+      activeMap=L.map(target,{zoomControl:true,keyboard:true,minZoom:6,maxZoom:20,maxBounds:AP_BOUNDS,maxBoundsViscosity:.82});
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(activeMap);
+      addMappedPocGeofence(activeMap,farm);
+      L.marker([observation.latitude,observation.longitude],{icon:mappedPocTreeIcon(observation),keyboard:true,title:`${observation.treeId}, ${observation.displayStatus}`}).addTo(activeMap).bindTooltip(`${observation.treeId}: ${observation.displayStatus}`,{permanent:false,direction:"top"});
+      activeMap.setView([observation.latitude,observation.longitude],19);
+      setTimeout(()=>activeMap?.invalidateSize(),0);
+    }
     window.addEventListener("leafletready",()=>{
-      if(state.companyId && state.page==="Overview" && state.view==="map" && !state.farmId && !state.treeId) initGeographicMap(levelData(),state.path.length===0?"District":state.path.length===1?"Mandal":state.path.length===2?"Village":"Farm");
+      if(state.companyId && state.page==="Overview" && state.view==="map" && !state.farmId && !state.treeId) initGeographicMap(levelData(),state.companyId==="mappedpoc"&&state.path.length===0?"Survey area":state.path.length===0?"District":state.path.length===1?"Mandal":state.path.length===2?"Village":"Farm");
+      else if(state.companyId==="mappedpoc"&&state.farmId&&state.treeId){const farm=findFarm(state.farmId),observation=farm?.observations.find(item=>item.treeId===state.treeId);if(farm&&observation)initMappedPocTreeMap(farm,observation)}
+      else if(state.companyId==="mappedpoc"&&state.farmId){const farm=findFarm(state.farmId);if(farm){if(farm.id===AREA_ONE_ID)initAreaOneGoogleMap(farm);else initMappedPocAreaMap(farm)}}
     });
     function openNode(node){
       if(!node)return;
@@ -926,12 +1145,14 @@
     }
     function rail(n){
       const mm = nodeMetrics(n), cls = hclass(mm.rate);
+      if(state.companyId==="mappedpoc")return `<button class="railitem ${cls}" data-open="${n.name}"><span class="dot"></span><span><b>${n.name}</b><small>${fmt(mm.totalTrees)} trees</small></span><span class="railn">${fmt(mm.infected)}<small>flagged</small></span><span class="chev">›</span></button>`;
       return `<button class="railitem ${cls}" data-open="${n.name}"><span class="dot"></span><span><b>${n.name}</b><small>${fmt(mm.totalTrees)} palms · ${fmt(mm.pending)} pending</small></span><span class="railn">${pct(mm.rate)}<small>${hlabel(mm.rate)}</small></span><span class="chev">›</span></button>`;
     }
     function demoYieldFor(metrics){
       return Math.round(metrics.totalTrees*.071);
     }
     function tableView(nodes,level){
+      if(state.companyId==="mappedpoc")return `<div class="panel data-scroll" role="region" aria-label="Survey area tree table"><div class="htr thead"><span>Survey area</span><span class="num">Trees</span><span class="num">Infected</span><span class="num">Suspected</span><span class="num">Pinned</span><span>Status</span></div>${nodes.map(node=>{const mm=nodeMetrics(node),cls=hclass(mm.rate),flagged=(node.confirmedInfected||0)+(node.suspectedOnly||0);return `<button class="htr frow" data-open="${node.name}" aria-label="Open ${node.name}"><span class="hname"><span class="rowchev">›</span><span class="nm">${node.name}</span><span class="lvl">survey trees</span></span><span class="num">${fmt(mm.totalTrees)}</span><span class="num">${fmt(node.confirmedInfected||0)}</span><span class="num">${fmt(node.suspectedOnly||0)}</span><span class="num">${fmt(flagged)}</span><span><em class="badge ${cls}">${flagged?"Review":"Healthy"}</em></span></button>`}).join("")}</div>`;
       return `<div class="panel data-scroll" role="region" aria-label="${level} portfolio table"><div class="htr thead"><span>${level} / farm</span><span class="num">Planted palms</span><span class="num">Infected</span><span class="num">Infection</span><span class="num">Yield</span><span>Health</span></div>${nodes.map(n=>{const mm=nodeMetrics(n),cls=hclass(mm.rate);return `<button class="htr frow" data-open="${n.name}" aria-label="Open ${n.name} ${level}"><span class="hname"><span class="rowchev">›</span><span class="nm">${n.name}</span><span class="lvl">${level}</span></span><span class="num">${fmt(mm.totalTrees)}</span><span class="num">${fmt(mm.infected)}</span><span class="num">${pct(mm.rate)}</span><span class="num">${fmt(demoYieldFor(mm))} t</span><span><em class="badge ${cls}">${hlabel(mm.rate)}</em></span></button>`}).join("")}</div>`;
     }
     function bindOpen(nodes){
@@ -940,6 +1161,12 @@
     function findFarm(id){return flatFarms(scopedDistricts()).find(f=>f.id===id)}
     function cellsFor(farm,acre=1){
       if(!farm)return [];
+      if(farm.source==="mapped-poc-camera"){
+        return Array.from({length:64},(_,index)=>{
+          const observation=farm.observations[index];
+          return observation?{i:index,acre:1,row:Math.floor(index/8)+1,column:index%8+1,occupied:true,seq:index+1,status:observation.displayStatus==="Infected"?"bad":observation.displayStatus==="Suspected"?"risk":"ok",id:observation.treeId,observation}:{i:index,acre:1,row:Math.floor(index/8)+1,column:index%8+1,occupied:false,seq:0,status:"empty",id:""};
+        });
+      }
       if(farm.source==="local-user"){
         const layout=farm.layouts?.find(item=>item.acre===acre);
         return layout?layout.cells.map((cell,index)=>({i:index,acre,row:cell.row,column:cell.column,occupied:cell.occupied,seq:cell.occupied?layout.cells.slice(0,index+1).filter(item=>item.occupied).length:0,status:cell.occupied?"neutral":"empty",id:cell.treeId||""})):[];
@@ -954,9 +1181,22 @@
         return {i,acre,row:Math.floor(i/8)+1,column:i%8+1,occupied,seq,status,id:occupied?`${farm.id}-T${String(treeNumber).padStart(3,"0")}`:""};
       });
     }
+    function renderMappedPocFarm(farm){
+      const cells=cellsFor(farm,1),infected=farm.confirmedInfected||0,suspected=farm.suspectedOnly||0,healthy=farm.trees-infected-suspected,flagged=infected+suspected;
+      const badge=infected?`<em class="badge h-bad">${infected} infected</em>`:suspected?`<em class="badge h-risk">${suspected} suspected</em>`:`<em class="badge h-ok">Healthy</em>`;
+      const isAreaOne=farm.id===AREA_ONE_ID,areaOneBounds=isAreaOne?getAreaOneGeofenceBounds():null;
+      const geofenceToolbar=isAreaOne?`<div class="geofence-toolbar"><div id="areaOneGeofenceCoordinates" class="geofence-coordinate-list" aria-label="Current geofence coordinates">${areaOneBoundsLabel(areaOneBounds)}</div><div id="areaOneGeofenceViewActions" class="geofence-actions"><button class="btn" id="editAreaOneGeofence" disabled>Edit geofence</button><button class="btn-ghost" id="resetAreaOneGeofence" disabled>Reset default</button></div><div id="areaOneGeofenceEditActions" class="geofence-actions hidden"><button class="btn-ghost" id="cancelAreaOneGeofence">Cancel</button><button class="btn" id="saveAreaOneGeofence">Save geofence</button></div></div><p id="areaOneGeofenceStatus" class="geofence-status" aria-live="polite">Loading Google Satellite map...</p>`:"";
+      const geofenceNote=isAreaOne?"Rectangle: browser-local operational geofence for Survey Area 001. It is not a cadastral or surveyed farm boundary.":"Dashed outline: camera-footprint convex hull. It is not a cadastral or surveyed farm boundary.";
+      content.innerHTML=`<div class="pagehead"><div><h1 class="h1">${escapeHtml(farm.name)}</h1><p class="sub">${farm.id} · ${farm.trees} trees · ${farm.surveyed} source-backed · no acreage or legal-boundary claim</p></div>${badge}</div>${metricStrip(metricsFor([farm]))}
+      <div class="notice" style="margin-bottom:18px"><strong>Evidence-aware POC data.</strong> Survey Area 001 source records are user-designated infected. Other red-workbook model scores are shown as suspected, not diagnosed. ${isAreaOne?"Its editable rectangle is a browser-local operational boundary.":"Its geofence is derived from camera positions."} Neither establishes palm-base coordinates, ownership, or property boundaries.</div>
+      <div class="grid2"><div class="mapped-tree-stack"><section class="card survey-map-card" aria-labelledby="surveyMapTitle"><div class="survey-map-head"><h3 class="cardt" id="surveyMapTitle">Survey geofence and flagged trees</h3><p class="sub">${flagged} infected or suspected pins; healthy trees are intentionally not pinned.</p></div>${geofenceToolbar}<div id="surveyAreaMap" class="survey-map" aria-label="${escapeHtml(farm.name)} ${isAreaOne?"Google Satellite map with an editable rectangle and infected tree pins":"camera-footprint geofence with infected and suspected tree pins"}"><div class="map-fallback"><div><strong>${isAreaOne?"Google Satellite map is loading":"Survey map is loading"}</strong><span>The tree grid remains available while the map loads.</span></div></div></div><p class="geofence-note">${geofenceNote}</p></section><div class="card"><h3 class="cardt">Tree status</h3><div class="hbar"><span class="hseg h-ok" style="width:${healthy/farm.trees*100}%"></span><span class="hseg h-risk" style="width:${suspected/farm.trees*100}%"></span><span class="hseg h-bad" style="width:${infected/farm.trees*100}%"></span></div><div class="legrow"><span class="legL"><span class="dot h-ok"></span>Healthy</span><span class="legN">${fmt(healthy)}</span></div><div class="legrow"><span class="legL"><span class="dot h-risk"></span>Suspected</span><span class="legN">${fmt(suspected)}</span></div><div class="legrow"><span class="legL"><span class="dot h-bad"></span>Infected</span><span class="legN">${fmt(infected)}</span></div></div><div class="card"><h3 class="cardt">Survey provenance</h3><div class="legrow"><span>Source mission</span><b class="source-mission">${escapeHtml(farm.sourceMission)}</b></div><div class="legrow"><span>Capture date</span><b>20 Jun 2026</b></div><div class="legrow"><span>Geofence type</span><b>${isAreaOne?"User-editable rectangle":"Camera-footprint hull"}</b></div></div></div><div class="mapped-tree-stack"><div class="card"><div class="acre-toolbar"><div><h3 class="cardt" style="margin:0">Tree layout · 8×8</h3><span class="lvl">${farm.trees}/64 occupied · black means no tree</span></div></div><div class="treegrid" role="grid" aria-label="Survey tree sequence">${cells.map(cell=>`<button class="tcell ${cell.status==="empty"?"h-empty":cell.status==="bad"?"h-bad":cell.status==="risk"?"h-risk":"h-ok"}" ${cell.occupied?`data-tree="${cell.id}" title="${cell.id}" aria-label="${cell.id}, sequence ${cell.seq}, ${cell.observation.displayStatus}"`:`disabled title="No tree" aria-label="Sequence position ${cell.i+1}: No tree"`}>${cell.occupied?cell.seq:""}</button>`).join("")}</div></div><div class="card"><h3 class="cardt">Accessible tree table · first 8</h3>${cells.filter(cell=>cell.occupied).slice(0,8).map(cell=>`<div class="legrow"><span>${cell.id}<br><small class="sub">${cell.observation.displayStatus} · sequence ${cell.seq}</small></span><button class="btn-ghost" data-tree="${cell.id}">Open Tree</button></div>`).join("")}</div></div></div>`;
+      content.querySelectorAll("[data-tree]").forEach(button=>button.addEventListener("click",()=>{state.treeId=button.dataset.tree;render()}));
+      requestAnimationFrame(()=>farm.id===AREA_ONE_ID?initAreaOneGoogleMap(farm):initMappedPocAreaMap(farm));
+    }
     function renderFarm(){
       const farm=findFarm(state.farmId);
       if(!farm){state.farmId=null;state.treeId=null;return renderOverview();}
+      if(farm.source==="mapped-poc-camera")return renderMappedPocFarm(farm);
       state.farmAcre=Math.max(1,Math.min(farm.acres,Number(state.farmAcre)||1));
       const cells=cellsFor(farm,state.farmAcre),m=metricsFor([farm]),isLocal=farm.source==="local-user";
       const health=isLocal?`<div class="notice"><strong>Pending / no evidence yet.</strong> This browser-local farm has an exact saved layout, but no survey, case, or treatment records were invented for it.</div><div class="legrow"><span class="legL"><span class="dot h-neutral"></span>Pending / no data</span><span class="legN">${fmt(farm.trees)}</span></div>`:`<div class="hbar"><span class="hseg h-ok" style="width:${Math.max(20,100-(farm.suspected/farm.trees*100))}%"></span><span class="hseg h-risk" style="width:${farm.suspected/farm.trees*100}%"></span><span class="hseg h-bad" style="width:${farm.infected/farm.trees*100}%"></span></div>${["Healthy","Suspected","Danger"].map((label,index)=>`<div class="legrow"><span class="legL"><span class="dot ${["h-ok","h-risk","h-bad"][index]}"></span>${label}</span><span class="legN">${index===0?fmt(farm.trees-farm.suspected):index===1?fmt(farm.suspected-farm.infected):fmt(farm.infected)}</span></div>`).join("")}`;
@@ -968,9 +1208,23 @@
       document.getElementById("farmAcreSelect").addEventListener("change",event=>{state.farmAcre=Number(event.target.value);render()});
       content.querySelectorAll("[data-tree]").forEach(button=>button.addEventListener("click",()=>{state.treeId=button.dataset.tree;state.evidenceView="rgb";render()}));
     }
+    function renderMappedPocTree(farm,cell){
+      const observation=cell.observation,showRiskEvidence=observation.displayStatus !== "Healthy",status=observation.displayStatus==="Infected"?"bad":observation.displayStatus==="Suspected"?"risk":"ok",statusLabel=observation.displayStatus;
+      const coordinateLabel=Number.isFinite(observation.latitude)&&Number.isFinite(observation.longitude)?`${observation.latitude.toFixed(6)}, ${observation.longitude.toFixed(6)}`:"No camera position recorded";
+      const evidenceCard=showRiskEvidence&&observation.evidenceImage?`<section class="card evidence mapped-evidence" aria-labelledby="evidenceTitle"><div class="evidence-head"><h3 class="cardt" id="evidenceTitle">Tree image</h3></div><div class="evidence-stage" id="evidencePanel" aria-live="polite"><img id="evidenceImage" src="${escapeHtml(observation.evidenceImage)}" alt="Natural-colour DJI evidence for ${observation.treeId}" decoding="async"><div class="evidence-loading" id="evidenceLoading">Loading tree image...</div><div class="evidence-error hidden" id="evidenceError">This tree image could not be loaded.</div></div><div class="evidence-caption"><b>${observation.treeId} · natural-colour capture</b><span>Repository-owned optimized derivative · ${escapeHtml(observation.capturedAt||"capture time unavailable")}</span></div><p class="evidence-notice">Shown because this tree is ${observation.displayStatus.toLowerCase()}. The image is field evidence context, not an automated diagnosis.</p></section>`:"";
+      const mapCard=showRiskEvidence&&Number.isFinite(observation.latitude)&&Number.isFinite(observation.longitude)?`<section class="card survey-map-card" aria-labelledby="treeMapTitle"><div class="survey-map-head"><h3 class="cardt" id="treeMapTitle">Tree camera position</h3><p class="sub">Pin shown for ${observation.displayStatus.toLowerCase()} review.</p></div><div id="treeLocationMap" class="tree-location-map" aria-label="${observation.treeId} camera position within ${escapeHtml(farm.name)} geofence"><div class="map-fallback"><div><strong>Tree map is loading</strong><span>${escapeHtml(coordinateLabel)}</span></div></div></div><p class="geofence-note">The pin is the camera exposure position, not a surveyed palm-base coordinate.</p></section>`:"";
+      const cameraRows=observation.origin==="source-folder"?[["Capture",`${farm.name} / ${observation.captureNumber}`],["Captured",observation.capturedAt],["Latitude",observation.latitude.toFixed(9)],["Longitude",observation.longitude.toFixed(9)],["Coordinate type","Camera exposure"],["Capture UUID",observation.captureUuid]]:[["Tree record",`${farm.name} / ${cell.seq}`],["Origin","Layout only"],["Coordinate","Not recorded"],["Image","Not required for healthy tree"]];
+      const cameraCard=`<section class="card" aria-labelledby="cameraObservationTitle"><h3 class="cardt" id="cameraObservationTitle">${observation.origin==="source-folder"?"Camera observation":"Tree record"}</h3><div class="tdetail">${cameraRows.map(item=>`<div class="tdrow"><span class="tdk">${item[0]}</span><span class="tdv">${escapeHtml(String(item[1]))}</span></div>`).join("")}</div><p class="evidence-notice">${escapeHtml(MAPPED_POC_DATA.provenance.notice)}</p></section>`;
+      const riskLabel=Number.isFinite(observation.ganodermaRiskScore)?`${observation.ganodermaRiskScore.toFixed(1)}% modelled`:"No modelled score";
+      const indicatorCard=renderGanodermaIndicators(Number.isFinite(observation.ganodermaRiskScore)?{values:{ganodermaConfidence:observation.ganodermaRiskScore}}:null);
+      content.innerHTML=`<div class="pagehead"><div><h1 class="h1">Tree ${observation.treeId}</h1><p class="sub">${escapeHtml(farm.name)} · tree ${cell.seq} · ${escapeHtml(coordinateLabel)}</p></div><em class="badge h-${status}">${statusLabel}</em></div><div class="tree-hero"><div class="mapped-tree-stack">${evidenceCard}${mapCard}${indicatorCard}</div><div class="mapped-tree-stack">${cameraCard}<div class="card"><div class="tdetail">${[["Tree ID",observation.treeId],["Survey area",farm.id],["Display status",observation.displayStatus],["Status source",observation.statusSource],["Ganoderma score",riskLabel],["Source mission",observation.origin==="source-folder"?farm.sourceMission:"No source mission"]].map(item=>`<div class="tdrow"><span class="tdk">${item[0]}</span><span class="tdv ${item[0]==="Source mission"?"source-mission":""}">${escapeHtml(String(item[1]))}</span></div>`).join("")}</div></div><div class="card"><h3 class="cardt">Observation history</h3><div class="empty-state"><strong>${Number.isFinite(observation.ganodermaRiskScore)?"One modelled score":"No modelled score"}</strong><span>No historical trend is shown because this record contains a single score or no score.</span></div></div><div class="card h-neutral" style="border-color:var(--border)"><h3 class="cardt">Interpretation and status source</h3><p class="sub" style="color:var(--fg)">${observation.statusSource==="user-designated"?"Infected status was supplied by the user for this source folder and is independent of the modelled score.":observation.statusSource==="modelled-risk"&&observation.displayStatus==="Suspected"?"Suspected status is a modelled high-risk review signal, not a field or laboratory-confirmed diagnosis.":"Healthy layout status has no linked camera pin, image, or modelled diagnosis."}</p></div></div></div>`;
+      if(evidenceCard)bindTreeEvidence();
+      if(showRiskEvidence)requestAnimationFrame(()=>initMappedPocTreeMap(farm,observation));
+    }
     function renderTree(){
       const farm=findFarm(state.farmId),cell=cellsFor(farm,state.farmAcre).find(item=>item.id===state.treeId);
       if(!farm||!cell){state.treeId=null;return renderFarm();}
+      if(farm.source==="mapped-poc-camera")return renderMappedPocTree(farm,cell);
       const isPending=cell.status==="neutral",risk=cell.status==="bad"?.82:cell.status==="risk"?.54:isPending?0:.18,observation=treeEvidenceFor(cell);
       const statusLabel=cell.status==="bad"?"Danger":cell.status==="risk"?"Suspected":isPending?"Pending / no data":"Okay",statusClass=cell.status==="bad"?"h-bad":cell.status==="risk"?"h-risk":isPending?"h-neutral":"h-ok";
       content.innerHTML=`<div class="pagehead"><div><h1 class="h1">Palm ${state.treeId}</h1><p class="sub">${escapeHtml(farm.name)} · Acre ${state.farmAcre}, row ${cell.row}, column ${cell.column} · ${escapeHtml(farm.village)}, Andhra Pradesh</p></div><em class="badge ${statusClass}">${statusLabel}</em></div><div class="tree-hero"><div style="display:flex;flex-direction:column;gap:16px">${renderTreeEvidence(observation)}${renderGanodermaIndicators(observation)}</div><div style="display:flex;flex-direction:column;gap:16px"><div class="card"><div class="tdetail">${[["Tree ID",state.treeId],["Farm",farm.id],["Health",statusLabel],["Last scan",isPending?"No scan recorded":"20 Jun 2026"],["Recommendation",isPending?"Schedule the first survey":"Continue role-appropriate monitoring"],["RBAC","Actions depend on selected role"]].map(item=>`<div class="tdrow"><span class="tdk">${item[0]}</span><span class="tdv">${item[1]}</span></div>`).join("")}</div></div>${isPending?`<div class="card"><h3 class="cardt">Scan history</h3><div class="empty-state"><strong>No survey history recorded</strong><span>This saved browser-local tree has no invented evidence, case, or treatment history.</span></div></div>`:`<div class="card"><h3 class="cardt">Scan history</h3>${["20 Jun 2026","04 Jun 2026","18 May 2026","30 Apr 2026"].map((date,index)=>`<div class="legrow"><span><b>${date}</b><br><span class="sub">${index===0?"Current demo survey context":"Routine field observation"}</span></span><span class="num">${Math.round((risk-index*.07)*100)}%</span></div>`).join("")}</div>`}<div class="card ${statusClass}" style="border-color:var(--c)"><h3 class="cardt">Recommended action</h3><p class="sub" style="color:var(--fg)">${isPending?"Pending: schedule the first field survey. No diagnosis or confidence has been inferred.":cell.status==="bad"?"Danger: open a field case, inspect collar/trunk symptoms, and track treatment response.":cell.status==="risk"?"Suspected: schedule follow-up scan and field inspection.":"Okay: continue normal monitoring cadence."}</p></div></div></div>`;
@@ -1047,11 +1301,11 @@
     }
     function renderGanodermaIndicators(observation){
       if(!observation?.values)return `<section class="card" aria-labelledby="indicatorTitle"><h3 class="cardt" id="indicatorTitle">Ganoderma indicators</h3><div class="empty-state"><strong>No indicator reading recorded</strong><span>This palm is unsurveyed in the deterministic demo, so no Ganoderma infection or recent risk trend reading is fabricated.</span></div></section>`;
-      const indicators=GANODERMA_INDICATOR_DEFINITIONS.map(definition=>({...definition,value:observation.values[definition.id],display:formatIndicatorValue(definition.id,observation.values[definition.id])}));
+      const indicators=GANODERMA_INDICATOR_DEFINITIONS.filter(definition=>Number.isFinite(observation.values[definition.id])).map(definition=>({...definition,value:observation.values[definition.id],display:formatIndicatorValue(definition.id,observation.values[definition.id])}));
       return `<section class="card" aria-labelledby="indicatorTitle"><h3 class="cardt" id="indicatorTitle">Ganoderma indicators</h3><div class="indicator-list">${indicators.map(renderIndicator).join("")}</div></section>`;
     }
     function formatIndicatorValue(id,value){
-      if(id==="ganodermaConfidence")return `${Math.round(value)}%`;
+      if(id==="ganodermaConfidence")return `${Number(value).toFixed(1)}%`;
       if(id==="recentRiskTrend")return `${value>=0?"+":""}${value.toFixed(2)}`;
       return value.toFixed(2);
     }
