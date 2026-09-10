@@ -297,7 +297,7 @@
     }
     const COMPANY_PROFILES = {
       gavl:{id:"gavl",shortName:"GAVL",name:"Godrej Agrovet Oil Palm",regionLabel:"Andhra Pradesh",subtitle:"Workbook-derived GAVL farms across Chintalapudi, Dwaraka Tirumala, and Kamavarapukota.",logo:"assets/company-logos/godrej-agrovet.png",accent:"G",riskBase:.045,coverage:.91,baseLat:16.86,baseLon:81.12,districtFallback:"Eluru"},
-      mappedpoc:{id:"mappedpoc",shortName:"MPOC",name:"Mapped POC",regionLabel:"Andhra Pradesh",subtitle:"137 trees across five survey areas: 52 infected, 20 modelled suspected, and 65 healthy.",logo:"assets/company-logos/mapped-poc.svg",accent:"M",source:"mapped-poc-survey",riskBase:0,coverage:1,baseLat:16.92,baseLon:81.16,districtFallback:"DJI Survey Areas"},
+      mappedpoc:{id:"mappedpoc",shortName:"MPOC",name:"Mapped POC",regionLabel:"Andhra Pradesh",subtitle:"112 source-backed trees across five survey areas; Survey Area 001 can add up to 37 operational tree markers.",logo:"assets/company-logos/mapped-poc.svg",accent:"M",source:"mapped-poc-survey",riskBase:0,coverage:1,baseLat:16.92,baseLon:81.16,districtFallback:"DJI Survey Areas"},
       nbl:{id:"nbl",shortName:"NBL",name:"Navabharat Limited / NBL",regionLabel:"Andhra Pradesh",subtitle:"Workbook-derived NBL farms across Eluru and East Godavari.",logo:"assets/company-logos/nbl.png",accent:"N",riskBase:.056,coverage:.87,baseLat:16.92,baseLon:81.36,districtFallback:"Eluru"},
       tgoilfed:{id:"tgoilfed",shortName:"TGOF",name:"TGOILFED",regionLabel:"Telangana",subtitle:"Workbook-derived Telangana Oilfed farms across Bhadradri Kothagudem and Khammam.",logo:"assets/company-logos/tgoilfed.png",accent:"T",riskBase:.071,coverage:.84,baseLat:17.34,baseLon:80.78,districtFallback:"Bhadradri Kothagudem"}
     };
@@ -450,11 +450,13 @@
     const TREATMENT_TRANSITIONS = {Recommended:"Planned",Planned:"In progress","In progress":"Completed"};
     const TREATMENT_PROGRESS = {Recommended:0,Planned:20,"In progress":60,Completed:100};
     const ALERT_STATE_KEY = "palmwatch.ap.v1.demoState";
-    const DEMO_STATE_VERSION = 4;
+    const DEMO_STATE_VERSION = 5;
     const AP_BOUNDS = [[12.55,76.70],[19.25,84.85]];
     const AREA_ONE_ID = "MPOC-SURVEY-001";
     const AREA_ONE_DEFAULT_GEOFENCE_BOUNDS = Object.freeze({south:16.912209794,west:81.169804433,north:16.912805551,east:81.169912437});
-    const AREA_ONE_PLACEHOLDER_TREE_IDS = Object.freeze(Array.from({length:25},(_,index)=>`TREE-${String(index+113).padStart(4,"0")}`));
+    const AREA_ONE_SOURCE_TREE_COUNT = 27;
+    const AREA_ONE_GRID_CAPACITY = 64;
+    const AREA_ONE_PLACEHOLDER_TREE_IDS = Object.freeze(Array.from({length:37},(_,index)=>`TREE-${String(index+113).padStart(4,"0")}`));
     const DEFAULT_FARM_DRAFT = Object.freeze({name:"",district:"Eluru",mandal:"Pedavegi",village:"Munduru",lat:16.8792,lon:81.1471,acres:1,headUserId:"usr-head",managerUserId:"usr-manager",staffUserId:"usr-staff"});
     function createDefaultAcreLayout(acre,target=54){
       const safeAcre=Math.max(1,Math.trunc(Number(acre)||1)), safeTarget=Math.max(50,Math.min(57,Math.trunc(Number(target)||54)));
@@ -525,9 +527,16 @@
         return pointInsideAreaOneBounds(point,bounds)?[[treeId,{latitude:Number(point.latitude),longitude:Number(point.longitude)}]]:[];
       }));
     }
-    function validAreaOneTreePositions(positions,bounds,{complete=true}={}){
-      const normalized=normalizeAreaOneTreePositions(positions,bounds),entries=Object.entries(normalized),coordinates=new Set(entries.map(([,point])=>`${point.latitude}:${point.longitude}`));
-      return coordinates.size===entries.length&&entries.length===(complete?AREA_ONE_PLACEHOLDER_TREE_IDS.length:Object.keys(positions||{}).length);
+    function areaOneSourceCoordinateKeys(){
+      return new Set(MAPPED_POC_DATA.observations.filter(observation=>observation.areaId===AREA_ONE_ID&&observation.origin==="source-folder").map(observation=>`${observation.latitude}:${observation.longitude}`));
+    }
+    function areaOnePositionOverlapsSource(point){
+      return areaOneSourceCoordinateKeys().has(`${Number(point?.latitude)}:${Number(point?.longitude)}`);
+    }
+    function validAreaOneTreePositions(positions,bounds){
+      if(!positions||typeof positions!=="object"||Array.isArray(positions))return false;
+      const keys=Object.keys(positions),normalized=normalizeAreaOneTreePositions(positions,bounds),entries=Object.entries(normalized),coordinates=new Set(entries.map(([,point])=>`${point.latitude}:${point.longitude}`)),sourceCoordinates=areaOneSourceCoordinateKeys();
+      return keys.length<=AREA_ONE_PLACEHOLDER_TREE_IDS.length&&entries.length===keys.length&&coordinates.size===entries.length&&entries.every(([,point])=>!sourceCoordinates.has(`${point.latitude}:${point.longitude}`));
     }
     function getAreaOneTreePositions(){
       const bounds=getAreaOneGeofenceBounds(),saved=demoState?.areaOneTreePositions;
@@ -556,19 +565,23 @@
       const bounds=getAreaOneGeofenceBounds();
       if(!validAreaOneTreePositions(positions,bounds))return false;
       const normalized=normalizeAreaOneTreePositions(positions,bounds);
+      const previous=demoState.areaOneTreePositions;
       demoState.areaOneTreePositions=structuredClone(normalized);
-      if(!saveDemoState())return false;
+      if(!saveDemoState()){demoState.areaOneTreePositions=previous;return false;}
       syncAreaOneTreePositions();
       return true;
     }
     function syncAreaOneTreePositions(){
-      const farm=flatFarms(COMPANY_PORTFOLIOS.mappedpoc.districts).find(item=>item.id===AREA_ONE_ID),positions=getAreaOneTreePositions();
-      farm?.observations.filter(observation=>AREA_ONE_PLACEHOLDER_TREE_IDS.includes(observation.treeId)).forEach(observation=>{
-        const point=positions[observation.treeId];
-        observation.latitude=point?.latitude??null;
-        observation.longitude=point?.longitude??null;
-        observation.ganodermaRiskScore=deterministicAreaOneRiskScore(observation.treeId);
-      });
+      const farm=COMPANY_PORTFOLIOS.mappedpoc.districts.flatMap(district=>district.mandals.flatMap(mandal=>mandal.villages.flatMap(village=>village.farms))).find(item=>item.id===AREA_ONE_ID),positions=getAreaOneTreePositions();
+      if(!farm)return;
+      const source=MAPPED_POC_DATA.observations.filter(observation=>observation.areaId===AREA_ONE_ID&&observation.origin==="source-folder");
+      const added=MAPPED_POC_DATA.observations.filter(observation=>observation.areaId===AREA_ONE_ID&&observation.origin==="layout-only"&&positions[observation.treeId]).map(observation=>({...observation,latitude:positions[observation.treeId].latitude,longitude:positions[observation.treeId].longitude,ganodermaRiskScore:deterministicAreaOneRiskScore(observation.treeId)}));
+      farm.observations=[...source,...added];
+      farm.density=farm.trees=farm.infected=farm.confirmedInfected=farm.suspected=farm.observations.length;
+      farm.suspectedOnly=0;farm.surveyed=source.length;farm.risk=1;
+      farm.meanRisk=farm.observations.reduce((sum,observation)=>sum+(Number(observation.ganodermaRiskScore)||0),0)/farm.observations.length;
+      const all=flatFarms(COMPANY_PORTFOLIOS.mappedpoc.districts).flatMap(item=>item.observations),healthy=all.filter(observation=>observation.displayStatus==="Healthy").length,suspected=all.filter(observation=>observation.displayStatus==="Suspected").length,infected=all.filter(observation=>observation.displayStatus==="Infected").length;
+      COMPANY_PORTFOLIOS.mappedpoc.subtitle=`${all.length} active trees across five survey areas: ${infected} infected, ${suspected} modelled suspected, and ${healthy} healthy.`;
     }
     function cancelAreaOneGeofenceEdit(){
       state.areaOneGeofenceEditing=false;
@@ -620,7 +633,7 @@
     }
     let demoState = loadDemoState();
     syncAreaOneTreePositions();
-    let state = {companyId:null,role:"admin",page:"Overview",view:"map",path:[],farmId:null,treeId:null,evidenceView:"rgb",farmAcre:1,newFarmDraft:normalizeNewFarmDraft(DEFAULT_FARM_DRAFT),newFarmAcre:1,newFarmPreview:null,newFarmErrors:[],alertRead:"all",alertSeverity:"all",reportView:null,caseTab:"cases",caseStatus:"all",caseSearch:"",selectedCaseId:null,caseModalOpen:false,treatmentStatus:"all",treatmentSearch:"",selectedTreatmentId:null,statusMessage:"",profileOpen:false,signedOut:false,resetConfirm:false,customRolePreview:null,areaOneGeofenceEditing:false,areaOneGeofenceDraft:null,areaOneSelectedTreeId:null,areaOneMarkerPlacement:false,areaOneMarkerDraft:[]};
+    let state = {companyId:null,role:"admin",page:"Overview",view:"map",path:[],farmId:null,treeId:null,evidenceView:"rgb",farmAcre:1,newFarmDraft:normalizeNewFarmDraft(DEFAULT_FARM_DRAFT),newFarmAcre:1,newFarmPreview:null,newFarmErrors:[],alertRead:"all",alertSeverity:"all",reportView:null,caseTab:"cases",caseStatus:"all",caseSearch:"",selectedCaseId:null,caseModalOpen:false,treatmentStatus:"all",treatmentSearch:"",selectedTreatmentId:null,statusMessage:"",profileOpen:false,signedOut:false,resetConfirm:false,customRolePreview:null,areaOneGeofenceEditing:false,areaOneGeofenceDraft:null,areaOneSelectedTreeId:null,areaOneMarkerPlacement:false,areaOneMarkerDraft:[],areaOneMarkerUndo:[]};
     let activeMap = null;
     let activeGoogleRectangle = null;
     let activeGoogleMarkers = [];
@@ -967,7 +980,7 @@
       const m = metricsFor(farms);
       const level = state.companyId==="mappedpoc"&&state.path.length===0?"Survey area":state.path.length===0?"District":state.path.length===1?"Mandal":state.path.length===2?"Village":"Farm";
       const company = activeCompany();
-      const dataBasis = company.source==="mapped-poc-survey"?"uses DJI camera exposure positions and modelled Ganoderma risk scores; no farm boundaries or diagnoses are claimed from those sources. Survey Area 001 combines user-designated source records with deterministic layout classifications":"uses deterministic demo data from the supplied workbook";
+      const dataBasis = company.source==="mapped-poc-survey"?"uses DJI camera exposure positions and modelled Ganoderma risk scores; no farm boundaries or diagnoses are claimed from those sources. Survey Area 001 combines source-backed records with browser-local operational tree positions":"uses deterministic demo data from the supplied workbook";
       content.innerHTML = `
         <div class="pagehead"><div><h1 class="h1">${state.path.at(-1)?.name || `${company.name} Portfolio`}</h1><p class="sub">${company.regionLabel} ${dataBasis}; public place names do not imply farm ownership.</p></div><button class="btn-ghost" id="resetScope">Reset scope</button></div>
         ${metricStrip(m)}
@@ -1061,10 +1074,9 @@
       state.areaOneGeofenceEditing=editing;
       document.getElementById("areaOneGeofenceViewActions")?.classList.toggle("hidden",editing);
       document.getElementById("areaOneGeofenceEditActions")?.classList.toggle("hidden",!editing);
-      activeGoogleRectangle?.setEditable(editing);
-      activeGoogleRectangle?.setDraggable(editing);
+      activeGoogleRectangle?.setOptions({editable:editing,draggable:editing,clickable:editing});
       const addMarkersButton=document.getElementById("addAreaOneMarkers");
-      if(addMarkersButton)addMarkersButton.disabled=editing||!validAreaOneGeofenceBounds(demoState.geofenceOverrides?.[AREA_ONE_ID])||Object.keys(getAreaOneTreePositions()).length>0;
+      if(addMarkersButton)addMarkersButton.disabled=editing||!validAreaOneGeofenceBounds(demoState.geofenceOverrides?.[AREA_ONE_ID]);
     }
     function initGeographicMap(nodes,level){
       const target=document.getElementById("geoMap");
@@ -1127,36 +1139,56 @@
       activeGoogleMarkers.forEach(marker=>{
         const selected=marker.treeId===state.areaOneSelectedTreeId;
         marker.setIcon(areaOneGoogleMarkerIcon(selected));
-        marker.setLabel(selected?{text:"✓",color:"#ffffff",fontSize:"11px",fontWeight:"800"}:null);
+        marker.setLabel({text:String(marker.sequence),color:"#ffffff",fontSize:"9px",fontWeight:"800"});
         marker.setZIndex(selected?1000:1);
       });
       if(observation&&pan&&activeMap){activeMap.panTo({lat:observation.latitude,lng:observation.longitude});activeMap.setZoom(Math.max(activeMap.getZoom()||19,20));}
     }
     function renderAreaOneDraftMarkers(){
       activeGoogleDraftMarkers.forEach(marker=>marker.setMap(null));
-      activeGoogleDraftMarkers=state.areaOneMarkerDraft.map((point,index)=>new google.maps.Marker({map:activeMap,position:{lat:point.latitude,lng:point.longitude},title:`${point.treeId}, pending placement`,icon:areaOneGoogleMarkerIcon(false),label:{text:String(index+28),color:"#ffffff",fontSize:"9px",fontWeight:"800"},zIndex:500+index}));
+      const ordered=[...state.areaOneMarkerDraft].sort((left,right)=>left.treeId.localeCompare(right.treeId));
+      activeGoogleDraftMarkers=ordered.map((point,index)=>{
+        const marker=new google.maps.Marker({map:activeMap,position:{lat:point.latitude,lng:point.longitude},title:`Remove ${point.treeId}`,icon:areaOneGoogleMarkerIcon(false),label:{text:String(AREA_ONE_SOURCE_TREE_COUNT+index+1),color:"#ffffff",fontSize:"9px",fontWeight:"800"},zIndex:500+index});
+        marker.treeId=point.treeId;
+        marker.addListener("click",()=>removeAreaOneDraftMarker(point.treeId));
+        return marker;
+      });
+    }
+    function nextAreaOneTreeId(){return AREA_ONE_PLACEHOLDER_TREE_IDS.find(treeId=>!state.areaOneMarkerDraft.some(point=>point.treeId===treeId))||null;}
+    function removeAreaOneDraftMarker(treeId){
+      if(!state.areaOneMarkerPlacement)return;
+      const index=state.areaOneMarkerDraft.findIndex(point=>point.treeId===treeId);
+      if(index<0)return;
+      const [point]=state.areaOneMarkerDraft.splice(index,1);
+      state.areaOneMarkerUndo.push({type:"remove",point});
+      renderAreaOneDraftMarkers();updateAreaOneMarkerPlacementUi(`${treeId} removed. Click inside the geofence to add another tree.`);
     }
     function updateAreaOneMarkerPlacementUi(message=""){
-      const count=state.areaOneMarkerDraft.length,total=AREA_ONE_PLACEHOLDER_TREE_IDS.length,next=AREA_ONE_PLACEHOLDER_TREE_IDS[count];
+      const count=state.areaOneMarkerDraft.length,total=AREA_ONE_SOURCE_TREE_COUNT+count,next=nextAreaOneTreeId();
       document.getElementById("areaOneMarkerViewActions")?.classList.toggle("hidden",state.areaOneMarkerPlacement);
       document.getElementById("areaOneMarkerEditActions")?.classList.toggle("hidden",!state.areaOneMarkerPlacement);
       document.getElementById("surveyAreaMap")?.classList.toggle("is-placing",state.areaOneMarkerPlacement);
       const counter=document.getElementById("areaOneMarkerCounter"),status=document.getElementById("areaOneMarkerStatus"),undo=document.getElementById("undoAreaOneMarker"),save=document.getElementById("saveAreaOneMarkers");
-      if(counter)counter.textContent=state.areaOneMarkerPlacement?`${state.areaOneMarkerDraft.length} / 25 positioned${next?` · next ${next}`:" · ready to save"}`:`${Object.keys(getAreaOneTreePositions()).length} / 25 positions saved`;
-      if(status)status.textContent=message||"Click inside the saved geofence to place the next red marker.";
-      if(undo)undo.disabled=count===0;
-      if(save)save.disabled=count!==total;
+      if(counter)counter.textContent=state.areaOneMarkerPlacement?`${AREA_ONE_SOURCE_TREE_COUNT} fixed + ${count} added = ${total} / ${AREA_ONE_GRID_CAPACITY} trees${next?` · next ${next}`:" · grid full"}`:`${AREA_ONE_SOURCE_TREE_COUNT} fixed + ${Object.keys(getAreaOneTreePositions()).length} added trees`;
+      if(status)status.textContent=message||"Click inside the saved geofence to add a red marker. Click an added marker to remove it.";
+      if(undo)undo.disabled=state.areaOneMarkerUndo.length===0;
+      if(save)save.disabled=!validAreaOneTreePositions(Object.fromEntries(state.areaOneMarkerDraft.map(point=>[point.treeId,point])),getAreaOneGeofenceBounds());
       ["editAreaOneGeofence","resetAreaOneGeofence","areaOneTreeSelect","openAreaOneTree"].forEach(id=>{const control=document.getElementById(id);if(control)control.disabled=state.areaOneMarkerPlacement||(id==="openAreaOneTree"&&!state.areaOneSelectedTreeId);});
     }
     function beginAreaOneMarkerPlacement(){
-      if(!validAreaOneGeofenceBounds(demoState.geofenceOverrides?.[AREA_ONE_ID])||Object.keys(getAreaOneTreePositions()).length)return;
-      state.areaOneMarkerPlacement=true;state.areaOneMarkerDraft=[];setAreaOneGeofenceEditingUi(false);renderAreaOneDraftMarkers();updateAreaOneMarkerPlacementUi();
+      if(!validAreaOneGeofenceBounds(demoState.geofenceOverrides?.[AREA_ONE_ID]))return;
+      const saved=getAreaOneTreePositions();
+      state.areaOneMarkerPlacement=true;state.areaOneMarkerDraft=AREA_ONE_PLACEHOLDER_TREE_IDS.filter(treeId=>saved[treeId]).map(treeId=>({treeId,...saved[treeId]}));state.areaOneMarkerUndo=[];state.areaOneSelectedTreeId=null;render();
     }
     function undoAreaOneMarkerPlacement(){
-      state.areaOneMarkerDraft.pop();renderAreaOneDraftMarkers();updateAreaOneMarkerPlacementUi("Last marker removed. Click inside the geofence to continue.");
+      const action=state.areaOneMarkerUndo.pop();
+      if(!action)return;
+      if(action.type==="add")state.areaOneMarkerDraft=state.areaOneMarkerDraft.filter(point=>point.treeId!==action.point.treeId);
+      else state.areaOneMarkerDraft.push(action.point);
+      renderAreaOneDraftMarkers();updateAreaOneMarkerPlacementUi("Last marker edit undone.");
     }
     function cancelAreaOneMarkerPlacement(){
-      state.areaOneMarkerPlacement=false;state.areaOneMarkerDraft=[];renderAreaOneDraftMarkers();updateAreaOneMarkerPlacementUi("Marker placement cancelled. No positions were saved.");
+      state.areaOneMarkerPlacement=false;state.areaOneMarkerDraft=[];state.areaOneMarkerUndo=[];render();
     }
     async function initAreaOneGoogleMap(farm){
       const target=document.getElementById("surveyAreaMap");
@@ -1173,21 +1205,25 @@
         if(!document.getElementById("surveyAreaMap")||state.farmId!==AREA_ONE_ID)return;
         target.innerHTML="";
         activeMap=new google.maps.Map(target,{center:{lat:farm.lat,lng:farm.lon},zoom:19,mapTypeId:"satellite",mapTypeControl:true,streetViewControl:false,fullscreenControl:true,gestureHandling:"greedy"});
-        activeGoogleRectangle=new google.maps.Rectangle({map:activeMap,bounds:initialBounds,editable:false,draggable:false,clickable:true,strokeColor:"#b3447b",strokeOpacity:1,strokeWeight:3,fillColor:"#f4bfdc",fillOpacity:.16});
-        activeGoogleMarkers=farm.observations.filter(observation=>observation.displayStatus==="Infected"&&Number.isFinite(observation.latitude)&&Number.isFinite(observation.longitude)).map(observation=>{
+        activeGoogleRectangle=new google.maps.Rectangle({map:activeMap,bounds:initialBounds,editable:false,draggable:false,clickable:false,strokeColor:"#b3447b",strokeOpacity:1,strokeWeight:3,fillColor:"#f4bfdc",fillOpacity:.16});
+        activeGoogleMarkers=farm.observations.filter(observation=>observation.displayStatus==="Infected"&&Number.isFinite(observation.latitude)&&Number.isFinite(observation.longitude)&&(!state.areaOneMarkerPlacement||observation.origin==="source-folder")).map((observation,index)=>{
           const selected=observation.treeId===state.areaOneSelectedTreeId;
-          const marker=new google.maps.Marker({map:activeMap,position:{lat:observation.latitude,lng:observation.longitude},title:`Open ${observation.treeId}, Infected`,icon:areaOneGoogleMarkerIcon(selected),label:selected?{text:"✓",color:"#ffffff",fontSize:"11px",fontWeight:"800"}:null,zIndex:selected?1000:1});
-          marker.treeId=observation.treeId;
-          marker.addListener("click",()=>{state.areaOneSelectedTreeId=observation.treeId;state.treeId=observation.treeId;render();});
+          const marker=new google.maps.Marker({map:activeMap,position:{lat:observation.latitude,lng:observation.longitude},title:`${observation.treeId}, Infected`,icon:areaOneGoogleMarkerIcon(selected),label:{text:String(index+1),color:"#ffffff",fontSize:"9px",fontWeight:"800"},zIndex:selected?1000:1});
+          marker.treeId=observation.treeId;marker.sequence=index+1;marker.fixed=observation.origin==="source-folder";
+          marker.addListener("click",()=>{if(state.areaOneMarkerPlacement){updateAreaOneMarkerPlacementUi(`${observation.treeId} is source-backed and cannot be removed.`);return;}state.areaOneSelectedTreeId=observation.treeId;state.treeId=observation.treeId;render();});
           return marker;
         });
+        if(state.areaOneMarkerPlacement)renderAreaOneDraftMarkers();
         updateAreaOneTreeSelection(farm,state.areaOneSelectedTreeId,{pan:false});
         activeMap.addListener("click",event=>{
-          if(!state.areaOneMarkerPlacement||state.areaOneMarkerDraft.length>=AREA_ONE_PLACEHOLDER_TREE_IDS.length)return;
+          if(!state.areaOneMarkerPlacement)return;
+          if(state.areaOneMarkerDraft.length>=AREA_ONE_PLACEHOLDER_TREE_IDS.length){updateAreaOneMarkerPlacementUi("The 8×8 grid is full. Remove an added marker before placing another.");return;}
           const point={latitude:event.latLng.lat(),longitude:event.latLng.lng()},bounds=getAreaOneGeofenceBounds();
           if(!pointInsideAreaOneBounds(point,bounds)){updateAreaOneMarkerPlacementUi("Place markers inside the saved geofence.");return;}
-          const treeId=AREA_ONE_PLACEHOLDER_TREE_IDS[state.areaOneMarkerDraft.length];
-          state.areaOneMarkerDraft.push({treeId,...point});renderAreaOneDraftMarkers();updateAreaOneMarkerPlacementUi();
+          if(areaOnePositionOverlapsSource(point)){updateAreaOneMarkerPlacementUi("Choose a position that does not overlap an existing tree pin.");return;}
+          const treeId=nextAreaOneTreeId();
+          if(!treeId)return;
+          const placed={treeId,...point};state.areaOneMarkerDraft.push(placed);state.areaOneMarkerUndo.push({type:"add",point:placed});renderAreaOneDraftMarkers();updateAreaOneMarkerPlacementUi();
         });
         activeMap.fitBounds(initialBounds,42);
         activeGoogleRectangle.addListener("bounds_changed",()=>{
@@ -1201,7 +1237,7 @@
         });
         const editButton=document.getElementById("editAreaOneGeofence"),saveButton=document.getElementById("saveAreaOneGeofence"),cancelButton=document.getElementById("cancelAreaOneGeofence"),resetButton=document.getElementById("resetAreaOneGeofence"),addMarkersButton=document.getElementById("addAreaOneMarkers"),undoMarkerButton=document.getElementById("undoAreaOneMarker"),cancelMarkersButton=document.getElementById("cancelAreaOneMarkers"),saveMarkersButton=document.getElementById("saveAreaOneMarkers");
         [editButton,resetButton].forEach(button=>{if(button)button.disabled=false;});
-        if(addMarkersButton&&validAreaOneGeofenceBounds(demoState.geofenceOverrides?.[AREA_ONE_ID])&&!Object.keys(getAreaOneTreePositions()).length)addMarkersButton.disabled=false;
+        if(addMarkersButton&&validAreaOneGeofenceBounds(demoState.geofenceOverrides?.[AREA_ONE_ID]))addMarkersButton.disabled=false;
         editButton?.addEventListener("click",()=>{state.areaOneGeofenceDraft=getAreaOneGeofenceBounds();setAreaOneGeofenceEditingUi(true);updateAreaOneGeofenceUi(state.areaOneGeofenceDraft,"Drag the rectangle or its handles, then save.");});
         saveButton?.addEventListener("click",()=>{
           const next=activeGoogleRectangle?.getBounds()?.toJSON();
@@ -1209,20 +1245,20 @@
           if(!areaOnePositionsInsideBounds(next)){updateAreaOneGeofenceUi(normalizeAreaOneGeofenceBounds(next),"The geofence cannot exclude a saved tree position.","error");return;}
           if(!saveAreaOneGeofence(next)){updateAreaOneGeofenceUi(normalizeAreaOneGeofenceBounds(next),"Browser storage is unavailable; the rectangle was not saved.","error");return;}
           state.areaOneGeofenceDraft=normalizeAreaOneGeofenceBounds(next);setAreaOneGeofenceEditingUi(false);updateAreaOneGeofenceUi(state.areaOneGeofenceDraft,"Geofence saved for Survey Area 001.","success");
-          if(addMarkersButton&&!Object.keys(getAreaOneTreePositions()).length)addMarkersButton.disabled=false;
+          if(addMarkersButton)addMarkersButton.disabled=false;
         });
         cancelButton?.addEventListener("click",()=>{const saved=cancelAreaOneGeofenceEdit();activeGoogleRectangle.setBounds(saved);setAreaOneGeofenceEditingUi(false);updateAreaOneGeofenceUi(saved,"Unsaved changes cancelled.");});
         resetButton?.addEventListener("click",()=>{const fallback=resetAreaOneGeofence();if(!fallback){updateAreaOneGeofenceUi(getAreaOneGeofenceBounds(),"Default bounds would exclude a saved tree position.","error");return;}state.areaOneGeofenceDraft={...fallback};activeGoogleRectangle.setBounds(fallback);setAreaOneGeofenceEditingUi(false);activeMap.fitBounds(fallback,42);updateAreaOneGeofenceUi(fallback,"Default camera-bounds rectangle restored.","success");if(addMarkersButton)addMarkersButton.disabled=true;});
         addMarkersButton?.addEventListener("click",beginAreaOneMarkerPlacement);
         undoMarkerButton?.addEventListener("click",undoAreaOneMarkerPlacement);
         cancelMarkersButton?.addEventListener("click",cancelAreaOneMarkerPlacement);
-        saveMarkersButton?.addEventListener("click",()=>{const positions=Object.fromEntries(state.areaOneMarkerDraft.map(point=>[point.treeId,{latitude:point.latitude,longitude:point.longitude}]));if(!saveAreaOneTreePositions(positions)){updateAreaOneMarkerPlacementUi("Positions could not be saved. Confirm all 25 markers are inside the geofence.");return;}state.areaOneMarkerPlacement=false;state.areaOneMarkerDraft=[];render();});
+        saveMarkersButton?.addEventListener("click",()=>{const positions=Object.fromEntries(state.areaOneMarkerDraft.map(point=>[point.treeId,{latitude:point.latitude,longitude:point.longitude}]));if(!saveAreaOneTreePositions(positions)){updateAreaOneMarkerPlacementUi("Positions could not be saved. Confirm every added marker is unique and inside the geofence.");return;}state.areaOneMarkerPlacement=false;state.areaOneMarkerDraft=[];state.areaOneMarkerUndo=[];render();});
         updateAreaOneGeofenceUi(initialBounds,"Google Satellite map ready.","success");
         updateAreaOneMarkerPlacementUi();
       }catch(error){
         if(activeMap)return;
         const message=googleMapsFailureMessage(error?.code);
-        target.innerHTML=`<div class="google-map-error" role="status"><div><strong>Google Satellite map unavailable</strong><span>${escapeHtml(message)} The 52-tree survey grid remains available.</span></div></div>`;
+        target.innerHTML=`<div class="google-map-error" role="status"><div><strong>Google Satellite map unavailable</strong><span>${escapeHtml(message)} The current survey grid remains available.</span></div></div>`;
         updateAreaOneGeofenceUi(initialBounds,message,"error");
       }
     }
@@ -1296,13 +1332,13 @@
       const isAreaOne=farm.id===AREA_ONE_ID,areaOneBounds=isAreaOne?getAreaOneGeofenceBounds():null;
       const geofenceToolbar=isAreaOne?`<div class="geofence-toolbar"><div id="areaOneGeofenceCoordinates" class="geofence-coordinate-list" aria-label="Current geofence coordinates">${areaOneBoundsLabel(areaOneBounds)}</div><div id="areaOneGeofenceViewActions" class="geofence-actions"><button class="btn" id="editAreaOneGeofence" disabled>Edit geofence</button><button class="btn-ghost" id="resetAreaOneGeofence" disabled>Reset default</button></div><div id="areaOneGeofenceEditActions" class="geofence-actions hidden"><button class="btn-ghost" id="cancelAreaOneGeofence">Cancel</button><button class="btn" id="saveAreaOneGeofence">Save geofence</button></div></div><p id="areaOneGeofenceStatus" class="geofence-status" aria-live="polite">Loading Google Satellite map...</p>`:"";
       const savedAreaOnePositions=isAreaOne?Object.keys(getAreaOneTreePositions()).length:0,hasSavedAreaOneGeofence=isAreaOne&&validAreaOneGeofenceBounds(demoState.geofenceOverrides?.[AREA_ONE_ID]);
-      const markerPlacementToolbar=isAreaOne?`<div class="marker-placement-toolbar"><div class="marker-placement-copy"><strong id="areaOneMarkerCounter" role="status" aria-live="polite">${savedAreaOnePositions} / ${AREA_ONE_PLACEHOLDER_TREE_IDS.length} positions saved</strong><span id="areaOneMarkerStatus">${savedAreaOnePositions?"All Area 001 tree positions are saved.":hasSavedAreaOneGeofence?"Add the remaining infected-tree positions inside the saved geofence.":"Save the geofence before adding markers."}</span></div><div id="areaOneMarkerViewActions" class="marker-placement-actions"><button class="btn" id="addAreaOneMarkers" disabled>Add marker</button></div><div id="areaOneMarkerEditActions" class="marker-placement-actions hidden"><button class="btn-ghost" id="undoAreaOneMarker" disabled>Undo last</button><button class="btn-ghost" id="cancelAreaOneMarkers">Cancel</button><button class="btn" id="saveAreaOneMarkers" disabled>Save markers</button></div></div>`:"";
+      const markerPlacementToolbar=isAreaOne?`<div class="marker-placement-toolbar"><div class="marker-placement-copy"><strong id="areaOneMarkerCounter" role="status" aria-live="polite">${AREA_ONE_SOURCE_TREE_COUNT} fixed + ${savedAreaOnePositions} added trees</strong><span id="areaOneMarkerStatus">${hasSavedAreaOneGeofence?"Add or remove operational tree markers inside the saved geofence.":"Save the geofence before adding markers."}</span></div><div id="areaOneMarkerViewActions" class="marker-placement-actions"><button class="btn" id="addAreaOneMarkers" disabled>Add Marker</button></div><div id="areaOneMarkerEditActions" class="marker-placement-actions hidden"><button class="btn-ghost" id="undoAreaOneMarker" disabled>Undo last</button><button class="btn-ghost" id="cancelAreaOneMarkers">Cancel</button><button class="btn" id="saveAreaOneMarkers" disabled>Save markers</button></div></div>`:"";
       const infectedObservations=isAreaOne?farm.observations.filter(observation=>observation.displayStatus==="Infected"&&Number.isFinite(observation.latitude)&&Number.isFinite(observation.longitude)):[];
       const selectedAreaOneObservation=infectedObservations.find(observation=>observation.treeId===state.areaOneSelectedTreeId);
-      const treePinSelector=isAreaOne?`<div class="tree-pin-selector"><div class="field"><label for="areaOneTreeSelect">Select infected tree pin</label><select class="csel" id="areaOneTreeSelect" aria-label="Select infected tree pin"><option value="">Choose an infected tree</option>${infectedObservations.map(observation=>`<option value="${escapeHtml(observation.treeId)}" ${observation.treeId===state.areaOneSelectedTreeId?"selected":""}>${escapeHtml(observation.treeId)} · capture ${observation.captureNumber}</option>`).join("")}</select></div><div id="areaOneTreeSelection" class="tree-pin-selection" role="status" aria-live="polite">${selectedAreaOneObservation?`<span class="selected-pin-key" aria-hidden="true">✓</span><span><strong>Selected infected tree: ${escapeHtml(selectedAreaOneObservation.treeId)}</strong><br>Red pin enlarged and checked on the map.</span>`:"Choose a tree to highlight its red infected-tree pin."}</div><button class="btn" id="openAreaOneTree" ${selectedAreaOneObservation?"":"disabled"}>Open selected tree</button></div>`:"";
+      const treePinSelector=isAreaOne?`<div class="tree-pin-selector"><div class="field"><label for="areaOneTreeSelect">Select infected tree pin</label><select class="csel" id="areaOneTreeSelect" aria-label="Select infected tree pin"><option value="">Choose an infected tree</option>${infectedObservations.map((observation,index)=>`<option value="${escapeHtml(observation.treeId)}" ${observation.treeId===state.areaOneSelectedTreeId?"selected":""}>${escapeHtml(observation.treeId)} · grid ${index+1}${observation.origin==="source-folder"?` · capture ${observation.captureNumber}`:" · added marker"}</option>`).join("")}</select></div><div id="areaOneTreeSelection" class="tree-pin-selection" role="status" aria-live="polite">${selectedAreaOneObservation?`<span class="selected-pin-key" aria-hidden="true">✓</span><span><strong>Selected infected tree: ${escapeHtml(selectedAreaOneObservation.treeId)}</strong><br>Red pin enlarged on the map.</span>`:"Choose a tree to highlight its red infected-tree pin."}</div><button class="btn" id="openAreaOneTree" ${selectedAreaOneObservation?"":"disabled"}>Open selected tree</button></div>`:"";
       const geofenceNote=isAreaOne?"Rectangle: browser-local operational geofence for Survey Area 001. It is not a cadastral or surveyed farm boundary.":"Dashed outline: camera-footprint convex hull. It is not a cadastral or surveyed farm boundary.";
       content.innerHTML=`<div class="pagehead"><div><h1 class="h1">${escapeHtml(farm.name)}</h1><p class="sub">${farm.id} · ${farm.trees} trees · ${farm.surveyed} source-backed · no acreage or legal-boundary claim</p></div>${badge}</div>${metricStrip(metricsFor([farm]))}
-      <div class="notice" style="margin-bottom:18px"><strong>Evidence-aware POC data.</strong> Survey Area 001 source records are user-designated infected. Other red-workbook model scores are shown as suspected, not diagnosed. ${isAreaOne?"Its editable rectangle is a browser-local operational boundary.":"Its geofence is derived from camera positions."} Neither establishes palm-base coordinates, ownership, or property boundaries.</div>
+      <div class="notice" style="margin-bottom:18px"><strong>Evidence-aware POC data.</strong> Survey Area 001 trees are infected with deterministic modelled scores. Other high-risk workbook scores are shown as suspected, not diagnosed. ${isAreaOne?"Its editable rectangle is a browser-local operational boundary.":"Its geofence is derived from camera positions."} Neither establishes palm-base coordinates, ownership, or property boundaries.</div>
       <div class="grid2"><div class="mapped-tree-stack"><section class="card survey-map-card" aria-labelledby="surveyMapTitle"><div class="survey-map-head"><h3 class="cardt" id="surveyMapTitle">Survey geofence and flagged trees</h3><p class="sub">${flagged} infected or suspected trees; only positioned trees appear as pins.</p></div>${geofenceToolbar}${markerPlacementToolbar}${treePinSelector}<div id="surveyAreaMap" class="survey-map" aria-label="${escapeHtml(farm.name)} ${isAreaOne?"Google Satellite map with an editable rectangle and selectable infected tree pins":"camera-footprint geofence with infected and suspected tree pins"}"><div class="map-fallback"><div><strong>${isAreaOne?"Google Satellite map is loading":"Survey map is loading"}</strong><span>The tree grid remains available while the map loads.</span></div></div></div><p class="geofence-note">${geofenceNote}</p></section><div class="card"><h3 class="cardt">Tree status</h3><div class="hbar"><span class="hseg h-ok" style="width:${healthy/farm.trees*100}%"></span><span class="hseg h-risk" style="width:${suspected/farm.trees*100}%"></span><span class="hseg h-bad" style="width:${infected/farm.trees*100}%"></span></div><div class="legrow"><span class="legL"><span class="dot h-ok"></span>Healthy</span><span class="legN">${fmt(healthy)}</span></div><div class="legrow"><span class="legL"><span class="dot h-risk"></span>Suspected</span><span class="legN">${fmt(suspected)}</span></div><div class="legrow"><span class="legL"><span class="dot h-bad"></span>Infected</span><span class="legN">${fmt(infected)}</span></div></div><div class="card"><h3 class="cardt">Survey provenance</h3><div class="legrow"><span>Source mission</span><b class="source-mission">${escapeHtml(farm.sourceMission)}</b></div><div class="legrow"><span>Capture date</span><b>20 Jun 2026</b></div><div class="legrow"><span>Geofence type</span><b>${isAreaOne?"User-editable rectangle":"Camera-footprint hull"}</b></div></div></div><div class="mapped-tree-stack"><div class="card"><div class="acre-toolbar"><div><h3 class="cardt" style="margin:0">Tree layout · 8×8</h3><span class="lvl">${farm.trees}/64 occupied · black means no tree</span></div></div><div class="treegrid" role="grid" aria-label="Survey tree sequence">${cells.map(cell=>`<button class="tcell ${cell.status==="empty"?"h-empty":cell.status==="bad"?"h-bad":cell.status==="risk"?"h-risk":"h-ok"}" ${cell.occupied?`data-tree="${cell.id}" title="${cell.id}" aria-label="${cell.id}, sequence ${cell.seq}, ${cell.observation.displayStatus}"`:`disabled title="No tree" aria-label="Sequence position ${cell.i+1}: No tree"`}>${cell.occupied?cell.seq:""}</button>`).join("")}</div></div><div class="card"><h3 class="cardt">Accessible tree table · first 8</h3>${cells.filter(cell=>cell.occupied).slice(0,8).map(cell=>`<div class="legrow"><span>${cell.id}<br><small class="sub">${cell.observation.displayStatus} · sequence ${cell.seq}</small></span><button class="btn-ghost" data-tree="${cell.id}">Open Tree</button></div>`).join("")}</div></div></div>`;
       content.querySelectorAll("[data-tree]").forEach(button=>button.addEventListener("click",()=>{state.treeId=button.dataset.tree;render()}));
       requestAnimationFrame(()=>farm.id===AREA_ONE_ID?initAreaOneGoogleMap(farm):initMappedPocAreaMap(farm));
@@ -1324,12 +1360,15 @@
     }
     function renderMappedPocTree(farm,cell){
       const observation=cell.observation,status=observation.displayStatus==="Infected"?"bad":observation.displayStatus==="Suspected"?"risk":"ok",statusLabel=observation.displayStatus;
-      const coordinateLabel=Number.isFinite(observation.latitude)&&Number.isFinite(observation.longitude)?`${observation.latitude.toFixed(6)}, ${observation.longitude.toFixed(6)}`:"No camera position recorded";
-      const cameraRows=observation.origin==="source-folder"?[["Capture",`${farm.name} / ${observation.captureNumber}`],["Captured",observation.capturedAt],["Latitude",observation.latitude.toFixed(9)],["Longitude",observation.longitude.toFixed(9)],["Coordinate type","Camera exposure"],["Capture UUID",observation.captureUuid]]:[["Tree record",`${farm.name} / ${cell.seq}`],["Origin","Layout only"],["Coordinate","Not recorded"],["Image","Not required for healthy tree"]];
-      const cameraCard=`<section class="card" aria-labelledby="cameraObservationTitle"><h3 class="cardt" id="cameraObservationTitle">${observation.origin==="source-folder"?"Camera observation":"Tree record"}</h3><div class="tdetail">${cameraRows.map(item=>`<div class="tdrow"><span class="tdk">${item[0]}</span><span class="tdv">${escapeHtml(String(item[1]))}</span></div>`).join("")}</div><p class="evidence-notice">${escapeHtml(MAPPED_POC_DATA.provenance.notice)}</p></section>`;
+      const coordinateLabel=`${observation.latitude.toFixed(6)}, ${observation.longitude.toFixed(6)}`;
+      const isSourceBacked=observation.origin==="source-folder";
+      const cameraRows=isSourceBacked?[["Capture",`${farm.name} / ${observation.captureNumber}`],["Captured",observation.capturedAt],["Latitude",observation.latitude.toFixed(9)],["Longitude",observation.longitude.toFixed(9)],["Coordinate type","Camera exposure"],["Capture UUID",observation.captureUuid]]:[["Tree record",`${farm.name} / ${cell.seq}`],["Latitude",observation.latitude.toFixed(9)],["Longitude",observation.longitude.toFixed(9)],["Position type","Operational display marker"],["Position source","Saved in this browser"]];
+      const cameraCard=`<section class="card" aria-labelledby="cameraObservationTitle"><h3 class="cardt" id="cameraObservationTitle">${isSourceBacked?"Camera observation":"Tree position"}</h3><div class="tdetail">${cameraRows.map(item=>`<div class="tdrow"><span class="tdk">${item[0]}</span><span class="tdv">${escapeHtml(String(item[1]))}</span></div>`).join("")}</div><p class="evidence-notice">${escapeHtml(isSourceBacked?MAPPED_POC_DATA.provenance.notice:"This position was placed inside the operational display geofence. It is not a surveyed palm-base coordinate or legal boundary record.")}</p></section>`;
+      const evidenceCard=isSourceBacked&&observation.evidenceImage?`<section class="card evidence" aria-labelledby="evidenceTitle"><div class="evidence-head"><h3 class="cardt" id="evidenceTitle">Tree image</h3></div><div class="evidence-stage" id="evidencePanel" aria-live="polite"><img id="evidenceImage" src="${escapeHtml(observation.evidenceImage)}" alt="Source photograph linked to ${escapeHtml(observation.treeId)}" decoding="async"><div class="evidence-loading" id="evidenceLoading">Loading tree image...</div><div class="evidence-error hidden" id="evidenceError">This tree image could not be loaded.</div></div><div class="evidence-caption"><b>${escapeHtml(observation.treeId)} · source photograph</b><span>Captured ${escapeHtml(observation.capturedAt)} · linked one-to-one with this source observation</span></div></section>`:"";
       const riskLabel=Number.isFinite(observation.ganodermaRiskScore)?`${observation.ganodermaRiskScore.toFixed(1)}% modelled`:"No modelled score";
       const indicatorCard=renderGanodermaIndicators(Number.isFinite(observation.ganodermaRiskScore)?{values:{ganodermaConfidence:observation.ganodermaRiskScore}}:null);
-      content.innerHTML=`<div class="pagehead"><div><h1 class="h1">Tree ${observation.treeId}</h1><p class="sub">${escapeHtml(farm.name)} · tree ${cell.seq} · ${escapeHtml(coordinateLabel)}</p></div><em class="badge h-${status}">${statusLabel}</em></div><div class="tree-hero"><div class="mapped-tree-stack">${indicatorCard}</div><div class="mapped-tree-stack">${cameraCard}<div class="card"><div class="tdetail">${[["Tree ID",observation.treeId],["Survey area",farm.id],["Display status",observation.displayStatus],["Status source",observation.statusSource],["Ganoderma score",riskLabel],["Source mission",observation.origin==="source-folder"?farm.sourceMission:"No source mission"]].map(item=>`<div class="tdrow"><span class="tdk">${item[0]}</span><span class="tdv ${item[0]==="Source mission"?"source-mission":""}">${escapeHtml(String(item[1]))}</span></div>`).join("")}</div></div><div class="card"><h3 class="cardt">Observation history</h3><div class="empty-state"><strong>${Number.isFinite(observation.ganodermaRiskScore)?"One modelled score":"No modelled score"}</strong><span>No historical trend is shown because this record contains a single score or no score.</span></div></div><div class="card h-neutral" style="border-color:var(--border)"><h3 class="cardt">Interpretation and status source</h3><p class="sub" style="color:var(--fg)">${observation.statusSource==="user-designated"?"Infected status was supplied by the user for this source folder and is independent of the modelled score.":observation.statusSource==="modelled-risk"&&observation.displayStatus==="Suspected"?"Suspected status is a modelled high-risk review signal, not a field or laboratory-confirmed diagnosis.":"Healthy layout status has no linked camera pin, image, or modelled diagnosis."}</p></div></div></div>`;
+      content.innerHTML=`<div class="pagehead"><div><h1 class="h1">Tree ${observation.treeId}</h1><p class="sub">${escapeHtml(farm.name)} · tree ${cell.seq} · ${escapeHtml(coordinateLabel)}</p></div><em class="badge h-${status}">${statusLabel}</em></div><div class="tree-hero"><div class="mapped-tree-stack">${evidenceCard}${indicatorCard}</div><div class="mapped-tree-stack">${cameraCard}<div class="card"><div class="tdetail">${[["Tree ID",observation.treeId],["Survey area",farm.id],["Display status",observation.displayStatus],["Status source",observation.statusSource],["Ganoderma score",riskLabel],["Source mission",isSourceBacked?farm.sourceMission:"Browser-local placement"]].map(item=>`<div class="tdrow"><span class="tdk">${item[0]}</span><span class="tdv ${item[0]==="Source mission"?"source-mission":""}">${escapeHtml(String(item[1]))}</span></div>`).join("")}</div></div><div class="card"><h3 class="cardt">Observation history</h3><div class="empty-state"><strong>${Number.isFinite(observation.ganodermaRiskScore)?"One modelled score":"No modelled score"}</strong><span>No historical trend is shown because this record contains a single score or no score.</span></div></div><div class="card h-neutral" style="border-color:var(--border)"><h3 class="cardt">Interpretation and status source</h3><p class="sub" style="color:var(--fg)">${isSourceBacked?"This source-backed tree is infected for the Area 001 workflow. Its displayed score is deterministic and is not a field or laboratory diagnosis.":"This added tree is infected for the Area 001 workflow. Its deterministic score and operational display position are saved without a linked source photograph."}</p></div></div></div>`;
+      if(evidenceCard)bindTreeEvidence();
     }
     function renderTree(){
       const farm=findFarm(state.farmId),cell=cellsFor(farm,state.farmAcre).find(item=>item.id===state.treeId);

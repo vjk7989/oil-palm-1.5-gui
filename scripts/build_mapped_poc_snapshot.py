@@ -13,7 +13,7 @@ from PIL import Image, ImageOps
 
 
 SOURCE_AREA_COUNTS = [27, 13, 17, 53, 2]
-DISPLAY_AREA_COUNTS = [52, 13, 17, 53, 2]
+DISPLAY_AREA_COUNTS = [64, 13, 17, 53, 2]
 WORKBOOK_SHA256 = "787D536D77E3883B3DD88C0B22A8C2144EEF4AAA3903FF15A5236D9BF8891EED"
 EVIDENCE_MAX_EDGE = 1280
 EVIDENCE_QUALITY = 76
@@ -143,13 +143,22 @@ def build_snapshot(workbook: Path, gps_inventory: Path, mission_root: Path, evid
         area_id = f"MPOC-SURVEY-{area_index:03d}"
         if area_index == 1:
             display_status = "Infected"
-            status_source = "user-designated"
+            status_source = "deterministic-modelled"
+            risk_score = float(66 + ((int(health["Tree ID"].split("-")[1]) * 7) % 30))
+            health_status = "Unhealthy"
+            severity = "Severe"
         elif health["Severity"] == "Severe":
             display_status = "Suspected"
             status_source = "modelled-risk"
+            risk_score = health["Ganoderma Risk Score"]
+            health_status = health["Health Status"]
+            severity = health["Severity"]
         else:
             display_status = "Healthy"
             status_source = "modelled-risk"
+            risk_score = health["Ganoderma Risk Score"]
+            health_status = health["Health Status"]
+            severity = health["Severity"]
 
         evidence_image = None
         evidence_hash = None
@@ -171,9 +180,9 @@ def build_snapshot(workbook: Path, gps_inventory: Path, mission_root: Path, evid
                 "capturedAt": capture["capture_timestamp"],
                 "latitude": round(float(capture["latitude"]), 9),
                 "longitude": round(float(capture["longitude"]), 9),
-                "ganodermaRiskScore": health["Ganoderma Risk Score"],
-                "healthStatus": health["Health Status"],
-                "severity": health["Severity"],
+                "ganodermaRiskScore": risk_score,
+                "healthStatus": health_status,
+                "severity": severity,
                 "displayStatus": display_status,
                 "statusSource": status_source,
                 "evidenceImage": evidence_image,
@@ -181,7 +190,7 @@ def build_snapshot(workbook: Path, gps_inventory: Path, mission_root: Path, evid
             }
         )
 
-    for index in range(113, 138):
+    for index in range(113, 150):
         risk_score = float(66 + ((index * 7) % 30))
         observations.append(
             {
@@ -230,9 +239,9 @@ def build_snapshot(workbook: Path, gps_inventory: Path, mission_root: Path, evid
         for status in ("Healthy", "Suspected", "Infected")
     }
     area_counts = [area["observationCount"] for area in areas]
-    if len(observations) != 137 or area_counts != DISPLAY_AREA_COUNTS:
-        raise ValueError(f"Expected 137 display observations split {DISPLAY_AREA_COUNTS}; received {area_counts}")
-    if status_counts != {"Healthy": 65, "Suspected": 20, "Infected": 52}:
+    if len(observations) != 149 or area_counts != DISPLAY_AREA_COUNTS:
+        raise ValueError(f"Expected 149 display observations split {DISPLAY_AREA_COUNTS}; received {area_counts}")
+    if status_counts != {"Healthy": 65, "Suspected": 20, "Infected": 64}:
         raise ValueError(f"Unexpected display-status counts: {status_counts}")
     if len({row["treeId"] for row in observations}) != len(observations):
         raise ValueError("Tree IDs must be globally unique")
@@ -272,7 +281,7 @@ def build_snapshot(workbook: Path, gps_inventory: Path, mission_root: Path, evid
             "coordinateKind": "camera-exposure",
             "geofenceKind": "camera-footprint-convex-hull",
             "riskKind": "deterministic-modelled",
-            "statusSemantics": "All Survey Area 001 observations are infected. Source observations are user-designated; layout-only observations use deterministic modelled risk and require browser-local operational positions. Severe modelled-risk observations in other areas are suspected.",
+            "statusSemantics": "All Survey Area 001 observations are infected with deterministic modelled risk above 65 percent. Its 27 source observations retain camera and photograph provenance; layout-capacity observations activate only after browser-local operational positions are saved. Severe modelled-risk observations in other areas are suspected.",
             "evidenceKind": "Natural-colour DJI D images resized to at most 1280 pixels and stored as repository WebP assets for infected and suspected observations only.",
             "runtimeDependency": "The snapshot and evidence assets are repository-owned and require no runtime access to external source drives.",
             "notice": "Camera exposure positions and derived display geofences are not surveyed palm-base coordinates or legal farm boundaries. Ganoderma scores are modelled POC values, not field or laboratory diagnoses.",
