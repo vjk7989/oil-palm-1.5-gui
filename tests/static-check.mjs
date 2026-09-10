@@ -4,8 +4,11 @@ import assert from "node:assert/strict";
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const mappedPocDataUrl = new URL("../data/mapped-poc-data.js", import.meta.url);
+const mappedPocGeneratorUrl = new URL("../scripts/build_mapped_poc_snapshot.py", import.meta.url);
 assert.ok(existsSync(mappedPocDataUrl), "Mapped POC must ship an inspectable repository-owned data snapshot");
+assert.ok(existsSync(mappedPocGeneratorUrl), "Mapped POC must retain its deterministic snapshot generator");
 const mappedPocDataSource = readFileSync(mappedPocDataUrl, "utf8");
+const mappedPocGeneratorSource = readFileSync(mappedPocGeneratorUrl, "utf8");
 const baseMappedPocData = Function(`${mappedPocDataSource}\nreturn MAPPED_POC_DATA;`)();
 const surveyTwoDataUrl = new URL("../data/survey-002-farm-data.js", import.meta.url);
 const surveyTwoGeneratorUrl = new URL("../scripts/build_survey_two_farm_snapshot.py", import.meta.url);
@@ -102,7 +105,9 @@ function extractDemoModel(source) {
     areaOnePlaceholderTreeIds: typeof AREA_ONE_PLACEHOLDER_TREE_IDS !== "undefined" ? AREA_ONE_PLACEHOLDER_TREE_IDS : undefined,
     deterministicAreaOneRiskScore: typeof deterministicAreaOneRiskScore !== "undefined" ? deterministicAreaOneRiskScore : undefined,
     areaTwoPlaceholderTreeIds: typeof AREA_TWO_PLACEHOLDER_TREE_IDS !== "undefined" ? AREA_TWO_PLACEHOLDER_TREE_IDS : undefined,
-    deterministicAreaTwoRiskScore: typeof deterministicAreaTwoRiskScore !== "undefined" ? deterministicAreaTwoRiskScore : undefined
+    deterministicAreaTwoRiskScore: typeof deterministicAreaTwoRiskScore !== "undefined" ? deterministicAreaTwoRiskScore : undefined,
+    areaThreePlaceholderTreeIds: typeof AREA_THREE_PLACEHOLDER_TREE_IDS !== "undefined" ? AREA_THREE_PLACEHOLDER_TREE_IDS : undefined,
+    deterministicAreaThreeRiskScore: typeof deterministicAreaThreeRiskScore !== "undefined" ? deterministicAreaThreeRiskScore : undefined
   };`)(mappedPocData, surveyTwoData, flattenFarms);
 }
 
@@ -306,7 +311,9 @@ const {
   areaOnePlaceholderTreeIds,
   deterministicAreaOneRiskScore,
   areaTwoPlaceholderTreeIds,
-  deterministicAreaTwoRiskScore
+  deterministicAreaTwoRiskScore,
+  areaThreePlaceholderTreeIds,
+  deterministicAreaThreeRiskScore
 } = extractDemoModel(html);
 const reportDefinitions = extractArrayConstant(html, "reportDefinitions");
 const caseActionsByRole = extractObjectConstant(html, "CASE_ACTIONS_BY_ROLE");
@@ -327,11 +334,15 @@ for (const [companyId, expected] of Object.entries({ gavl: 20, nbl: 20, tgoilfed
   assert.ok(portfolioFarms.every((farm) => farm.companyId === companyId), `${companyId} farms must not leak another company ID`);
 }
 const mappedPocFarms = flattenFarms(companyPortfolios.mappedpoc.districts);
-assert.equal(mappedPocFarms.length, 5, "Mapped POC must build exactly five survey areas");
+assert.equal(mappedPocFarms.length, 3, "Mapped POC must build exactly three survey areas");
 assert.ok(mappedPocFarms.every((farm) => farm.companyId === "mappedpoc"), "Mapped POC farms must not leak another company ID");
 assert.ok(mappedPocFarms.every((farm) => typeof farm.id === "string" && farm.id.trim().length > 0), "Every Mapped POC farm must have a nonempty ID");
 assert.equal(new Set(mappedPocFarms.map((farm) => farm.id)).size, mappedPocFarms.length, "Mapped POC farm IDs must be unique within its portfolio");
-assert.deepEqual(mappedPocFarms.map((farm) => farm.trees), [27, 35, 17, 53, 2], "Fresh runtime state must use the 35-record Survey Area 002 farm snapshot");
+assert.deepEqual(mappedPocFarms.map((farm) => farm.id), ["MPOC-SURVEY-001", "MPOC-SURVEY-002", "MPOC-SURVEY-003"], "Mapped POC portfolio order must contain only Survey Areas 001 through 003");
+assert.deepEqual(mappedPocFarms.map((farm) => farm.trees), [27, 35, 27], "Fresh runtime state must contain the fixed records for Areas 001, 002, and the Area 003 clone");
+assert.equal(mappedPocFarms.reduce((sum, farm) => sum + farm.trees, 0), 89, "Fresh Mapped POC state must contain exactly 89 active trees");
+assert.equal(mappedPocFarms.reduce((sum, farm) => sum + farm.confirmedInfected, 0), 89, "All 89 fresh fixed trees must be infected");
+assert.equal(89 + areaOnePlaceholderTreeIds.length + areaTwoPlaceholderTreeIds.length + areaThreePlaceholderTreeIds.length, 192, "The three retained editable survey grids must have a combined maximum of 192 active trees");
 
 // Mapped POC is a frozen, repository-owned snapshot: the browser must never
 // depend on the operator's workbook path or DJI storage drive at runtime.
@@ -345,7 +356,7 @@ assert.ok(mappedPocData && typeof mappedPocData === "object", "MAPPED_POC_DATA m
 assert.ok(mappedPocData.provenance && typeof mappedPocData.provenance === "object", "Mapped POC data must disclose provenance");
 assert.match(mappedPocData.provenance.workbookSha256, /^[a-f0-9]{64}$/i, "Workbook provenance must contain a SHA-256 checksum");
 assert.equal(mappedPocData.provenance.workbookSha256.toLowerCase(), "787d536d77e3883b3dd88c0b22a8c2144eef4aaa3903ff15a5236d9bf8891eed", "Workbook checksum must identify the approved source workbook");
-assert.ok(Array.isArray(mappedPocData.provenance.sourceMissions) && mappedPocData.provenance.sourceMissions.length === 5, "Provenance must name all five DJI source missions");
+assert.ok(Array.isArray(mappedPocData.provenance.sourceMissions) && mappedPocData.provenance.sourceMissions.length >= 2, "Provenance must name the retained DJI source missions");
 assert.ok(mappedPocData.provenance.sourceMissions.every((mission) => typeof mission === "string" && mission.trim()), "Every DJI source mission name must be nonempty");
 assert.ok(typeof mappedPocData.provenance.captureDate === "string" && mappedPocData.provenance.captureDate.trim(), "Provenance must publish the capture date");
 assert.match(mappedPocData.provenance.coordinateKind, /camera/i, "Coordinates must be labelled as camera positions");
@@ -355,35 +366,26 @@ const mappedAreas = mappedPocData.areas;
 const mappedObservations = mappedPocData.observations;
 assert.ok(Array.isArray(mappedAreas), "MAPPED_POC_DATA.areas must be an array");
 assert.ok(Array.isArray(mappedObservations), "MAPPED_POC_DATA.observations must be an array");
-assert.equal(mappedAreas.length, 5, "Mapped POC must contain exactly five survey areas");
-assert.equal(mappedObservations.length, 171, "Mapped POC runtime data must contain 134 source-folder observations plus 37 Area 001 layout-capacity trees");
-assert.deepEqual(mappedAreas.map((area) => area.id), ["MPOC-SURVEY-001", "MPOC-SURVEY-002", "MPOC-SURVEY-003", "MPOC-SURVEY-004", "MPOC-SURVEY-005"], "Survey-area IDs must be stable and ordered");
-assert.deepEqual(mappedAreas.map((area) => area.name), ["Survey Area 001", "Survey Area 002", "Survey Area 003", "Survey Area 004", "Survey Area 005"], "Survey-area names must be stable and ordered");
-assert.deepEqual(mappedAreas.map((area) => area.observationIds.length), [64, 35, 17, 53, 2], "Survey Area 002 must expose all 35 farm captures while the other survey counts remain unchanged");
+assert.equal(mappedAreas.length, 3, "Mapped POC must contain exactly three survey areas");
+assert.deepEqual(mappedAreas.map((area) => area.id), ["MPOC-SURVEY-001", "MPOC-SURVEY-002", "MPOC-SURVEY-003"], "Survey-area IDs must be stable and ordered");
+assert.deepEqual(mappedAreas.map((area) => area.name), ["Survey Area 001", "Survey Area 002", "Survey Area 003"], "Survey-area names must be stable and ordered");
+assert.deepEqual(mappedAreas.map((area) => area.observationIds.length), [64, 35, 64], "Areas 001 and 003 must each expose 27 fixed plus 37 optional capacity records while Area 002 retains 35 fixed records");
+assert.ok(!mappedAreas.some((area) => ["MPOC-SURVEY-004", "MPOC-SURVEY-005"].includes(area.id)), "Survey Areas 004 and 005 must be absent from runtime data");
+assert.match(mappedPocGeneratorSource, /TREE-0201|range\(201,\s*228\)|start\s*=\s*201|201\s*\+/, "The authoritative generator must deterministically create Area 003 fixed IDs TREE-0201 through TREE-0227");
+assert.match(mappedPocGeneratorSource, /TREE-0228|range\(228,\s*265\)|228\s*\+/, "The authoritative generator must reserve Area 003 optional IDs TREE-0228 through TREE-0264");
+assert.match(mappedPocGeneratorSource, /copiedFromAreaId[^]*copiedFromTreeId|copied_from_area[^]*copied_from_tree/i, "The generator must emit explicit Area 003 copy provenance");
+assert.doesNotMatch(mappedPocGeneratorSource, /["']MPOC-SURVEY-00[45]["']|["']Survey Area 00[45]["']/, "The generator must not recreate removed Survey Areas 004 or 005");
 
 const treeIds = mappedObservations.map((observation) => observation.treeId);
 const sourceFolderObservations = mappedObservations.filter((observation) => observation.origin === "source-folder");
+const sourceCopyObservations = mappedObservations.filter((observation) => observation.origin === "source-copy");
 const layoutOnlyObservations = mappedObservations.filter((observation) => observation.origin === "layout-only");
 const captureUuids = sourceFolderObservations.map((observation) => observation.captureUuid);
-assert.equal(new Set(treeIds).size, 171, "Every mapped grid-capacity tree must have a unique tree ID");
-assert.equal(sourceFolderObservations.length, 134, "The runtime snapshot must retain exactly 134 source-folder observations");
-assert.equal(layoutOnlyObservations.length, 37, "Only the 37 approved Area 001 capacity trees may be layout-only");
-assert.deepEqual(new Set(sourceFolderObservations.map((observation) => observation.treeId)), new Set([...Array.from({ length: 112 }, (_, index) => `TREE-${String(index + 1).padStart(4, "0")}`), ...Array.from({ length: 22 }, (_, index) => `TREE-${String(index + 150).padStart(4, "0")}`)]), "Source-backed tree identities must retain TREE-0001 through TREE-0112 and add TREE-0150 through TREE-0171");
-const missionFourObservations = mappedObservations.filter((observation) => observation.areaId === "MPOC-SURVEY-004");
-for (const expected of [
-  { captureNumber: 20, captureUuid: "b323d4000aba4918831ce4c2d7c6e345", latitude: 16.926570706, longitude: 81.16464361 },
-  { captureNumber: 21, captureUuid: "2d249668612049da8af5d72a74b37e00", latitude: 16.926558645, longitude: 81.164689528 },
-]) {
-  const observation = missionFourObservations.find((candidate) => candidate.captureUuid === expected.captureUuid);
-  assert.ok(observation, `Mission 004 must include corrected genuine capture ${expected.captureNumber}`);
-  assert.equal(observation.captureNumber, expected.captureNumber, `Mission 004 corrected capture ${expected.captureNumber} must retain its sequence number`);
-  assert.equal(observation.latitude, expected.latitude, `Mission 004 corrected capture ${expected.captureNumber} must retain exact camera latitude`);
-  assert.equal(observation.longitude, expected.longitude, `Mission 004 corrected capture ${expected.captureNumber} must retain exact camera longitude`);
-}
-for (const copiedUuid of ["cd608803646c4867859559602ade20f5", "b4f76f6751734d14921fc700cf055fed"]) {
-  assert.ok(!missionFourObservations.some((observation) => observation.captureUuid === copiedUuid), `Mission 004 must exclude copied acquisition ${copiedUuid}`);
-  assert.equal(mappedObservations.filter((observation) => observation.captureUuid === copiedUuid).length, 1, `Original acquisition ${copiedUuid} must remain exactly once in its source mission`);
-}
+assert.equal(new Set(treeIds).size, mappedObservations.length, "Every mapped grid-capacity tree must have a globally unique tree ID");
+assert.equal(mappedObservations.length, 163, "Mapped POC must retain exactly 89 fixed and 74 optional-capacity records");
+assert.equal(sourceFolderObservations.length, 62, "Only Areas 001 and 002 may claim independent source-folder records");
+assert.equal(sourceCopyObservations.length, 27, "Area 003 must contain exactly 27 explicitly declared source-copy records");
+assert.equal(layoutOnlyObservations.length, 74, "Only the 37 optional Area 001 and 37 optional Area 003 records may be layout-only");
 
 const observationsByTreeId = new Map(mappedObservations.map((observation) => [observation.treeId, observation]));
 for (const area of mappedAreas) {
@@ -399,7 +401,7 @@ for (const area of mappedAreas) {
   const expectedLongitude = coordinateMembers.reduce((sum, observation) => sum + observation.longitude, 0) / coordinateMembers.length;
   assert.ok(Math.abs(area.centroid.latitude - expectedLatitude) < 1e-7, `${area.id} centroid latitude must be derived from its observations`);
   assert.ok(Math.abs(area.centroid.longitude - expectedLongitude) < 1e-7, `${area.id} centroid longitude must be derived from its observations`);
-  assert.equal(area.geofenceKind, "camera-footprint-convex-hull", `${area.id} must label its derived geofence kind`);
+  assert.equal(area.geofenceKind, "camera-footprint-convex-hull", `${area.id} must label its source camera footprint; editable rectangle state is kept separately`);
   assert.ok(Array.isArray(area.geofence) && area.geofence.length >= 3, `${area.id} must publish an ordered geofence with at least three vertices`);
   const latitudes = coordinateMembers.map((observation) => observation.latitude);
   const longitudes = coordinateMembers.map((observation) => observation.longitude);
@@ -410,11 +412,11 @@ for (const area of mappedAreas) {
     assert.ok(vertex.longitude >= Math.min(...longitudes) - .001 && vertex.longitude <= Math.max(...longitudes) + .001, `${area.id} geofence longitude must stay near its camera footprint`);
   }
 }
-assert.equal(new Set(mappedAreas.flatMap((area) => area.observationIds)).size, 171, "Every source-backed and layout-capacity tree must belong to exactly one survey area");
+assert.equal(new Set(mappedAreas.flatMap((area) => area.observationIds)).size, 163, "Every fixed and layout-capacity tree must belong to exactly one survey area");
 
 for (const observation of mappedObservations) {
-  assert.match(observation.areaId, /^MPOC-SURVEY-00[1-5]$/, `${observation.treeId} must reference a stable survey-area ID`);
-  assert.ok(["source-folder", "layout-only"].includes(observation.origin), `${observation.treeId} must disclose whether it is source-backed or layout-only`);
+  assert.match(observation.areaId, /^MPOC-SURVEY-00[1-3]$/, `${observation.treeId} must reference one retained survey-area ID`);
+  assert.ok(["source-folder", "source-copy", "layout-only"].includes(observation.origin), `${observation.treeId} must disclose whether it is source-backed, an explicit copy, or layout-only`);
   assert.ok(["Infected", "Suspected", "Healthy"].includes(observation.displayStatus), `${observation.treeId} must have one approved display status`);
   assert.ok(["user-designated", "modelled-risk", "layout-only", "deterministic-modelled"].includes(observation.statusSource), `${observation.treeId} must disclose the status source`);
   assert.ok(typeof observation.healthStatus === "string" && observation.healthStatus.trim(), `${observation.treeId} must retain workbook health status`);
@@ -470,9 +472,47 @@ const areaTwoLatitudeRange = [Math.min(...areaTwoObservations.map((observation) 
 const areaTwoLongitudeRange = [Math.min(...areaTwoObservations.map((observation) => observation.longitude)), Math.max(...areaTwoObservations.map((observation) => observation.longitude))];
 assert.ok(areaTwo.geofence.every((point) => point.latitude >= areaTwoLatitudeRange[0] - .00002 && point.latitude <= areaTwoLatitudeRange[1] + .00002), "Survey Area 002 geofence latitude must be derived from its camera footprint");
 assert.ok(areaTwo.geofence.every((point) => point.longitude >= areaTwoLongitudeRange[0] - .00002 && point.longitude <= areaTwoLongitudeRange[1] + .00002), "Survey Area 002 geofence longitude must be derived from its camera footprint");
-for (const areaId of ["MPOC-SURVEY-001", "MPOC-SURVEY-003", "MPOC-SURVEY-004", "MPOC-SURVEY-005"]) {
+for (const areaId of ["MPOC-SURVEY-001"]) {
   assert.deepEqual(mappedAreas.find((area) => area.id === areaId), baseMappedPocData.areas.find((area) => area.id === areaId), `${areaId} metadata must remain unchanged by the Area 002 replacement`);
   assert.deepEqual(mappedObservations.filter((observation) => observation.areaId === areaId), baseMappedPocData.observations.filter((observation) => observation.areaId === areaId), `${areaId} observations must remain unchanged by the Area 002 replacement`);
+}
+
+const areaOneFixed = mappedObservations.filter((observation) => observation.areaId === "MPOC-SURVEY-001" && observation.origin === "source-folder");
+const areaThree = mappedAreas.find((area) => area.id === "MPOC-SURVEY-003");
+const areaThreeFixed = mappedObservations.filter((observation) => observation.areaId === "MPOC-SURVEY-003" && observation.origin === "source-copy");
+const areaThreeOptional = mappedObservations.filter((observation) => observation.areaId === "MPOC-SURVEY-003" && observation.origin === "layout-only");
+assert.deepEqual(areaThreeFixed.map((observation) => observation.treeId), Array.from({ length: 27 }, (_, index) => `TREE-${String(index + 201).padStart(4, "0")}`), "Area 003 fixed copy IDs must be TREE-0201 through TREE-0227");
+assert.deepEqual(areaThreeOptional.map((observation) => observation.treeId), Array.from({ length: 37 }, (_, index) => `TREE-${String(index + 228).padStart(4, "0")}`), "Area 003 optional capacity IDs must be TREE-0228 through TREE-0264");
+assert.deepEqual(areaThree.observationIds, [...areaThreeFixed, ...areaThreeOptional].map((observation) => observation.treeId), "Area 003 membership must keep fixed copies first and optional IDs in ascending order");
+assert.equal(areaThreeFixed.length, areaOneFixed.length, "Area 003 must copy every one of Area 001's 27 fixed observations exactly once");
+for (const [index, copied] of areaThreeFixed.entries()) {
+  const original = areaOneFixed[index];
+  assert.equal(copied.copiedFromAreaId, "MPOC-SURVEY-001", `${copied.treeId} must disclose its source area`);
+  assert.equal(copied.copiedFromTreeId, original.treeId, `${copied.treeId} must disclose its exact Area 001 source tree`);
+  assert.equal(copied.captureUuid, original.captureUuid, `${copied.treeId} must retain the real capture UUID without inventing another capture`);
+  assert.equal(copied.latitude, original.latitude, `${copied.treeId} must copy the exact Area 001 latitude`);
+  assert.equal(copied.longitude, original.longitude, `${copied.treeId} must copy the exact Area 001 longitude`);
+  assert.equal(copied.ganodermaRiskScore, original.ganodermaRiskScore, `${copied.treeId} must copy the exact Area 001 modelled score`);
+  assert.equal(copied.displayStatus, "Infected", `${copied.treeId} must remain red/Infected`);
+  assert.equal(copied.healthStatus, original.healthStatus, `${copied.treeId} must copy Area 001 health status`);
+  assert.equal(copied.severity, original.severity, `${copied.treeId} must copy Area 001 severity`);
+  assert.equal(copied.evidenceImage, original.evidenceImage, `${copied.treeId} must share the Area 001 image reference instead of duplicating an asset`);
+  assert.equal(copied.evidenceSha256, original.evidenceSha256, `${copied.treeId} must share the Area 001 image checksum`);
+}
+const captureUuidGroups = new Map();
+for (const observation of mappedObservations.filter((observation) => observation.captureUuid)) {
+  const group = captureUuidGroups.get(observation.captureUuid) || [];
+  group.push(observation);
+  captureUuidGroups.set(observation.captureUuid, group);
+}
+for (const group of captureUuidGroups.values()) {
+  if (group.length === 1) continue;
+  assert.equal(group.length, 2, "A capture UUID may be duplicated only once for an Area 001-to-003 clone pair");
+  const [original, copied] = group[0].areaId === "MPOC-SURVEY-001" ? group : [group[1], group[0]];
+  assert.equal(original.areaId, "MPOC-SURVEY-001", "Every duplicated capture UUID must originate in Area 001");
+  assert.equal(copied.areaId, "MPOC-SURVEY-003", "Every duplicated capture UUID must terminate in Area 003");
+  assert.equal(copied.origin, "source-copy", "A duplicate capture UUID must be explicitly classified as a source-copy");
+  assert.equal(copied.copiedFromTreeId, original.treeId, "Duplicate capture provenance must link the exact original and clone pair");
 }
 assert.match(surveyTwoGeneratorSource, /parser\.add_argument\(["']--source-dir["'][^\n]*required\s*=\s*True/, "Survey Area 002 generator must require an explicit source directory");
 assert.match(surveyTwoGeneratorSource, /drone-dji:[^]*GpsLatitude[^]*GpsLongitude|xmp_value[^]*GpsLatitude[^]*GpsLongitude/, "Survey Area 002 generator must extract DJI XMP coordinates");
@@ -480,9 +520,6 @@ assert.match(surveyTwoGeneratorSource, /EXPECTED_CAPTURE_NUMBERS[^]*range\(2,\s*
 assert.match(surveyTwoGeneratorSource, /ganodermaRiskScore|ganoderma_risk_score/, "Survey Area 002 generator must emit the deterministic Ganoderma score for every fixed tree");
 assert.match(surveyTwoGeneratorSource, /["']Infected["'][^]*["']Unhealthy["'][^]*["']Severe["']|["']Unhealthy["'][^]*["']Severe["'][^]*["']Infected["']/, "Survey Area 002 generator must classify all 35 fixed trees as Infected, Unhealthy, and Severe");
 assert.doesNotMatch(surveyTwoGeneratorSource, /D:[\\/]frm02(?:[\\/]|\b)/i, "Survey Area 002 generator must not hard-code the operator's source directory");
-
-assert.equal(sourceFolderObservations.filter((observation) => !["MPOC-SURVEY-001", "MPOC-SURVEY-002"].includes(observation.areaId) && observation.healthStatus === "Healthy").length, 52, "Areas 003-005 must retain their 52 healthy source observations unchanged");
-assert.equal(sourceFolderObservations.filter((observation) => observation.areaId !== "MPOC-SURVEY-001" && observation.healthStatus === "Unhealthy" && observation.severity === "Severe").length, 55, "The source subset outside Area 001 must contain the 35 infected Area 002 trees plus 20 workbook-severe observations");
 
 const areaOneObservations = mappedObservations.filter((observation) => observation.areaId === "MPOC-SURVEY-001");
 const areaOneSourceObservations = areaOneObservations.filter((observation) => observation.origin === "source-folder");
@@ -516,24 +553,21 @@ for (const observation of sourceFolderObservations) {
 }
 
 const severeOutsideAreaOne = sourceFolderObservations.filter((observation) => observation.areaId !== "MPOC-SURVEY-001" && observation.severity === "Severe");
-assert.equal(severeOutsideAreaOne.length, 55, "The source data must contain 35 Area 002 infected trees and retain 20 severe workbook observations outside Area 001");
-const severeOutsideEditableAreas = severeOutsideAreaOne.filter((observation) => observation.areaId !== "MPOC-SURVEY-002");
-assert.equal(severeOutsideEditableAreas.length, 20, "Areas 003-005 must retain exactly 20 pre-existing severe modelled observations");
-assert.ok(severeOutsideEditableAreas.every((observation) => observation.displayStatus === "Suspected" && observation.statusSource === "modelled-risk"), "Existing severe modelled observations in Areas 003-005 must remain Suspected");
+assert.equal(severeOutsideAreaOne.length, 35, "The independent source data outside Area 001 must contain only the 35 infected Area 002 trees");
 assert.deepEqual(
   ["Infected", "Suspected", "Healthy"].map((status) => mappedObservations.filter((observation) => observation.displayStatus === status).length),
-  [99, 20, 52],
-  "The capacity snapshot must reconcile to 64 potentially active Area 001 infected records, 35 fixed Area 002 infected records, 20 suspected, and 52 healthy trees"
+  [163, 0, 0],
+  "The capacity snapshot defaults all fixed and optional-capacity records in Areas 001-003 to Infected"
 );
 
-const riskEvidenceObservations = sourceFolderObservations.filter((observation) => observation.displayStatus !== "Healthy");
-assert.equal(riskEvidenceObservations.length, 82, "The 27 Area 001 infected, 35 Area 002 infected, and 20 suspected source trees must carry risk evidence");
-assert.ok(mappedObservations.filter((observation) => observation.displayStatus === "Healthy").every((observation) => observation.evidenceImage === null && observation.evidenceSha256 === null), "Healthy source trees in Areas 003-005 must retain their image-free behavior");
+const riskEvidenceObservations = mappedObservations.filter((observation) => observation.origin !== "layout-only" && observation.displayStatus !== "Healthy");
+assert.equal(riskEvidenceObservations.length, 89, "The 27 Area 001 originals, 35 Area 002 records, and 27 declared Area 003 copies must carry linked image references");
 assert.ok(areaTwoObservations.every((observation) => observation.evidenceImage && observation.evidenceSha256), "Every infected fixed Survey Area 002 tree must retain its supplied farm photograph");
 assert.ok(areaOneLayoutOnly.every((observation) => observation.evidenceImage === null && observation.evidenceSha256 === null), "Positioned layout-only trees must not invent source evidence images");
+assert.ok(areaThreeOptional.every((observation) => observation.evidenceImage === null && observation.evidenceSha256 === null), "Area 003 optional records must not invent source evidence images");
 assert.equal(new Set(areaOneSourceObservations.map((observation) => observation.evidenceImage)).size, 27, "Each of Area 001's 27 immutable source-backed trees must retain its own photograph");
 assert.ok(areaOneSourceObservations.every((observation) => typeof observation.evidenceImage === "string" && observation.evidenceImage.endsWith(".webp")), "Every immutable Area 001 source tree must retain a repository-owned photograph");
-assert.equal(new Set(riskEvidenceObservations.map((observation) => observation.evidenceImage)).size, 82, "Every source-backed infected or suspected tree must have its own evidence derivative");
+assert.equal(new Set(riskEvidenceObservations.map((observation) => observation.evidenceImage)).size, 62, "Area 003 must share Area 001's 27 derivatives while Area 002 retains its 35 exact derivatives");
 for (const observation of riskEvidenceObservations) {
   assert.match(observation.evidenceImage, /^(?![A-Za-z]:[\\/])(?![\\/])(?!.*(?:^|[\\/])\.\.(?:[\\/]|$)).+\.webp$/i, `${observation.treeId} evidence must use a repository-relative WebP path`);
   assert.match(observation.evidenceSha256, /^[a-f0-9]{64}$/i, `${observation.treeId} evidence must publish a SHA-256 checksum`);
@@ -545,10 +579,14 @@ for (const observation of riskEvidenceObservations) {
   const [width, height] = webpDimensions(evidenceBuffer);
   assert.ok(width > 0 && height > 0 && width <= 1600 && height <= 1600, `${observation.treeId} evidence dimensions must be valid and bounded to 1600 px`);
 }
+for (let treeNumber = 93; treeNumber <= 112; treeNumber += 1) {
+  const removedDerivativeUrl = new URL(`../assets/mapped-poc/evidence/TREE-${String(treeNumber).padStart(4, "0")}.webp`, import.meta.url);
+  assert.ok(!existsSync(removedDerivativeUrl), `Removed Survey Areas 004-005 derivative TREE-${String(treeNumber).padStart(4, "0")}.webp must not remain in the repository bundle`);
+}
 
 const mappedPocIntegrationSource = `${companyProfiles.mappedpoc.subtitle}\n${html}`;
 assert.match(mappedPocIntegrationSource, /camera observation/i, "Mapped POC UI must describe records as camera observations");
-assert.match(mappedPocIntegrationSource, /modelled Ganoderma risk/i, "Mapped POC UI must disclose modelled Ganoderma risk");
+assert.match(mappedPocIntegrationSource, /modelled[^.]{0,80}Ganoderma|Ganoderma[^.]{0,80}modelled/i, "Mapped POC UI must disclose that Ganoderma risk is modelled");
 const renderTreeMappedBody = functionBody(html, "renderMappedPocTree");
 assert.match(functionBody(html, "renderTree"), /mapped-poc-camera[^]*renderMappedPocTree/, "Tree Details must route repository-backed observations through the dedicated Mapped POC renderer");
 assert.match(renderTreeMappedBody, /ganodermaRiskScore/, "Mapped POC Tree Details must use the exact static risk score");
@@ -571,8 +609,13 @@ const mappedTreeContent = { innerHTML: "" };
 let mappedTreeEvidenceBindCount = 0;
 const renderMappedPocTreeForImageRule = Function(
   "AREA_ONE_ID",
+  "AREA_TWO_ID",
+  "AREA_THREE_ID",
   "MAPPED_POC_DATA",
   "nearestAreaOneImageObservation",
+  "nearestAreaTwoEvidence",
+  "nearestAreaThreeImageObservation",
+  "isFixedMappedPocObservation",
   "escapeHtml",
   "renderGanodermaIndicators",
   "content",
@@ -580,6 +623,8 @@ const renderMappedPocTreeForImageRule = Function(
   `return function renderMappedPocTree(farm,cell){${renderTreeMappedBody}};`
 )(
   "MPOC-SURVEY-001",
+  "MPOC-SURVEY-002",
+  "MPOC-SURVEY-003",
   { provenance: { notice: "Source notice" } },
   (observation) => ({
     ...observation,
@@ -588,6 +633,9 @@ const renderMappedPocTreeForImageRule = Function(
     capturedAt: "2026-06-20 09:50:43",
     distanceMetres: 0,
   }),
+  () => null,
+  () => null,
+  (observation) => ["source-folder", "source-copy"].includes(observation.origin),
   (value) => String(value),
   () => "<section data-indicators></section>",
   mappedTreeContent,
@@ -817,11 +865,10 @@ assert.match(initAreaTwoGoogleMapBody, /(?:tree|survey) grid remains available/i
 assert.doesNotMatch(initAreaTwoGoogleMapBody, /editAreaOneGeofence|saveAreaOneGeofence|areaOneMarkerPlacement|areaOneTreePositions/, "Survey Area 002 must use isolated Area 002 editing and browser-state behavior");
 
 const initMappedPocAreaMapBody = functionBody(html, "initMappedPocAreaMap");
-assert.match(initMappedPocAreaMapBody, /L\.map\s*\(/, "Survey Areas 003-005 must retain their Leaflet map");
-assert.match(initMappedPocAreaMapBody, /addMappedPocGeofence\s*\(\s*activeMap\s*,\s*farm\s*\)/, "Survey Areas 003-005 must add their derived geofence through the shared helper");
+assert.match(initMappedPocAreaMapBody, /L\.map\s*\(/, "The retained generic Mapped POC fallback map must remain valid");
+assert.match(initMappedPocAreaMapBody, /addMappedPocGeofence\s*\(\s*activeMap\s*,\s*farm\s*\)/, "The generic fallback must add its declared geofence through the shared helper");
 assert.match(initMappedPocAreaMapBody, /(?:const|let)\s+bounds\s*=\s*addMappedPocGeofence/, "The Leaflet initializer must retain the geofence points as its viewport bounds");
-assert.match(initMappedPocAreaMapBody, /fitBounds\s*\(\s*bounds/, "Survey Areas 003-005 must fit the Leaflet viewport to their geofence and risk pins");
-assert.doesNotMatch(initMappedPocAreaMapBody, /areaOneTreeSelect|areaOneTreeList|openAreaOneTree|updateAreaOneTreeSelection/, "Area 001 pin-selection controls must not alter Areas 003-005");
+assert.match(initMappedPocAreaMapBody, /fitBounds\s*\(\s*bounds/, "The generic fallback must fit its viewport to declared geometry");
 const addMappedPocGeofenceBody = functionBody(html, "addMappedPocGeofence");
 assert.match(addMappedPocGeofenceBody, /farm\.geofence/, "The shared geofence helper must use the selected area's declared geofence");
 assert.match(addMappedPocGeofenceBody, /L\.polygon\s*\([^]*\.addTo\s*\(\s*map\s*\)/, "The shared helper must add the derived Leaflet polygon to the supplied map");
@@ -829,19 +876,27 @@ assert.match(html, /const\s+AREA_ONE_ID\s*=\s*["']MPOC-SURVEY-001["']\s*;/, "Sur
 assert.equal((html.match(/["']MPOC-SURVEY-001["']/g)||[]).length, 1, "The Survey Area 001 ID literal must have one global source of truth");
 assert.match(html, /const\s+AREA_TWO_ID\s*=\s*["']MPOC-SURVEY-002["']\s*;/, "Survey Area 002 Google behavior must use one named stable ID constant");
 assert.equal((html.match(/["']MPOC-SURVEY-002["']/g)||[]).length, 1, "The Survey Area 002 ID literal must have one global source of truth");
+assert.match(html, /const\s+AREA_THREE_ID\s*=\s*["']MPOC-SURVEY-003["']\s*;/, "Survey Area 003 Google behavior must use one named stable ID constant");
+assert.equal((html.match(/["']MPOC-SURVEY-003["']/g)||[]).length, 1, "The Survey Area 003 ID literal must have one global source of truth");
 const renderMappedPocFarmBody = functionBody(html, "renderMappedPocFarm");
 assert.match(renderMappedPocFarmBody, /(?:const|let)\s+isAreaOne\s*=\s*farm\.id\s*===?\s*AREA_ONE_ID/, "The farm renderer must derive Area 001 behavior through the shared ID constant");
 assert.match(renderMappedPocFarmBody, /\bisAreaTwo\s*=\s*farm\.id\s*===?\s*AREA_TWO_ID/, "The farm renderer must derive Area 002 behavior through the shared ID constant");
+assert.match(renderMappedPocFarmBody, /\bisAreaThree\s*=\s*farm\.id\s*===?\s*AREA_THREE_ID/, "The farm renderer must derive Area 003 behavior through the shared ID constant");
 assert.match(renderMappedPocFarmBody, /isAreaOne[^]*(?:<select[^>]+id=["']areaOneTreeSelect["']|id=["']areaOneTreeList["'][^]*role=["'](?:listbox|radiogroup)["'])/i, "Area 001 must render a keyboard-accessible infected-tree selector");
 assert.match(renderMappedPocFarmBody, /(?:areaOneTreeSelect|areaOneTreeList)[^]*(?:displayStatus\s*===?\s*["']Infected["']|infected)/i, "The Area 001 selector must contain infected trees only");
 assert.match(renderMappedPocFarmBody, /(?:aria-label=["'][^"']*(?:infected tree|tree pin)|aria-labelledby=["'][^"']+["'])/i, "The infected-tree selector must expose an accessible name");
 assert.match(renderMappedPocFarmBody, /id=["']openAreaOneTree["'][^>]*disabled|disabled[^>]*id=["']openAreaOneTree["']/i, "The Tree Details action must start disabled until a valid pin is selected");
 assert.match(renderMappedPocFarmBody, /(?:id=["']areaOneTreeSelection["'][^>]*(?:aria-live=["']polite["']|role=["']status["'])|(?:aria-live=["']polite["']|role=["']status["'])[^>]*id=["']areaOneTreeSelection["'])/i, "Pin selection must be announced to assistive technology");
-assert.match(renderMappedPocFarmBody, /AREA_ONE_ID[^?]*\?\s*initAreaOneGoogleMap\s*\(\s*farm\s*\)[^]*AREA_TWO_ID[^?]*\?\s*initAreaTwoGoogleMap\s*\(\s*farm\s*\)\s*:\s*initMappedPocAreaMap\s*\(\s*farm\s*\)/, "Farm routing must send Areas 001 and 002 to their Google initializers and only Areas 003-005 to Leaflet");
+for (const initializer of ["initAreaOneGoogleMap", "initAreaTwoGoogleMap", "initAreaThreeGoogleMap"]) {
+  assert.match(renderMappedPocFarmBody, new RegExp(`${initializer}\\s*\\(\\s*farm\\s*\\)`), `Farm routing must invoke ${initializer} for its retained survey`);
+}
 assert.match(renderMappedPocFarmBody, /class=["']treegrid["'][^]*data-tree=/, "The tree grid must render independently of Google Maps availability");
 assert.match(renderMappedPocFarmBody, /(?:map unavailable|satellite map unavailable|tree grid remains available)/i, "Google failure copy must keep the usable tree grid as the fallback");
 for (const controlId of ["editAreaOneGeofence", "saveAreaOneGeofence", "cancelAreaOneGeofence", "resetAreaOneGeofence", "areaOneGeofenceCoordinates"]) {
   assert.match(renderMappedPocFarmBody, new RegExp(`id=["']${controlId}["']`), `Area 001 editor must render ${controlId}`);
+}
+for (const controlId of ["editAreaThreeGeofence", "saveAreaThreeGeofence", "cancelAreaThreeGeofence", "resetAreaThreeGeofence", "areaThreeGeofenceCoordinates", "addAreaThreeMarkers", "areaThreeTreeSelect", "openAreaThreeTree"]) {
+  assert.match(renderMappedPocFarmBody, new RegExp(`id=["']${controlId}["']`), `Area 003 editor must render ${controlId}`);
 }
 assert.match(html, /saveAreaOneGeofence["'][^]*saveAreaOneGeofence\s*\(/, "The Area 001 Save control must invoke validated persistence");
 assert.match(html, /cancelAreaOneGeofence["'][^]*cancelAreaOneGeofenceEdit\s*\(/, "The Area 001 Cancel control must discard the current draft");
@@ -1759,7 +1814,7 @@ assert.match(
 );
 assert.match(
   renderOverviewBody,
-  /mapped-poc-survey[^]*DJI camera exposure positions[^]*modelled Ganoderma risk scores[^]*no farm boundaries or diagnoses are claimed/i,
+  /mapped-poc-survey[^]*DJI camera exposure positions[^]*(?:modelled|deterministic) Ganoderma risk scores[^]*no farm boundaries or diagnoses are claimed/i,
   "Mapped POC Overview must disclose its camera-coordinate, modelled-risk, and interpretation limits"
 );
 assert.match(
@@ -1892,7 +1947,7 @@ assert.match(renderIndicatorBody, /aria-describedby=["']\$\{indicator\.id\}-help
 // the active route must not write farm/tree records or widen AP scope.
 const versionMatch = /const\s+DEMO_STATE_VERSION\s*=\s*(\d+)/.exec(html);
 assert.ok(versionMatch, "Browser-local demo state must publish a numeric schema version");
-assert.equal(Number(versionMatch[1]), 7, "Editable Area 002 polygon and marker positions must use demo-state schema version 7");
+assert.equal(Number(versionMatch[1]), 8, "Editable Area 003 rectangle and marker positions must use demo-state schema version 8");
 assert.match(html, /const\s+DEFAULT_FARM_DRAFT\s*=/, "New Farm must publish deterministic draft defaults");
 
 const areaOneDefaultBounds = extractObjectConstant(html, "AREA_ONE_DEFAULT_GEOFENCE_BOUNDS");
@@ -1965,7 +2020,7 @@ assert.equal(Math.max(...areaOneAddedRiskScores), 95, "The deterministic added-t
 // Area 001 marker classification is an explicit three-colour workflow. Red is
 // the safe default for existing v5 positions; every saved marker carries the
 // canonical display status used consistently by map, grid, and tree details.
-assert.match(html, /const\s+DEMO_STATE_VERSION\s*=\s*7\b/, "The Area 002 editor schema must advance browser-local state to version 7");
+assert.match(html, /const\s+DEMO_STATE_VERSION\s*=\s*8\b/, "The Area 003 editor schema must advance browser-local state to version 8");
 assert.match(renderMappedPocFarmBody, /(?:role=["'](?:radiogroup|group)["']|<fieldset)[^]*(?:Red)[^]*(?:Yellow)[^]*(?:Green)/i, "Marker placement must expose an accessible Red, Yellow, and Green classification toolbar");
 assert.match(renderMappedPocFarmBody, /(?:aria-label|aria-labelledby|<legend)[^]*(?:marker|tree|status|classification)/i, "The colour toolbar must have an accessible group label");
 for (const status of ["Infected", "Suspected", "Healthy"]) {
@@ -2184,7 +2239,7 @@ assert.doesNotMatch(updateAreaOneTreeSelectionBody, /item\.displayStatus\s*===?\
 assert.match(initAreaOneGoogleMapBody, /marker\.addListener\s*\(\s*["']click["'][^]*state\.treeId\s*=\s*observation\.treeId[^]*render\s*\(/i, "Every permanent Red, Yellow, or Green marker must open its matching Tree Details page");
 assert.match(cellsForMappedBody, /displayStatus\s*===?\s*["']Infected["'][^]*(?:Suspected|Healthy)|(?:Suspected|Healthy)[^]*displayStatus/i, "The Area 001 grid colour must derive from the same saved display status as its map marker");
 assert.match(renderTreeMappedBody, /observation\.displayStatus/, "Tree Details must render the same saved marker display status");
-assert.match(renderTreeMappedBody, /cameraRows\s*=\s*isSourceBacked\s*\?[^]*:\s*\[\[["']Tree record["'][^]*["']Latitude["']\s*,\s*observation\.latitude[^]*["']Longitude["']\s*,\s*observation\.longitude/i, "An added marker's Tree Details page must render that marker's own latitude and longitude");
+assert.match(renderTreeMappedBody, /cameraRows\s*=\s*(?:isSourceBacked|isFixedObservation)\s*\?[^]*:\s*\[\[["']Tree record["'][^]*["']Latitude["']\s*,\s*observation\.latitude[^]*["']Longitude["']\s*,\s*observation\.longitude/i, "An added marker's Tree Details page must render that marker's own latitude and longitude");
 assert.doesNotMatch(`${renderMappedPocFarmBody}\n${renderTreeMappedBody}`, /\bmock\b/i, "Mapped POC farm and Tree Details UI must not contain prohibited placeholder terminology");
 
 assert.doesNotMatch(renderMappedPocFarmBody, /roles\[state\.role\]|state\.role\s*===?/, "Every built-in role must receive the Area 001 editor controls");
@@ -2330,17 +2385,109 @@ assert.match(nearestAreaTwoEvidenceBody, /source-folder|SURVEY_TWO_FARM_DATA|ARE
 assert.match(renderTreeMappedBody, /AREA_TWO_ID[^]*(?:(?:Infected|Suspected)[^]*nearestAreaTwoEvidence|displayStatus\s*!==?\s*["']Healthy["'][^]*nearestAreaTwoEvidence)/, "Added non-Healthy Area 002 tree pages must use the nearest Area 002 source image");
 assert.match(renderTreeMappedBody, /Healthy[^]*(?:null|false)|displayStatus\s*!==?\s*["']Healthy["']/, "Added Green Area 002 tree pages must not show an image");
 assert.match(renderTreeMappedBody, /nearest|not the exact tree|reference image|closest/i, "A reused Area 002 image must disclose that it is not exact-tree evidence");
-assert.match(renderTreeMappedBody, /isSourceBacked[^]*displayEvidence\?\.treeId\s*===?\s*observation\.treeId/, "The original 35 Area 002 records must retain exact one-to-one images");
+assert.match(renderTreeMappedBody, /(?:isSourceBacked|isFixedObservation)[^]*displayEvidence\?\.treeId\s*===?\s*observation\.treeId/, "The original 35 Area 002 records must retain exact one-to-one images");
 assert.doesNotMatch(`${html}\n${mappedPocDataSource}\n${surveyTwoDataSource}`, /D:[\\/]frm02(?:[\\/]|\b)/i, "Area 002 runtime and UI must not read from D:\\frm02");
-assert.doesNotMatch(initMappedPocAreaMapBody, /areaTwoTreePositions|areaTwoMarkerDraft|beginAreaTwoMarkerPlacement|saveAreaTwoTreePositions/, "Areas 003-005 must remain isolated on their unchanged Leaflet path");
 assert.doesNotMatch(`${saveAreaTwoGeofenceBody}\n${saveAreaTwoTreePositionsBody}\n${syncAreaTwoTreePositionsBody}`, /demoState\.areaOneTreePositions\s*=|geofenceOverrides\s*=\s*\{\s*\[\s*AREA_TWO_ID\s*\]\s*:/, "Area 002 writes must preserve all valid Area 001 browser state");
 
+// Survey Area 003 is an independently editable clone of Area 001. Its fixed
+// source-copy records cannot be edited; only its 37 reserved positions can be.
+const expectedAreaThreePlaceholderTreeIds = Array.from({ length: 37 }, (_, index) => `TREE-${String(index + 228).padStart(4, "0")}`);
+assert.deepEqual(areaThreePlaceholderTreeIds, expectedAreaThreePlaceholderTreeIds, "Area 003 Add Marker must reserve exactly TREE-0228 through TREE-0264");
+for (const fixture of markerStatusFixtures) {
+  const scores = areaThreePlaceholderTreeIds.map((treeId) => deterministicAreaThreeRiskScore(treeId, fixture.displayStatus));
+  assert.ok(scores.every((score) => score >= fixture.minimum && score <= fixture.maximum), `Area 003 ${fixture.label} scores must remain inside the canonical ${fixture.minimum}-${fixture.maximum} range`);
+  assert.deepEqual(scores, areaThreePlaceholderTreeIds.map((treeId) => deterministicAreaThreeRiskScore(treeId, fixture.displayStatus)), `Area 003 ${fixture.label} scores must be deterministic`);
+}
+
+assert.match(html, /const\s+AREA_THREE_DEFAULT_GEOFENCE_BOUNDS\s*=\s*AREA_ONE_DEFAULT_GEOFENCE_BOUNDS\s*;/, "Area 003 must begin at the same exact rectangle as Area 001");
+const getAreaThreeGeofenceBoundsBody = functionBody(html, "getAreaThreeGeofenceBounds");
+assert.match(getAreaThreeGeofenceBoundsBody, /geofenceOverrides\?\.\[\s*AREA_THREE_ID\s*\]/, "Area 003 must read only its own saved rectangle override");
+assert.match(getAreaThreeGeofenceBoundsBody, /AREA_THREE_DEFAULT_GEOFENCE_BOUNDS/, "Area 003 must fall back to its cloned default rectangle");
+assert.match(getAreaThreeGeofenceBoundsBody, /validAreaOneGeofenceBounds/, "Area 003 must reuse the authoritative rectangle validator");
+const saveAreaThreeGeofenceBody = functionBody(html, "saveAreaThreeGeofence");
+assert.match(saveAreaThreeGeofenceBody, /validAreaOneGeofenceBounds/, "Area 003 geofence Save must validate the draft rectangle");
+assert.match(saveAreaThreeGeofenceBody, /areaThreePositionsInsideBounds|savedAreaThreePositionsInsideBounds/, "Area 003 geofence Save must reject bounds that exclude a saved added marker");
+assert.match(saveAreaThreeGeofenceBody, /geofenceOverrides\s*=\s*\{[^]*AREA_THREE_ID/, "Area 003 geofence Save must persist under the Area 003 key");
+assert.equal((saveAreaThreeGeofenceBody.match(/saveDemoState\s*\(/g) || []).length, 1, "Area 003 geofence Save must use one atomic state write");
+assert.doesNotMatch(saveAreaThreeGeofenceBody, /demoState\.areaOneTreePositions\s*=|demoState\.areaTwoTreePositions\s*=/, "Area 003 geofence Save must not mutate Area 001 or Area 002 markers");
+const cancelAreaThreeGeofenceBody = functionBody(html, "cancelAreaThreeGeofenceEdit");
+assert.match(cancelAreaThreeGeofenceBody, /areaThreeGeofenceDraft[^]*getAreaThreeGeofenceBounds/, "Area 003 geofence Cancel must restore the saved/default rectangle");
+assert.doesNotMatch(cancelAreaThreeGeofenceBody, /saveDemoState|demoState\.geofenceOverrides\s*=/, "Area 003 geofence Cancel must not persist a draft");
+const resetAreaThreeGeofenceBody = functionBody(html, "resetAreaThreeGeofence");
+assert.match(resetAreaThreeGeofenceBody, /areaThreePositionsInsideBounds|savedAreaThreePositionsInsideBounds/, "Area 003 Reset must refuse a default rectangle that excludes saved markers");
+assert.match(resetAreaThreeGeofenceBody, /AREA_THREE_ID[^]*(?:delete|Object\.fromEntries)|(?:delete|Object\.fromEntries)[^]*AREA_THREE_ID/, "Area 003 Reset must remove only its own override");
+
+const normalizeAreaThreeTreePositionsBody = functionBody(html, "normalizeAreaThreeTreePositions");
+assert.match(normalizeAreaThreeTreePositionsBody, /AREA_THREE_PLACEHOLDER_TREE_IDS/, "Area 003 normalization must reject IDs outside TREE-0228 through TREE-0264");
+assert.match(normalizeAreaThreeTreePositionsBody, /pointInsideAreaOneBounds/, "Area 003 normalization must reuse the authoritative rectangle-containment helper");
+assert.match(normalizeAreaThreeTreePositionsBody, /displayStatus[^]*(?:Infected|Suspected|Healthy)|AREA_THREE_MARKER_STATUSES/, "Area 003 normalization must retain only canonical marker statuses");
+const validAreaThreeTreePositionsBody = functionBody(html, "validAreaThreeTreePositions");
+assert.match(validAreaThreeTreePositionsBody, /AREA_THREE_PLACEHOLDER_TREE_IDS\.length|length\s*>\s*37/, "Area 003 must reject more than 37 optional positions");
+assert.match(`${pointInsideAreaOneBoundsBody}\n${normalizeAreaThreeTreePositionsBody}\n${validAreaThreeTreePositionsBody}`, /Number\.isFinite/, "Area 003 state must reject non-finite coordinates through the shared rectangle helper");
+assert.match(validAreaThreeTreePositionsBody, /Set|duplicate|findIndex|some\s*\(/i, "Area 003 state must reject duplicate positions");
+assert.match(`${normalizeAreaThreeTreePositionsBody}\n${validAreaThreeTreePositionsBody}`, /source-copy|areaThreeSourceCoordinateKeys|copied/i, "Area 003 optional markers must not overlap immutable copied pins");
+const beginAreaThreeMarkerPlacementBody = functionBody(html, "beginAreaThreeMarkerPlacement");
+assert.match(beginAreaThreeMarkerPlacementBody, /geofenceOverrides\?\.\[\s*AREA_THREE_ID\s*\]|geofenceOverrides\s*\[\s*AREA_THREE_ID\s*\]/, "Area 003 Add Marker must require an explicitly saved geofence");
+assert.match(beginAreaThreeMarkerPlacementBody, /areaThreeMarkerDraft[^]*(?:structuredClone|map|normalizeAreaThreeTreePositions|getAreaThreeTreePositions)/, "Area 003 marker editing must begin from a detached copy of saved positions");
+assert.match(beginAreaThreeMarkerPlacementBody, /areaThreeMarker(?:Status|DisplayStatus)\s*=\s*["']Infected["']/, "Area 003 marker sessions must default to Red/Infected");
+const nextAreaThreeTreeIdBody = functionBody(html, "nextAreaThreeTreeId");
+assert.match(nextAreaThreeTreeIdBody, /AREA_THREE_PLACEHOLDER_TREE_IDS\.find[^]*areaThreeMarkerDraft/, "Area 003 must assign the lowest available stable optional ID");
+const removeAreaThreeDraftMarkerBody = functionBody(html, "removeAreaThreeDraftMarker");
+assert.match(removeAreaThreeDraftMarkerBody, /treeId[^]*(?:splice|filter)/, "Clicking an Area 003 added marker must remove exactly that draft Tree ID");
+assert.match(removeAreaThreeDraftMarkerBody, /type\s*:\s*["']remove["'][^]*point/, "Area 003 removal history must retain the complete marker for Undo");
+const undoAreaThreeMarkerPlacementBody = functionBody(html, "undoAreaThreeMarkerPlacement");
+assert.match(undoAreaThreeMarkerPlacementBody, /(?:areaThreeMarkerHistory|areaThreeMarkerActions|areaThreeMarkerUndo)[^]*(?:pop|slice)/, "Area 003 Undo must reverse the most recent add or remove action");
+assert.doesNotMatch(undoAreaThreeMarkerPlacementBody, /saveDemoState|demoState\.areaThreeTreePositions\s*=/, "Area 003 Undo must not persist a partial draft");
+const cancelAreaThreeMarkerPlacementBody = functionBody(html, "cancelAreaThreeMarkerPlacement");
+assert.match(cancelAreaThreeMarkerPlacementBody, /areaThreeMarkerDraft\s*=\s*(?:\[\s*\]|\{\s*\})/, "Area 003 marker Cancel must discard the complete draft");
+const saveAreaThreeTreePositionsBody = functionBody(html, "saveAreaThreeTreePositions");
+assert.match(saveAreaThreeTreePositionsBody, /validAreaThreeTreePositions/, "Area 003 Save markers must revalidate the complete batch");
+assert.match(saveAreaThreeTreePositionsBody, /demoState\.areaThreeTreePositions\s*=\s*[^;]*(?:normalizeAreaThreeTreePositions|map|structuredClone|slice)/, "Area 003 Save markers must replace its saved batch atomically");
+assert.equal((saveAreaThreeTreePositionsBody.match(/saveDemoState\s*\(/g) || []).length, 1, "Area 003 Save markers must use one atomic browser-state write");
+
+const initAreaThreeGoogleMapBody = functionBody(html, "initAreaThreeGoogleMap");
+assert.match(initAreaThreeGoogleMapBody, /loadGoogleMapsApi\s*\(/, "Area 003 must use the shared Google Maps loader");
+assert.match(initAreaThreeGoogleMapBody, /google\.maps\.Rectangle\s*\(/, "Area 003 must render an editable Google rectangle");
+assert.match(initAreaThreeGoogleMapBody, /mapTypeId\s*:\s*["']satellite["']|MapTypeId\.SATELLITE/, "Area 003 must use Google Satellite imagery");
+assert.match(initAreaThreeGoogleMapBody, /farm\.observations[^]*(?:forEach|map)\s*\(/, "Area 003 map pins must derive from its active fixed and added observations");
+assert.match(initAreaThreeGoogleMapBody, /marker\.addListener\s*\(\s*["']click["'][^]*state\.treeId\s*=\s*observation\.treeId[^]*render\s*\(/i, "Clicking an Area 003 pin must open the matching Tree Details record");
+assert.match(initAreaThreeGoogleMapBody, /activeMap\.addListener\s*\(\s*["']click["'][^]*areaThreeMarkerPlacement[^]*pointInsideAreaOneBounds/, "Area 003 map clicks must add markers only inside its geofence during placement mode");
+assert.match(initAreaThreeGoogleMapBody, /querySelectorAll\s*\(\s*["'][^"']*area-three-marker-status[^"']*["']\s*\)[^]*addEventListener/, "Area 003 must bind its independent three-colour toolbar");
+assert.doesNotMatch(initAreaThreeGoogleMapBody, /areaOneMarkerDraft|areaTwoMarkerDraft|saveAreaOneTreePositions|saveAreaTwoTreePositions/, "Area 003 map editing must not reuse mutable Area 001 or Area 002 draft state");
+const syncAreaThreeTreePositionsBody = functionBody(html, "syncAreaThreeTreePositions");
+assert.match(syncAreaThreeTreePositionsBody, /areaThreeSourceObservations/, "Area 003 synchronization must always retain its immutable source-copy observations through the dedicated selector");
+assert.match(functionBody(html, "areaThreeSourceObservations"), /origin\s*===?\s*["']source-copy["']/, "Area 003 fixed-observation selection must accept only declared source copies");
+assert.match(functionBody(html, "isFixedMappedPocObservation"), /source-folder[^]*source-copy|source-copy[^]*source-folder/, "Fixed-tree behavior must treat Area 003 source copies as immutable without claiming they are independent source-folder captures");
+assert.match(syncAreaThreeTreePositionsBody, /areaThreeTreePositions|getAreaThreeTreePositions/, "Area 003 synchronization must activate only its saved optional markers");
+assert.match(syncAreaThreeTreePositionsBody, /sort\s*\([^]*(?:localeCompare|treeId)/, "Area 003 added records must remain in Tree-ID order after the fixed copies");
+assert.match(syncAreaThreeTreePositionsBody, /farm\.infected|farm\.suspected|farm\.healthy|displayStatus/, "Area 003 totals must be recalculated from active marker statuses");
+assert.doesNotMatch(syncAreaThreeTreePositionsBody, /demoState\.areaOneTreePositions\s*=|demoState\.areaTwoTreePositions\s*=/, "Area 003 synchronization must not mutate other survey state");
+
+const areaThreeFarm = mappedPocFarms.find((farm) => farm.id === "MPOC-SURVEY-003");
+for (const totalTrees of [27, 50, 64]) {
+  const activeIds = [...areaThreeFixed.map((observation) => observation.treeId), ...expectedAreaThreePlaceholderTreeIds.slice(0, totalTrees - 27)];
+  const fixtureFarm = { ...areaThreeFarm, trees: totalTrees, observations: activeIds.map((treeId) => observationsByTreeId.get(treeId) || { treeId, displayStatus: "Infected" }) };
+  const cells = mappedCellsFor(fixtureFarm, 1);
+  assert.equal(cells.length, 64, `Area 003 with ${totalTrees} active trees must retain the exact 8 x 8 grid capacity`);
+  assert.deepEqual(cells.filter((cell) => cell.occupied).map((cell) => cell.id), activeIds, `Area 003 with ${totalTrees} trees must keep map/grid identity in fixed-then-added order`);
+}
+assert.match(renderTreeMappedBody, /AREA_THREE_ID[^]*(?:nearestAreaThreeImageObservation|nearestAreaOneImageObservation)/, "Area 003 non-Healthy added trees must resolve the nearest shared Area 001 photograph");
+assert.match(renderTreeMappedBody, /Healthy[^]*(?:null|false)|displayStatus\s*!==?\s*["']Healthy["']/, "Area 003 Healthy added trees must not show an image");
+assert.match(renderTreeMappedBody, /source-copy[^]*(?:not an additional independent|copies)[^]*(?:capture|camera)/i, "Area 003 fixed Tree Details must disclose that the cloned record is not an additional independent capture");
+assert.match(initAreaThreeGoogleMapBody, /areaThreeTreeSelect[^]*addEventListener\s*\(\s*["']change["'][^]*updateAreaThreeTreeSelection/, "Area 003's selector must share the same exact identity path as its map pins");
+
+const combinedOverviewSource = `${functionBody(html, "initGeographicMap")}\n${functionBody(html, "renderOverview")}`;
+assert.match(combinedOverviewSource, /AREA_ONE_ID[^]*AREA_THREE_ID|AREA_THREE_ID[^]*AREA_ONE_ID/, "The overview must detect the coincident Area 001 and Area 003 locations");
+assert.match(combinedOverviewSource, /Survey Area 001[^]*(?:Open|View)[^]*Survey Area 003[^]*(?:Open|View)|AREA_ONE_ID[^]*(?:button|action)[^]*AREA_THREE_ID/i, "The combined overview pin must expose separate actions for opening Areas 001 and 003");
+assert.doesNotMatch(combinedOverviewSource, /Survey Area 004|Survey Area 005|MPOC-SURVEY-004|MPOC-SURVEY-005/, "Removed Areas 004 and 005 must not remain in overview navigation");
+
 const defaultDemoStateV2Body = functionBody(html, "defaultDemoState");
-assert.match(defaultDemoStateV2Body, /localFarms\s*:\s*\[\s*\]/, "Fresh v7 demo state must retain an empty browser-local farm list");
+assert.match(defaultDemoStateV2Body, /localFarms\s*:\s*\[\s*\]/, "Fresh v8 demo state must retain an empty browser-local farm list");
 assert.match(defaultDemoStateV2Body, /version\s*:\s*DEMO_STATE_VERSION/, "Fresh demo state must carry the current schema version");
-assert.match(defaultDemoStateV2Body, /geofenceOverrides\s*:\s*\{\s*\}/, "Fresh v7 demo state must start with no geofence overrides");
-assert.match(defaultDemoStateV2Body, /areaOneTreePositions\s*:\s*(?:\[\s*\]|\{\s*\})/, "Fresh v7 demo state must activate no optional Area 001 marker positions");
-assert.match(defaultDemoStateV2Body, /areaTwoTreePositions\s*:\s*(?:\[\s*\]|\{\s*\})/, "Fresh v7 demo state must activate no optional Area 002 marker positions");
+assert.match(defaultDemoStateV2Body, /geofenceOverrides\s*:\s*\{\s*\}/, "Fresh v8 demo state must start with no geofence overrides");
+assert.match(defaultDemoStateV2Body, /areaOneTreePositions\s*:\s*(?:\[\s*\]|\{\s*\})/, "Fresh v8 demo state must activate no optional Area 001 marker positions");
+assert.match(defaultDemoStateV2Body, /areaTwoTreePositions\s*:\s*(?:\[\s*\]|\{\s*\})/, "Fresh v8 demo state must activate no optional Area 002 marker positions");
+assert.match(defaultDemoStateV2Body, /areaThreeTreePositions\s*:\s*(?:\[\s*\]|\{\s*\})/, "Fresh v8 demo state must activate no optional Area 003 marker positions");
 
 const migrateDemoStateBody = functionBody(html, "migrateDemoState");
 assert.doesNotMatch(migrateDemoStateBody, /saved\.version\s*!==?\s*DEMO_STATE_VERSION[^]*return\s+fallback/i, "Migration must not discard the previous v1 state solely because its version differs");
@@ -2348,9 +2495,11 @@ assert.match(migrateDemoStateBody, /localFarms[^]*(?:Array\.isArray|\?)[^]*:\s*\
 assert.match(migrateDemoStateBody, /accounts|cases|treatments|administration|reportHistory|preferences/, "Migration must preserve existing browser-local operational preferences and actions");
 assert.match(migrateDemoStateBody, /geofenceOverrides\?\.\[\s*AREA_ONE_ID\s*\][^]*validAreaOneGeofenceBounds[^]*\{\s*\[\s*AREA_ONE_ID\s*\]\s*:/, "Migration must read and preserve only a valid computed Area 001 rectangle override");
 assert.match(migrateDemoStateBody, /areaOneTreePositions[^]*validAreaOneTreePositions/, "State migration must validate saved Area 001 marker entries");
-assert.match(migrateDemoStateBody, /migrated\.areaOneTreePositions\s*=\s*validAreaOneTreePositions\s*\(\s*saved\.areaOneTreePositions[^]*normalizeAreaOneTreePositions\s*\(\s*saved\.areaOneTreePositions/, "The v7 migration must preserve valid Area 001 positions and their saved status");
-assert.match(migrateDemoStateBody, /geofenceOverrides\?\.\[\s*AREA_TWO_ID\s*\][^]*validAreaTwoGeofencePolygon/, "The v7 migration must validate an existing Area 002 polygon override");
-assert.match(migrateDemoStateBody, /areaTwoTreePositions[^]*validAreaTwoTreePositions[^]*normalizeAreaTwoTreePositions/, "The v7 migration must validate and normalize Area 002 marker entries");
+assert.match(migrateDemoStateBody, /migrated\.areaOneTreePositions\s*=\s*validAreaOneTreePositions\s*\(\s*saved\.areaOneTreePositions[^]*normalizeAreaOneTreePositions\s*\(\s*saved\.areaOneTreePositions/, "The v8 migration must preserve valid Area 001 positions and their saved status");
+assert.match(migrateDemoStateBody, /geofenceOverrides\?\.\[\s*AREA_TWO_ID\s*\][^]*validAreaTwoGeofencePolygon/, "The v8 migration must preserve a valid existing Area 002 polygon override");
+assert.match(migrateDemoStateBody, /areaTwoTreePositions[^]*validAreaTwoTreePositions[^]*normalizeAreaTwoTreePositions/, "The v8 migration must preserve valid Area 002 marker entries");
+assert.match(migrateDemoStateBody, /geofenceOverrides\?\.\[\s*AREA_THREE_ID\s*\][^]*validAreaOneGeofenceBounds/, "The v8 migration must validate an Area 003 rectangle independently");
+assert.match(migrateDemoStateBody, /areaThreeTreePositions[^]*validAreaThreeTreePositions[^]*normalizeAreaThreeTreePositions/, "The v8 migration must validate and normalize Area 003 marker entries");
 assert.match(migrateDemoStateBody, /DEMO_STATE_VERSION/, "Migrated state must be stamped with the current version");
 const loadDemoStateV2Body = functionBody(html, "loadDemoState");
 assert.match(loadDemoStateV2Body, /migrateDemoState\s*\(/, "Loading browser state must pass persisted data through the v2 migration");
