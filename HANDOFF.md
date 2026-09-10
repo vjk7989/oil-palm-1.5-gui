@@ -3,16 +3,18 @@
 ## Current status
 
 - Repository: `D:\drone-mapping\oil-palm-1.5-gui`; upstream: <https://github.com/vjk7989/oil-palm-1.5-gui>.
-- The Survey Area 001 Google Satellite geofence editor is implemented and independently verified. `npm test`, `npm run build`, and `git diff --check` pass; line-ending messages are warnings only.
+- The Survey Area 001 Google Satellite geofence editor, infected-tree selector, and Add Marker workflow are implemented and independently verified. `npm test`, `npm run build`, and `git diff --check` pass; line-ending messages are warnings only.
 - The feature is intentionally limited to `MPOC-SURVEY-001`. Areas 002–005 retain their existing Leaflet maps and camera-footprint geofences.
 - Changes are uncommitted. Inspect `git status --short` and preserve unrelated user work before any future commit.
-- No implementation work remains for this request. Wait for the user's next concrete goal and avoid speculative expansion.
+- The Add Marker increment is complete. Tree-detail and image/pin presentation changes requested for a later increment remain deferred as recorded below.
 
 ## Authoritative references
 
 - Decisions, implementation boundaries, map-loading behavior, caveats, and verification record: `docs/ARCHITECTURE_RECORD.md`.
 - Runtime integration and browser-local state: `index.html`.
-- Geofence, configuration, migration, isolation, and regression contracts: `tests/static-check.mjs`.
+- Deterministic Mapped POC records: `data/mapped-poc-data.js`.
+- Snapshot generation boundary: `scripts/build_mapped_poc_snapshot.py`.
+- Geofence, marker-placement, configuration, migration, isolation, and regression contracts: `tests/static-check.mjs`.
 - Persistent project workflow: `docs/architecture/0001-project-context-and-agent-workflow.md`.
 
 Read those artifacts directly rather than duplicating their detailed contracts here.
@@ -21,10 +23,18 @@ Read those artifacts directly rather than duplicating their detailed contracts h
 
 - Area 001 opens with Google Satellite imagery and an editable, draggable rectangle. Its deterministic default is south `16.912209794`, west `81.169804433`, north `16.912805551`, east `81.169912437`.
 - `Edit geofence`, `Save`, `Cancel`, and `Reset default` are available to every built-in demo role. The map displays 27 infected camera-position markers. The rectangle is an operational display geofence, not a surveyed or legal property boundary.
-- A valid saved Area 001 rectangle is stored under `geofenceOverrides[MPOC-SURVEY-001]` in version `3` of the existing browser-local demo state. Migration preserves supported prior state and accepts no override for Areas 002–005. Reset restores the exact deterministic bounds.
+- Area 001 provides a native, keyboard-operable selector containing infected trees only. Selecting a tree pans and zooms the Google map to its exact camera position; the matching red marker becomes larger, gains a stronger outline and check mark, and is identified in adjacent status text rather than by colour alone. **Open selected tree** opens that tree's evidence page. Direct marker clicks continue to open the exact corresponding tree record.
+- Add Marker is available only after Area 001 has an explicitly saved valid geofence. It places exactly 25 draft positions inside that rectangle for `TREE-0113` through `TREE-0137` in sequence, exposes an accessible `x / 25` counter plus Undo and Cancel, and enables Save only when the complete batch is valid.
+- Saving replaces the 25-position batch atomically in version `4` browser-local state, then reconciles Area 001 to 52 positioned infected markers: 27 source-backed plus 25 newly positioned layout records. The added trees receive deterministic modelled scores from 66% through 95%; the workflow does not infer source captures or image evidence for them.
+- The saved Area 001 rectangle remains under `geofenceOverrides[MPOC-SURVEY-001]`. Geofence changes cannot exclude saved tree positions, and Areas 002–005 receive no Add Marker state or controls.
 - The Google Maps browser key lives only in ignored `config/maps.local.js`; the tracked example contains an empty placeholder. The temporary test key must be rotated/replaced and restricted to Maps JavaScript API plus approved HTTP origins. Never copy the key into tracked code, tests, documentation, logs, generated data, or future handoffs.
 - Missing, rejected, disabled-API, billing, timeout, and network failures produce targeted guidance while leaving the Area 001 tree grid usable.
 - Live acceptance confirmed Google Satellite loading, exact default coordinate display, 27 infected markers, editable handles, Cancel/Save/Reset status transitions, Reset restoring exact defaults, Field Staff access to edit controls, and Area 002 remaining on Leaflet. Reload persistence is covered by the static state contract; it was not manually exercised in this pass.
+- Independent final verification passed `npm test`, `npm run build`, and `git diff --check`. Credential and runtime-drive scans were clean; `config/maps.local.js` remains ignored and untracked.
+
+## Deferred request
+
+- Deferred: tree-detail page changes, including the requested removal of the screenshot-highlighted detail sections and any image/pin presentation changes for the newly positioned `TREE-0113` through `TREE-0137`. Do not implement those changes in this workflow, and do not infer image assets for the added trees.
 
 ## Continuation rules
 
@@ -39,13 +49,13 @@ Read those artifacts directly rather than duplicating their detailed contracts h
 
 1. Read `AGENTS.md`, this file, and the relevant Google geofence section of `docs/ARCHITECTURE_RECORD.md`.
 2. Rotate or replace the temporary Google Maps key before further deployment-oriented work.
-3. Receive the user's next goal, locate only the affected code through graph-first discovery, and retain the Area 001-only boundary unless the user explicitly expands it.
+3. If the user resumes the deferred tree-detail request, confirm the screenshot-highlighted sections and evidence expectations before changing presentation; otherwise receive the next goal normally. Retain the Area 001-only boundary unless explicitly expanded.
 4. Repeat the independent green gate and refresh the two context artifacts after material changes.
 
 ## Suggested skills
 
 - `understand-anything:understand-chat` for targeted questions against the codebase graph.
-- `understand-anything:understand-explain` for the Google Maps loader, geofence editor, or browser-state migration path.
+- `understand-anything:understand-explain` for the Google Maps loader, geofence editor, Add Marker data flow, or browser-state migration path.
 - `understand-anything:understand-diff` for regression-impact review after future changes.
 - `impeccable` for future map-editor layout, responsiveness, or interaction polish.
-- `computer-use:computer-use` for live browser acceptance of Google Maps, editing controls, and role-specific behavior.
+- `computer-use:computer-use` for live browser acceptance of Google Maps, geofence editing, infected-tree selection/highlighting, and role-specific behavior.

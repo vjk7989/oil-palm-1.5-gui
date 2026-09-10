@@ -182,6 +182,7 @@ def build_snapshot(workbook: Path, gps_inventory: Path, mission_root: Path, evid
         )
 
     for index in range(113, 138):
+        risk_score = float(66 + ((index * 7) % 30))
         observations.append(
             {
                 "treeId": f"TREE-{index:04d}",
@@ -192,11 +193,11 @@ def build_snapshot(workbook: Path, gps_inventory: Path, mission_root: Path, evid
                 "capturedAt": None,
                 "latitude": None,
                 "longitude": None,
-                "ganodermaRiskScore": None,
-                "healthStatus": "Healthy",
-                "severity": "Healthy",
-                "displayStatus": "Healthy",
-                "statusSource": "layout-only",
+                "ganodermaRiskScore": risk_score,
+                "healthStatus": "Unhealthy",
+                "severity": "Severe",
+                "displayStatus": "Infected",
+                "statusSource": "deterministic-modelled",
                 "evidenceImage": None,
                 "evidenceSha256": None,
             }
@@ -231,7 +232,7 @@ def build_snapshot(workbook: Path, gps_inventory: Path, mission_root: Path, evid
     area_counts = [area["observationCount"] for area in areas]
     if len(observations) != 137 or area_counts != DISPLAY_AREA_COUNTS:
         raise ValueError(f"Expected 137 display observations split {DISPLAY_AREA_COUNTS}; received {area_counts}")
-    if status_counts != {"Healthy": 90, "Suspected": 20, "Infected": 27}:
+    if status_counts != {"Healthy": 65, "Suspected": 20, "Infected": 52}:
         raise ValueError(f"Unexpected display-status counts: {status_counts}")
     if len({row["treeId"] for row in observations}) != len(observations):
         raise ValueError("Tree IDs must be globally unique")
@@ -244,7 +245,6 @@ def build_snapshot(workbook: Path, gps_inventory: Path, mission_root: Path, evid
                 "capturedAt",
                 "latitude",
                 "longitude",
-                "ganodermaRiskScore",
                 "evidenceImage",
                 "evidenceSha256",
             )
@@ -253,7 +253,7 @@ def build_snapshot(workbook: Path, gps_inventory: Path, mission_root: Path, evid
     ):
         raise ValueError("Layout-only observations must not contain source or evidence values")
     if any(
-        (row["displayStatus"] in {"Infected", "Suspected"})
+        (row["origin"] == "source-folder" and row["displayStatus"] in {"Infected", "Suspected"})
         != bool(row["evidenceImage"] and row["evidenceSha256"])
         for row in observations
     ):
@@ -272,7 +272,7 @@ def build_snapshot(workbook: Path, gps_inventory: Path, mission_root: Path, evid
             "coordinateKind": "camera-exposure",
             "geofenceKind": "camera-footprint-convex-hull",
             "riskKind": "deterministic-modelled",
-            "statusSemantics": "Survey Area 001 source observations are user-designated infected. Severe modelled-risk observations in other areas are suspected. Added layout-only observations are healthy and have no source measurements.",
+            "statusSemantics": "All Survey Area 001 observations are infected. Source observations are user-designated; layout-only observations use deterministic modelled risk and require browser-local operational positions. Severe modelled-risk observations in other areas are suspected.",
             "evidenceKind": "Natural-colour DJI D images resized to at most 1280 pixels and stored as repository WebP assets for infected and suspected observations only.",
             "runtimeDependency": "The snapshot and evidence assets are repository-owned and require no runtime access to external source drives.",
             "notice": "Camera exposure positions and derived display geofences are not surveyed palm-base coordinates or legal farm boundaries. Ganoderma scores are modelled POC values, not field or laboratory diagnoses.",
