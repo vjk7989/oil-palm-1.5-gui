@@ -4,8 +4,9 @@
 
 - Repository: `D:\drone-mapping\oil-palm-1.5-gui`; upstream: <https://github.com/vjk7989/oil-palm-1.5-gui>.
 - The Survey Area 001 Google Satellite geofence editor, infected-tree selector, and Add Marker workflow are implemented and independently verified. `npm test`, `npm run build`, and `git diff --check` pass; line-ending messages are warnings only.
+- Hosted fix commit `0f6fdab` was pushed. The GitHub Pages Actions workflow completed successfully, and the deployed Survey Area 001 now reports **Google Satellite map ready**.
 - The feature is intentionally limited to `MPOC-SURVEY-001`. Areas 002–005 retain their existing Leaflet maps and camera-footprint geofences.
-- Changes are uncommitted. Inspect `git status --short` and preserve unrelated user work before any future commit.
+- The implementation is pushed; this handoff refresh may remain as a local documentation change. Inspect `git status --short` and preserve unrelated user work before any future commit.
 - The Add Marker increment is complete. Tree-detail and image/pin presentation changes requested for a later increment remain deferred as recorded below.
 
 ## Authoritative references
@@ -15,6 +16,7 @@
 - Deterministic Mapped POC records: `data/mapped-poc-data.js`.
 - Snapshot generation boundary: `scripts/build_mapped_poc_snapshot.py`.
 - Geofence, marker-placement, configuration, migration, isolation, and regression contracts: `tests/static-check.mjs`.
+- GitHub Pages secret injection and deployment: `.github/workflows/deploy-pages.yml`.
 - Persistent project workflow: `docs/architecture/0001-project-context-and-agent-workflow.md`.
 
 Read those artifacts directly rather than duplicating their detailed contracts here.
@@ -27,7 +29,7 @@ Read those artifacts directly rather than duplicating their detailed contracts h
 - Add Marker is available only after Area 001 has an explicitly saved valid geofence. It places exactly 25 draft positions inside that rectangle for `TREE-0113` through `TREE-0137` in sequence, exposes an accessible `x / 25` counter plus Undo and Cancel, and enables Save only when the complete batch is valid.
 - Saving replaces the 25-position batch atomically in version `4` browser-local state, then reconciles Area 001 to 52 positioned infected markers: 27 source-backed plus 25 newly positioned layout records. The added trees receive deterministic modelled scores from 66% through 95%; the workflow does not infer source captures or image evidence for them.
 - The saved Area 001 rectangle remains under `geofenceOverrides[MPOC-SURVEY-001]`. Geofence changes cannot exclude saved tree positions, and Areas 002–005 receive no Add Marker state or controls.
-- The Google Maps browser key lives only in ignored `config/maps.local.js`; the tracked example contains an empty placeholder. The temporary test key must be rotated/replaced and restricted to Maps JavaScript API plus approved HTTP origins. Never copy the key into tracked code, tests, documentation, logs, generated data, or future handoffs.
+- GitHub Actions receives `GOOGLE_MAPS_API_KEY` from a repository secret during Pages deployment. The local key remains only in ignored, untracked `config/maps.local.js`, while the tracked example contains an empty placeholder. Never copy either credential value into tracked code, tests, documentation, logs, generated data, or future handoffs.
 - Missing, rejected, disabled-API, billing, timeout, and network failures produce targeted guidance while leaving the Area 001 tree grid usable.
 - Live acceptance confirmed Google Satellite loading, exact default coordinate display, 27 infected markers, editable handles, Cancel/Save/Reset status transitions, Reset restoring exact defaults, Field Staff access to edit controls, and Area 002 remaining on Leaflet. Reload persistence is covered by the static state contract; it was not manually exercised in this pass.
 - Independent final verification passed `npm test`, `npm run build`, and `git diff --check`. Credential and runtime-drive scans were clean; `config/maps.local.js` remains ignored and untracked.
@@ -48,7 +50,7 @@ Read those artifacts directly rather than duplicating their detailed contracts h
 ## Next session
 
 1. Read `AGENTS.md`, this file, and the relevant Google geofence section of `docs/ARCHITECTURE_RECORD.md`.
-2. Rotate or replace the temporary Google Maps key before further deployment-oriented work.
+2. Preserve repository-secret injection for hosted builds and keep the local Maps key ignored and untracked.
 3. If the user resumes the deferred tree-detail request, confirm the screenshot-highlighted sections and evidence expectations before changing presentation; otherwise receive the next goal normally. Retain the Area 001-only boundary unless explicitly expanded.
 4. Repeat the independent green gate and refresh the two context artifacts after material changes.
 
