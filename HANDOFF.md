@@ -3,61 +3,53 @@
 ## Current state
 
 - Repository: `D:\drone-mapping\oil-palm-1.5-gui`; upstream: <https://github.com/vjk7989/oil-palm-1.5-gui>; branch: `main`.
-- Mapped POC now contains exactly Survey Areas 001, 002, and 003. Areas 004–005 are removed from runtime data, navigation, totals, provenance, generation, tests, and repository evidence assets.
-- Survey Area 003 is an independent editable copy of Area 001 at the same location. It has 27 immutable Infected records (`TREE-0201…TREE-0227`) linked to the corresponding Area 001 records and 37 optional IDs (`TREE-0228…TREE-0264`). It shares Area 001 images without duplicating files.
-- Area 003 has its own Google Satellite rectangle, saved geofence, three-colour marker workflow, selector, 8×8 grid, Tree Details routing, and version-8 browser-local state. Area 001 and Area 002 state and behavior remain independent.
-- Areas 001 and 003 share one overview map pin with separate actions to open either survey; list/table entries remain separate.
-- Fresh browser state contains 89 fixed Infected trees. The maximum across all three editors is 192 active trees.
-- Automated gates are green: `npm test`, `npm run build`, `git diff --check`, deterministic data invariants, and credential scan. Deployment is pending; do not describe this increment as released until `main` is pushed and GitHub Pages succeeds.
+- Mapped POC contains exactly Survey Areas 001, 002, and 003. Areas 004–005 remain retired.
+- Survey Area 003 now starts empty: zero active trees, zero pins, an empty selector, and 64 black cells in its 8×8 grid. Its capacity records are inactive `TREE-0201…TREE-0264` layout records; there are no Area 003 copied captures or fixed markers.
+- After its rectangle is explicitly saved, Area 003 accepts up to 64 independently saved Red/Infected, Yellow/Suspected, or Green/Healthy markers. The editor retains add/remove, undo, cancel, atomic save, containment protection, lowest-ID reuse, synchronized map/grid/selector/details, and status-specific deterministic scores.
+- Area 003 Infected and Suspected additions may use the nearest repository-owned Area 001 image with the non-exact-tree disclosure; Healthy additions show no image. Area 001 and Area 002 data, editors, and browser state remain unchanged.
+- Browser-local state is version 9. Migration preserves valid Area 001/002 state and deliberately clears all legacy Area 003 markers and geofence state so Area 003 begins empty.
+- Fresh Mapped POC state contains 62 fixed Infected trees; full capacity remains 192 trees across the three surveys.
+- Automated and manual acceptance gates are green. This increment is still pending commit, push, and successful GitHub Pages deployment.
 
 ## Authoritative references
 
-Read these artifacts instead of reconstructing the implementation from many files:
+Use these artifacts instead of reconstructing the change from scattered files:
 
-- Decisions, constraints, provenance, state migration, and verification record: `docs/ARCHITECTURE_RECORD.md`.
-- Runtime UI, editors, totals, routing, and local-state version 8: `index.html`.
-- Deterministic Mapped POC snapshot: `data/mapped-poc-data.js`.
-- Snapshot regeneration and invariants: `scripts/build_mapped_poc_snapshot.py`.
+- Decisions, constraints, migration, and verification: `docs/ARCHITECTURE_RECORD.md`.
+- Runtime behavior and browser-local state: `index.html`.
+- Deterministic capacity data: `data/mapped-poc-data.js`.
+- Snapshot derivation and invariants: `scripts/build_mapped_poc_snapshot.py`.
 - Executable regression contract: `tests/static-check.mjs`.
-- Area 002 source snapshot/generator: `data/survey-002-farm-data.js` and `scripts/build_survey_two_farm_snapshot.py`.
-- Persistent project workflow: `docs/architecture/0001-project-context-and-agent-workflow.md`.
-- GitHub Pages key injection and deployment: `.github/workflows/deploy-pages.yml`.
+- Persistent delivery rules: `docs/architecture/0001-project-context-and-agent-workflow.md`.
+- GitHub Pages deployment: `.github/workflows/deploy-pages.yml`.
 
-## Working tree and release
+## Release handoff
 
-The unreleased implementation currently includes:
+- Preserve unrelated user work and confirm the intended patch with `git status` and `git diff`.
+- Rerun `npm test`, `npm run build`, and `git diff --check`, then scan the tracked patch for credentials without printing any secret values.
+- Commit the verified Area 003/version-9 increment, push `main`, and verify both the Pages workflow and live behavior before calling it released.
+- Never commit, document, log, or repeat the Google Maps key. Local development uses ignored `config/maps.local.js`; hosted builds receive the key from the repository secret.
 
-- Modified: `data/mapped-poc-data.js`, `index.html`, `scripts/build_mapped_poc_snapshot.py`, and `tests/static-check.mjs`.
-- Deleted: `assets/mapped-poc/evidence/TREE-0093.webp` through `TREE-0112.webp` (20 retired Area 004–005 derivatives).
-- Context updates: `docs/ARCHITECTURE_RECORD.md` and this file may also be modified when the context agents finish.
+## Continuation rules
 
-Before release, rerun the three gates, scan the final tracked patch for credentials, commit only the intended files, push `main`, and verify the GitHub Pages workflow and live site.
-
-## Non-negotiable continuation rules
-
-- Follow `AGENTS.md`; use the codebase-memory graph first for code discovery.
-- Apply YAGNI and deterministic processing. Break work into the smallest independently testable tasks.
-- Keep all generated artifacts, caches, temporary files, and test output inside this repository on `D:`. Treat external source folders as read-only and add no runtime dependency on `C:`, `G:`, `D:\hio01`, or `D:\frm02`.
-- For material changes, use separate subagents for test authoring and independent test execution. If a gate fails, use a separate failure-analysis subagent to produce the smallest repair plan before changing code. Continue only after the affected gate is green.
-- After green verification, use separate context agents for the architecture record and this handoff.
-- Preserve the distinction between user-designated status, modelled Ganoderma score, camera/display coordinates, and field/laboratory diagnosis or surveyed/legal boundaries.
-- Preserve globally unique Tree IDs. Duplicate capture UUIDs are valid only for the explicit Area 001 → Area 003 copied-record links documented in the data snapshot.
-- Never place a Google Maps credential in tracked code, generated data, tests, documentation, logs, commits, or final messages. The local key belongs only in ignored `config/maps.local.js`; hosted builds receive it from the repository secret.
-- Do not alter or delete external source imagery. Healthy trees show no image; exact and nearest-image behavior for non-Healthy records must retain its provenance disclosure.
+- Follow `AGENTS.md` and use the codebase-memory graph first for discovery.
+- Apply YAGNI and deterministic processing. Split material changes into the smallest independently testable units.
+- Keep generated artifacts, caches, temporary files, and test output inside this repository on `D:`. External source folders are read-only; the browser must not depend on `C:`, `G:`, `D:\hio01`, or `D:\frm02` at runtime.
+- Use separate subagents for test authoring and independent execution. If a gate fails, obtain a minimal repair plan from a separate failure-analysis agent before changing code, and continue only when the affected gate is green.
+- After green verification, update the architecture record and this handoff with separate context agents.
+- Preserve the distinction between user-designated status, modelled Ganoderma score, operational marker coordinates, confirmed diagnosis, and surveyed/legal boundaries.
+- Keep Tree IDs globally unique. Area 003 no longer permits duplicate capture UUIDs because it contains no copied-capture records.
+- Do not modify or delete external imagery. Healthy trees show no image; any nearest-image association for Infected or Suspected additions must retain its disclosure.
 
 ## Suggested skills
 
-- `understand-anything:understand-chat` for targeted codebase questions using the graph.
-- `understand-anything:understand-explain` for the version-8 state migration or Area 003 editor flow.
-- `understand-anything:understand-diff` for regression-impact review before release.
-- `impeccable` for future map-editor responsiveness, accessibility, and visual polish.
-- `computer-use:computer-use` for Google Maps and live GitHub Pages acceptance testing.
-- `spreadsheets:Spreadsheets` only when workbook-derived risk data must change.
+- `understand-anything:understand-chat` for targeted graph-backed codebase questions.
+- `understand-anything:understand-explain` for the version-9 migration or marker-only Area 003 flow.
+- `understand-anything:understand-diff` for pre-release regression review.
+- `impeccable` for map-editor accessibility and responsive UI work.
+- `computer-use:computer-use` for Google Maps and live Pages acceptance testing.
+- `spreadsheets:Spreadsheets` only when workbook-derived risk data changes.
 
 ## Next session
 
-1. Read `AGENTS.md`, this handoff, and `docs/ARCHITECTURE_RECORD.md`.
-2. Inspect the current status and preserve unrelated user work.
-3. Complete the final gates and credential scan.
-4. Commit, push `main`, watch the Pages workflow, and verify the live three-survey behavior before marking the increment released.
-5. Receive the user's next goal and repeat the deterministic subagent test workflow for any material change.
+Read `AGENTS.md`, this file, and `docs/ARCHITECTURE_RECORD.md`; inspect the working tree; complete the release handoff above; then take the user's next goal through the same deterministic test and context workflow.

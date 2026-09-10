@@ -214,28 +214,7 @@ def build_snapshot(workbook: Path, gps_inventory: Path, mission_root: Path, evid
             }
         )
 
-    area_one_sources = [
-        row
-        for row in observations
-        if row["areaId"] == "MPOC-SURVEY-001" and row["origin"] == "source-folder"
-    ]
-    if len(area_one_sources) != 27:
-        raise ValueError("Expected 27 source observations in Survey Area 001")
-    for index, source in enumerate(area_one_sources, start=201):
-        clone = dict(source)
-        clone.update(
-            {
-                "treeId": f"TREE-{index:04d}",
-                "areaId": "MPOC-SURVEY-003",
-                "origin": "source-copy",
-                "copiedFromAreaId": "MPOC-SURVEY-001",
-                "copiedFromTreeId": source["treeId"],
-            }
-        )
-        observations.append(clone)
-
-    for index in range(228, 265):
-        risk_score = float(66 + ((index * 7) % 30))
+    for index in range(201, 265):
         observations.append(
             {
                 "treeId": f"TREE-{index:04d}",
@@ -246,11 +225,11 @@ def build_snapshot(workbook: Path, gps_inventory: Path, mission_root: Path, evid
                 "capturedAt": None,
                 "latitude": None,
                 "longitude": None,
-                "ganodermaRiskScore": risk_score,
-                "healthStatus": "Unhealthy",
-                "severity": "Severe",
-                "displayStatus": "Infected",
-                "statusSource": "deterministic-modelled",
+                "ganodermaRiskScore": None,
+                "healthStatus": None,
+                "severity": None,
+                "displayStatus": None,
+                "statusSource": None,
                 "evidenceImage": None,
                 "evidenceSha256": None,
             }
@@ -277,50 +256,55 @@ def build_snapshot(workbook: Path, gps_inventory: Path, mission_root: Path, evid
                 "observationIds": [row["treeId"] for row in area_observations],
             }
         if index == 3:
-            area["copiedFromAreaId"] = "MPOC-SURVEY-001"
+            area["sourceMission"] = None
+            area["locationReferenceAreaId"] = "MPOC-SURVEY-001"
+            area["geofenceKind"] = "operational-display-rectangle"
+            area["geofence"] = [
+                {"latitude": 16.912209794, "longitude": 81.169804433},
+                {"latitude": 16.912805551, "longitude": 81.169804433},
+                {"latitude": 16.912805551, "longitude": 81.169912437},
+                {"latitude": 16.912209794, "longitude": 81.169912437},
+            ]
         areas.append(area)
 
     status_counts = {
         status: sum(row["displayStatus"] == status for row in observations)
-        for status in ("Healthy", "Suspected", "Infected")
+        for status in ("Healthy", "Suspected", "Infected", None)
     }
     area_counts = [area["observationCount"] for area in areas]
     if len(observations) != 141 or area_counts != DISPLAY_AREA_COUNTS:
         raise ValueError(f"Expected 141 display observations split {DISPLAY_AREA_COUNTS}; received {area_counts}")
-    if status_counts != {"Healthy": 13, "Suspected": 0, "Infected": 128}:
+    if status_counts != {"Healthy": 13, "Suspected": 0, "Infected": 64, None: 64}:
         raise ValueError(f"Unexpected display-status counts: {status_counts}")
     if len({row["treeId"] for row in observations}) != len(observations):
         raise ValueError("Tree IDs must be globally unique")
-    uuid_rows: dict[str, list[dict[str, object]]] = {}
-    for row in observations:
-        if row["captureUuid"]:
-            uuid_rows.setdefault(str(row["captureUuid"]), []).append(row)
-    if any(
-        len(rows) != 2
-        or {row["origin"] for row in rows} != {"source-folder", "source-copy"}
-        or {row["areaId"] for row in rows} != {"MPOC-SURVEY-001", "MPOC-SURVEY-003"}
-        for rows in uuid_rows.values()
-        if len(rows) > 1
-    ):
-        raise ValueError("Capture UUIDs may repeat only for linked Area 001/003 source copies")
+    capture_uuids = [str(row["captureUuid"]) for row in observations if row["captureUuid"]]
+    if len(set(capture_uuids)) != len(capture_uuids):
+        raise ValueError("Capture UUIDs must be globally unique")
     if any(
         row["origin"] == "layout-only"
         and any(
             row[field] is not None
             for field in (
                 "captureUuid",
+                "captureNumber",
                 "capturedAt",
                 "latitude",
                 "longitude",
                 "evidenceImage",
                 "evidenceSha256",
+                "ganodermaRiskScore",
+                "healthStatus",
+                "severity",
+                "displayStatus",
+                "statusSource",
             )
         )
         for row in observations
     ):
         raise ValueError("Layout-only observations must not contain source or evidence values")
     if any(
-        (row["origin"] in {"source-folder", "source-copy"} and row["displayStatus"] in {"Infected", "Suspected"})
+        (row["origin"] == "source-folder" and row["displayStatus"] in {"Infected", "Suspected"})
         != bool(row["evidenceImage"] and row["evidenceSha256"])
         for row in observations
     ):
@@ -328,42 +312,22 @@ def build_snapshot(workbook: Path, gps_inventory: Path, mission_root: Path, evid
     if any(not path.is_file() for path in evidence_paths):
         raise ValueError("Mapped POC evidence output is incomplete")
 
-    copied = [row for row in observations if row["origin"] == "source-copy"]
-    sources_by_id = {row["treeId"]: row for row in area_one_sources}
-    if len(copied) != 27 or any(
-        any(
-            clone[field] != sources_by_id[clone["copiedFromTreeId"]][field]
-            for field in (
-                "captureUuid",
-                "captureNumber",
-                "capturedAt",
-                "latitude",
-                "longitude",
-                "ganodermaRiskScore",
-                "healthStatus",
-                "severity",
-                "displayStatus",
-                "statusSource",
-                "evidenceImage",
-                "evidenceSha256",
-            )
-        )
-        for clone in copied
-    ):
-        raise ValueError("Survey Area 003 source copies must exactly match Survey Area 001")
+    area_three = [row for row in observations if row["areaId"] == "MPOC-SURVEY-003"]
+    if len(area_three) != 64 or {row["origin"] for row in area_three} != {"layout-only"}:
+        raise ValueError("Survey Area 003 must contain exactly 64 inactive layout records")
 
     return {
         "version": 2,
         "provenance": {
             "captureDate": "2026-06-20",
-            "sourceMissions": [area["sourceMission"] for area in areas],
+            "sourceMissions": [area["sourceMission"] for area in areas if area["sourceMission"]],
             "workbookSha256": WORKBOOK_SHA256,
             "gpsInventorySha256": sha256(gps_inventory),
             "coordinateKind": "camera-exposure",
             "geofenceKind": "camera-footprint-convex-hull",
             "riskKind": "deterministic-modelled",
-            "statusSemantics": "All Survey Area 001 observations are infected with deterministic modelled risk above 65 percent. Survey Area 003 is an explicit source-copy of its 27 fixed observations and has independent layout capacity. Source observations retain camera and photograph provenance; layout-capacity observations activate only after browser-local operational positions are saved.",
-            "copySemantics": "Survey Area 003 reuses Survey Area 001 capture UUIDs, coordinates, capture metadata, scores, statuses, and evidence assets. copiedFromAreaId and copiedFromTreeId identify each intentional copy; these are not additional independent captures.",
+            "statusSemantics": "Survey Area 001 source observations are infected with deterministic modelled risk above 65 percent. Survey Area 003 begins empty; its 64 layout-capacity records acquire operational positions, statuses, and deterministic scores only after browser-local markers are saved.",
+            "areaThreeSemantics": "Survey Area 003 is an empty editable workspace at the Survey Area 001 operational location. It contains no imported captures, fixed trees, initial markers, or initial evidence records.",
             "evidenceKind": "Natural-colour DJI D images resized to at most 1280 pixels and stored as repository WebP assets for infected and suspected observations only.",
             "runtimeDependency": "The snapshot and evidence assets are repository-owned and require no runtime access to external source drives.",
             "notice": "Camera exposure positions and derived display geofences are not surveyed palm-base coordinates or legal farm boundaries. Ganoderma scores are modelled POC values, not field or laboratory diagnoses.",
