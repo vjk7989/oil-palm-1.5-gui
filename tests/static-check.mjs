@@ -546,8 +546,8 @@ assert.match(functionBody(html, "renderTree"), /mapped-poc-camera[^]*renderMappe
 assert.match(renderTreeMappedBody, /ganodermaRiskScore/, "Mapped POC Tree Details must use the exact static risk score");
 assert.match(renderTreeMappedBody, /modelled/i, "Mapped POC Tree Details must label the Ganoderma score as modelled risk");
 assert.match(renderTreeMappedBody, /(?:single score|no (?:historical )?trend|trend unavailable)/i, "Mapped POC Tree Details must disclose that no historical trend exists");
-assert.match(renderTreeMappedBody, /nearestAreaOneImageObservation\s*\(\s*observation\s*\)/, "Every Area 001 Tree Details page must resolve its single photograph through the approved-image selector");
-assert.match(renderTreeMappedBody, /<img\b[^>]*(?:src|alt)=/i, "An Area 001 Tree Details page with an approved selection must render that photograph accessibly");
+assert.match(renderTreeMappedBody, /nearestAreaOneImageObservation\s*\(\s*observation\s*\)/, "Eligible Area 001 Tree Details pages must resolve their single photograph through the approved-image selector");
+assert.match(renderTreeMappedBody, /<img\b[^>]*(?:src|alt)=/i, "An eligible Area 001 Tree Details page with an approved selection must render that photograph accessibly");
 assert.match(renderTreeMappedBody, /isExactEvidence|displayEvidence\?\.treeId\s*===?\s*observation\.treeId/, "Tree Details must distinguish an exact linked photograph from nearby non-exact imagery");
 assert.doesNotMatch(renderTreeMappedBody, /<h[1-6][^>]*>\s*Tree camera position\s*<\/h[1-6]>/i, "Mapped POC Tree Details must not render the removed Tree camera position section");
 assert.doesNotMatch(renderTreeMappedBody, /treeLocationMap|mapCard|initMappedPocTreeMap/, "Mapped POC Tree Details must not render or initialize a tree-location map card");
@@ -556,6 +556,66 @@ assert.match(renderTreeMappedBody, /Latitude[^]*Longitude|latitude[^]*longitude/
 assert.match(renderTreeMappedBody, /observation\.areaId\s*===?\s*AREA_ONE_ID[^:]*(?:\?|[^]*nearestAreaOneImageObservation)[^:]*(?::)[^;]*observation\.evidenceImage\s*\?\s*observation\s*:\s*null/i, "Mapped POC trees outside Area 001 must use their own exact linked photograph when one exists");
 assert.match(renderTreeMappedBody, /displayEvidence\?\.treeId\s*===?\s*observation\.treeId/, "Survey Area 002 Tree Details must preserve exact tree-to-image identity");
 assert.match(renderTreeMappedBody, /src=["']\$\{escapeHtml\(displayEvidence\.evidenceImage\)\}/, "Survey Area 002 Tree Details must render the selected tree's repository image path");
+
+const mappedTreeContent = { innerHTML: "" };
+let mappedTreeEvidenceBindCount = 0;
+const renderMappedPocTreeForImageRule = Function(
+  "AREA_ONE_ID",
+  "MAPPED_POC_DATA",
+  "nearestAreaOneImageObservation",
+  "escapeHtml",
+  "renderGanodermaIndicators",
+  "content",
+  "bindTreeEvidence",
+  `return function renderMappedPocTree(farm,cell){${renderTreeMappedBody}};`
+)(
+  "MPOC-SURVEY-001",
+  { provenance: { notice: "Source notice" } },
+  (observation) => ({
+    ...observation,
+    treeId: "TREE-0001",
+    evidenceImage: "assets/tree-evidence/tree-0001.webp",
+    capturedAt: "2026-06-20 09:50:43",
+    distanceMetres: 0,
+  }),
+  (value) => String(value),
+  () => "<section data-indicators></section>",
+  mappedTreeContent,
+  () => { mappedTreeEvidenceBindCount += 1; },
+);
+const renderAreaOneTreeByStatus = (displayStatus) => {
+  mappedTreeContent.innerHTML = "";
+  const bindCountBeforeRender = mappedTreeEvidenceBindCount;
+  renderMappedPocTreeForImageRule(
+    { id: "MPOC-SURVEY-001", name: "Survey Area 001", sourceMission: "Area 001" },
+    {
+      seq: 28,
+      observation: {
+        treeId: "TREE-0113",
+        areaId: "MPOC-SURVEY-001",
+        origin: "layout-only",
+        latitude: 16.9125,
+        longitude: 81.16985,
+        displayStatus,
+        statusSource: "user-selected-marker",
+        ganodermaRiskScore: displayStatus === "Infected" ? 72 : displayStatus === "Suspected" ? 48 : 20,
+      },
+    },
+  );
+  return {
+    html: mappedTreeContent.innerHTML,
+    evidenceBound: mappedTreeEvidenceBindCount > bindCountBeforeRender,
+  };
+};
+const infectedAreaOneTreePage = renderAreaOneTreeByStatus("Infected");
+const suspectedAreaOneTreePage = renderAreaOneTreeByStatus("Suspected");
+const healthyAreaOneTreePage = renderAreaOneTreeByStatus("Healthy");
+for (const [status, rendered] of [["Infected", infectedAreaOneTreePage], ["Suspected", suspectedAreaOneTreePage]]) {
+  assert.match(rendered.html, /<img\b[^>]+evidenceImage/i, `${status} Area 001 Tree Details must retain its tree image`);
+  assert.equal(rendered.evidenceBound, true, `${status} Area 001 Tree Details must retain image loading behavior`);
+}
+assert.doesNotMatch(healthyAreaOneTreePage.html, /<img\b|evidencePanel|Tree image|Nearby tree image/i, "Healthy Area 001 Tree Details must not render any tree image section");
+assert.equal(healthyAreaOneTreePage.evidenceBound, false, "Healthy Area 001 Tree Details must not initialize image loading behavior");
 
 // Every Survey Area 001 tree resolves exactly one repository-owned photograph
 // from the 19 captures supplied for this workflow. TREE-0001 through TREE-0019
