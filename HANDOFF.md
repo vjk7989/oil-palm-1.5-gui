@@ -5,7 +5,7 @@
 - Repository: `D:\drone-mapping\oil-palm-1.5-gui`; upstream: <https://github.com/vjk7989/oil-palm-1.5-gui>.
 - The Survey Area 001 version-6 three-colour Marker-to-Tree Workflow is implemented; automated implementation gates and manual browser QA are green.
 - Survey Area 002 now has a verified editable Google Satellite polygon and three-colour marker-to-tree workflow built on its deterministic 35-observation `frm02` snapshot. All 35 fixed/source-backed trees are user-designated Infected, Unhealthy, and Severe with deterministic 66–95% scores.
-- Hosted baseline commit `0f6fdab` was pushed and its GitHub Pages workflow succeeded. The latest version-6 and Area 002 working-tree changes still require the release sequence below.
+- Commit `e08ae74` includes the Area 002 fixed-tree infection update, is pushed to `main`, and its GitHub Pages workflow succeeded.
 - Survey Area 001 Tree Details shows no image for Healthy/green trees. Infected/red and Suspected/yellow trees retain the existing repository-allowlisted image behavior: exact allowed imagery for matching `TREE-0001` through `TREE-0019` records and deterministic nearest imagery with an explicit non-exact-tree disclosure where applicable. The per-tree camera-position map remains removed; metadata, coordinates, indicators, provenance, and observation/history content remain.
 - Area 001 retains its independent version-6 Google workflow. Area 002 has separate polygon and marker state; Areas 003–005 retain their previous Leaflet data and maps.
 - Current branch: `main`. Before this handoff edit, the working tree had only `index.html` and `tests/static-check.mjs` modified. The latest implementation is not yet released; preserve unrelated user work before committing.
@@ -61,7 +61,7 @@ Read those artifacts directly rather than duplicating their detailed contracts h
 1. Read `AGENTS.md`, this file, and the relevant Google geofence section of `docs/ARCHITECTURE_RECORD.md`.
 2. Preserve repository-secret injection for hosted builds and keep the local Maps key ignored and untracked.
 3. After documentation updates, rerun `npm test`, `npm run build`, and `git diff --check`, then scan tracked sources for exposed credentials and confirm the local Maps key remains ignored/untracked.
-4. Commit the Area 002 fixed-tree infection update with the version-7 workflow, push `main`, and verify the resulting GitHub Pages build live before calling the increment released.
+4. For future changes, commit only after the green gate, push `main`, and verify the resulting GitHub Pages build before calling the increment released.
 5. Receive the user's next goal normally and repeat the independent green gate after material changes.
 
 ## Suggested skills
