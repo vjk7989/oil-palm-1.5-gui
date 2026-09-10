@@ -1189,7 +1189,7 @@ for (const label of ["All", "Unread", "Danger", "Suspected"]) {
   assert.match(renderAlertsBody, new RegExp(`(?:>${label}<|${label} alerts|value=["']${label.toLowerCase()})`, "i"), `Missing ${label} alert filter`);
 }
 assert.match(renderAlertsBody, /affected/i, "Alert rows must communicate affected palms in text");
-assert.match(renderAlertsBody, /infection rate|rate/i, "Alert rows must communicate infection rate in text");
+assert.match(renderAlertsBody, /mapped\?"flagged":"infection rate"/, "Alert rows must distinguish Mapped POC flagged share from other-company infection rate");
 assert.match(renderAlertsBody, /severity|danger/i, "Alert ranking/filtering must use explicit severity state");
 assert.match(renderAlertsBody, /unread|read/i, "The Unread filter must use owned read state");
 assert.match(renderAlertsBody, /data-(?:alert|farm)/i, "Alert rows need stable interaction hooks");
@@ -1226,8 +1226,8 @@ assert.match(html, /(?:Open|View) farm/i, "Alert records must expose a clearly l
 assert.match(html, /(?:Healthy|Okay|Suspected|Danger|No reading)/i, "Alert severity must include visible text in addition to colour");
 assert.match(
   html,
-  /\$\{pct\(alert\.farm\.risk\)\}<\/strong>(?:\s|<[^>]+>)+infection rate/i,
-  "The rendered percentage and 'infection rate' label must have visible separation"
+  /\$\{pct\(alert\.farm\.risk\)\}<\/strong>\s+\$\{mapped\?"flagged":"infection rate"\}/i,
+  "The rendered percentage and company-specific rate label must have visible separation"
 );
 
 // Reports retain the original PalmWatch catalogue semantics while rendering in
@@ -2496,6 +2496,87 @@ const combinedOverviewSource = `${functionBody(html, "initGeographicMap")}\n${fu
 assert.match(combinedOverviewSource, /AREA_ONE_ID[^]*AREA_THREE_ID|AREA_THREE_ID[^]*AREA_ONE_ID/, "The overview must detect the coincident Area 001 and Area 003 locations");
 assert.match(combinedOverviewSource, /Survey Area 001[^]*(?:Open|View)[^]*Survey Area 003[^]*(?:Open|View)|AREA_ONE_ID[^]*(?:button|action)[^]*AREA_THREE_ID/i, "The combined overview pin must expose separate actions for opening Areas 001 and 003");
 assert.doesNotMatch(combinedOverviewSource, /Survey Area 004|Survey Area 005|MPOC-SURVEY-004|MPOC-SURVEY-005/, "Removed Areas 004 and 005 must not remain in overview navigation");
+
+// The Mapped POC home page and every sidebar workspace must consume the same
+// current three-survey observation graph. Google Maps is isolated to Mapped
+// POC overview so the original three companies retain their accepted behavior.
+const freshMappedPocObservations = mappedPocFarms.flatMap((farm) => farm.observations || []);
+assert.deepEqual(mappedPocFarms.map((farm) => farm.id), ["MPOC-SURVEY-001", "MPOC-SURVEY-002", "MPOC-SURVEY-003"], "Mapped POC current-data consumers must start from exactly Surveys 001, 002, and 003");
+assert.equal(freshMappedPocObservations.length, 62, "Fresh Mapped POC current-data consumers must reconcile to 62 active trees");
+assert.equal(freshMappedPocObservations.filter((observation) => observation.displayStatus === "Infected").length, 62, "All 62 fresh Mapped POC trees must be infected");
+assert.equal(freshMappedPocObservations.filter((observation) => observation.displayStatus === "Suspected").length, 0, "Fresh Mapped POC must contain no suspected trees");
+assert.equal(freshMappedPocObservations.filter((observation) => observation.displayStatus === "Healthy").length, 0, "Fresh Mapped POC must contain no healthy trees");
+
+const initGeographicMapCurrentBody = functionBody(html, "initGeographicMap");
+const initMappedPocOverviewGoogleMapBody = functionBody(html, "initMappedPocOverviewGoogleMap");
+assert.match(initGeographicMapCurrentBody, /state\.companyId\s*===?\s*["']mappedpoc["'][^]*initMappedPocOverviewGoogleMap\s*\(/, "Mapped POC overview must dispatch to its dedicated Google Maps initializer");
+assert.match(initGeographicMapCurrentBody, /\bL\.map\s*\(/, "The original three company overviews must retain their Leaflet map behavior");
+assert.match(initMappedPocOverviewGoogleMapBody, /loadGoogleMapsApi\s*\(/, "Mapped POC overview must use the shared credential-safe Google Maps loader");
+assert.match(initMappedPocOverviewGoogleMapBody, /new\s+google\.maps\.Map\s*\(/, "Mapped POC overview must construct a Google map");
+assert.match(initMappedPocOverviewGoogleMapBody, /mapTypeId\s*:\s*(?:["'](?:satellite|hybrid)["']|google\.maps\.MapTypeId\.(?:SATELLITE|HYBRID))/, "Mapped POC overview must use Google satellite imagery");
+assert.match(initMappedPocOverviewGoogleMapBody, /nodes\.(?:forEach|map)\s*\(/, "Mapped POC overview markers must derive from the current role-scoped survey-area list");
+assert.match(initMappedPocOverviewGoogleMapBody, /AREA_ONE_ID[^]*AREA_THREE_ID|AREA_THREE_ID[^]*AREA_ONE_ID/, "Google overview must preserve the shared Area 001 and Area 003 location");
+assert.match(initMappedPocOverviewGoogleMapBody, /state\.farmId\s*=\s*(?:node\.id|areaId|surveyId|AREA_(?:ONE|TWO|THREE)_ID)[^]*render\s*\(/, "Google overview actions must open a current survey-area record");
+assert.doesNotMatch(initMappedPocOverviewGoogleMapBody, /\bL\.(?:map|marker|tileLayer|polygon)\s*\(/, "Mapped POC overview must not initialize Leaflet");
+
+const currentMapViewBody = functionBody(html, "mapView");
+const currentTableViewBody = functionBody(html, "tableView");
+assert.match(currentMapViewBody, /nodes\.map\s*\([^]*rail\s*\(/, "The map view must keep an accessible current-area rail when Google Maps is unavailable");
+assert.match(currentMapViewBody, /role=["']region["'][^]*aria-label=/i, "The overview map must expose an accessible region label");
+assert.match(currentMapViewBody, /(?:Google Maps|map)[^]*(?:unavailable|could not load|accessible)[^]*(?:list|Table)/i, "The Google overview fallback must direct users to the accessible list or table");
+assert.match(currentTableViewBody, /nodes\.map\s*\(/, "Table view must derive every row from the same current role-scoped survey-area list");
+assert.match(currentTableViewBody, /data-open|data-farm|bindOpen/i, "Current survey rows must remain navigable without the map");
+
+const scopedAlertsCurrentBody = functionBody(html, "scopedAlerts");
+const scopedCasesCurrentBody = functionBody(html, "scopedCases");
+const scopedTreatmentsCurrentBody = functionBody(html, "scopedTreatments");
+const renderAlertsCurrentBody = functionBody(html, "renderAlerts");
+const renderReportsCurrentBody = functionBody(html, "renderReports");
+const renderCasesTreatmentsCurrentBody = functionBody(html, "renderCasesTreatments");
+const renderAdministrationCurrentBody = functionBody(html, "renderAdministration");
+const renderSettingsCurrentBody = functionBody(html, "renderSettings");
+const renderSurveyManagementCurrentBody = functionBody(html, "renderNewFarm");
+assert.match(scopedAlertsCurrentBody, /flatFarms\s*\(\s*scopedDistricts\s*\(\s*\)\s*\)/, "Mapped POC alerts must retain role-scoped survey access");
+assert.match(scopedAlertsCurrentBody, /state\.companyId\s*===?\s*["']mappedpoc["'][^]*derivedAlertRecords/, "Mapped POC alerts must use the current-data derivation branch");
+assert.match(scopedAlertsCurrentBody, /observations|displayStatus/, "Mapped POC alerts must derive from active observation statuses, including saved marker edits");
+assert.match(renderAlertsCurrentBody, /scopedAlerts\s*\(/, "Alerts must render the current company-scoped alert collection");
+assert.match(renderAlertsCurrentBody, /state\.farmId\s*=\s*(?:alert\.)?(?:farmId|areaId|surveyId)[^]*state\.treeId\s*=\s*(?:alert\.)?treeId/i, "Mapped POC alert links must open the exact current survey and tree");
+assert.match(renderReportsCurrentBody, /mappedpoc[^]*(?:scopedDistricts|flatFarms|observations)/i, "Mapped POC reports must summarize the current active survey and tree records");
+assert.match(scopedCasesCurrentBody, /flatFarms\s*\(\s*scopedDistricts\s*\(\s*\)\s*\)/, "Mapped POC cases must retain role-scoped survey access");
+assert.match(scopedCasesCurrentBody, /state\.companyId\s*===?\s*["']mappedpoc["'][^]*derivedCaseRecords/, "Mapped POC cases must use current active tree records");
+assert.match(scopedCasesCurrentBody, /observations|treeId/, "Mapped POC cases must link active observations to tree IDs");
+assert.match(scopedTreatmentsCurrentBody, /state\.companyId\s*===?\s*["']mappedpoc["'][^]*scopedCases\s*\(/, "Mapped POC treatments must follow the current active case records");
+assert.match(renderCasesTreatmentsCurrentBody, /scopedCases\s*\([^]*scopedTreatments\s*\(/, "Cases & Treatments must render both current company-scoped collections");
+assert.match(renderCasesTreatmentsCurrentBody, /state\.farmId\s*=\s*(?:record\.|item\.|selected\.|entry\.)?(?:farmId|areaId|surveyId)[^]*state\.treeId\s*=\s*(?:record\.|item\.|selected\.|entry\.)?treeId/i, "Mapped POC case or treatment links must open the matching current survey and tree");
+for (const [name, body] of [
+  ["Administration", renderAdministrationCurrentBody],
+  ["Settings", renderSettingsCurrentBody],
+  ["Survey management", renderSurveyManagementCurrentBody],
+]) {
+  assert.match(body, /mappedpoc[^]*(?:scopedDistricts|flatFarms|observations)/i, `${name} must show summaries from the current editable Mapped POC survey records`);
+  assert.doesNotMatch(body, /Survey Area 004|Survey Area 005|MPOC-SURVEY-004|MPOC-SURVEY-005/, `${name} must not reference retired Surveys 004 or 005`);
+}
+assert.match(renderSurveyManagementCurrentBody, /Survey Areas|Survey area management|Manage survey areas/i, "Mapped POC's creation route must present survey-management context instead of an unrelated farm builder");
+assert.match(renderSurveyManagementCurrentBody, /data-(?:farm|survey|open)[^]*state\.farmId|state\.farmId[^]*data-(?:farm|survey|open)/i, "Survey management must link to current Survey 001, 002, and 003 records");
+
+const renderNavCurrentBody = functionBody(html, "renderNav");
+assert.match(renderNavCurrentBody, /mappedpoc[^]*Survey Areas/i, "Mapped POC navigation must label its management route as Survey Areas");
+assert.match(renderNavCurrentBody, /data-nav=[^]*label|data-nav=[^]*page/i, "The contextual Survey Areas label must preserve the guarded underlying navigation route");
+const mappedPocOperationalSource = [
+  initMappedPocOverviewGoogleMapBody,
+  scopedAlertsCurrentBody,
+  scopedCasesCurrentBody,
+  scopedTreatmentsCurrentBody,
+  renderAlertsCurrentBody,
+  renderReportsCurrentBody,
+  renderCasesTreatmentsCurrentBody,
+  renderAdministrationCurrentBody,
+  renderSettingsCurrentBody,
+  renderSurveyManagementCurrentBody,
+].join("\n");
+assert.doesNotMatch(mappedPocOperationalSource, /FRM-AP-(?:ELR|WGD|EGD|KAK|NTR|KRI)-\d+/i, "Mapped POC operational pages must not embed stale generic AP farm IDs");
+assert.doesNotMatch(mappedPocOperationalSource, /Survey Area 004|Survey Area 005|MPOC-SURVEY-004|MPOC-SURVEY-005/, "Mapped POC operational pages must not retain retired survey records");
+assert.doesNotMatch(`${mappedPocOperationalSource}\n${pagesWorkflowSource}`, /AIza[0-9A-Za-z_-]{20,}/, "Overview and sidebar changes must not commit a Google Maps credential");
 
 const defaultDemoStateV2Body = functionBody(html, "defaultDemoState");
 assert.match(defaultDemoStateV2Body, /localFarms\s*:\s*\[\s*\]/, "Fresh v9 demo state must retain an empty browser-local farm list");

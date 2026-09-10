@@ -342,6 +342,23 @@ Manual browser acceptance verified Satellite loading, 13-point polygon editing a
 
 The version-9 empty-Area-003 increment passed the independent static contract, production build, and diff-whitespace gates. Coverage pins the 64 inactive Area 003 records, IDs `TREE-0201...TREE-0264`, null source fields, marker-only activation, all-black initial grid, version-9 state clearing and Area 001/002 preservation, status/score/image rules, independent editor behavior, combined Overview pin actions, fresh 62-tree and maximum 192-tree totals, and preservation of the other three companies. Manual acceptance verified the zero-tree Area 003 page, geofence editing, first-marker placement and removal, synchronized map/grid/Tree Detail behavior, responsive layout, and the Google Maps failure fallback. No repository image asset was added or deleted for this increment.
 
+## Decision: Mapped POC current-data operational pages and Google Overview
+
+Mapped POC now has one shared `mappedPocCurrentData()` adapter between its immutable snapshot, valid version-9 browser-local geofence/marker state, and every operational renderer. The adapter derives the active surveys, active trees, status totals, stable tree references, alerts, cases, treatments, report rows, administration scopes, and settings summary from the same synchronized Area 001-003 collections. This prevents Overview and sidebar pages from retaining the retired five-area or fixed-count presentation after markers are added or removed.
+
+The Mapped POC Overview uses Google Maps in Satellite mode through the existing guarded Maps JavaScript API loader. Areas 001 and 003 retain one combined coordinate marker because they share an operational location; its accessible actions keep the two Survey IDs separate, while Area 002 keeps its own marker. The survey rail and Table view expose the same three records and remain the keyboard-accessible, map-independent fallback when Google configuration, authorization, billing, or network loading fails. The other three companies keep their existing Leaflet/OpenStreetMap Overview and generic AP workflows.
+
+The sidebar remains a thin route layer over current data:
+
+- **Survey Areas** lists exactly Areas 001, 002, and 003 and opens the existing survey editors rather than introducing a second creation contract.
+- **Alerts** and **Cases & Treatments** derive stable records from the current Infected and Suspected trees; record actions resolve the exact current Survey ID and Tree ID through guarded navigation.
+- **Reports** derives rows and printable metrics from the active three-survey collection. Browser-local report history is tagged and filtered by company, so Mapped POC history cannot appear under another company and vice versa.
+- **Administration** exposes only current survey assignment scopes for Mapped POC, while **Settings** summarizes the live survey/tree/status state and retains the existing role-owned preferences.
+
+Resetting Mapped POC operational changes clears page-level reads, workflow overrides, report history, administration changes, and preferences, but deliberately preserves the independently versioned geofence overrides and saved marker collections. Geofence and marker state remains owned by the survey editor contract and is not treated as disposable operational-page state. Stable Tree IDs remain the identity boundary across map markers, grids, selectors, alerts, cases, treatments, reports, and Tree Detail navigation.
+
+The current-data contracts are pinned in [`tests/static-check.mjs`](../tests/static-check.mjs), including adapter use across all Mapped POC pages, Google Satellite Overview and fallback surfaces, the combined Area 001/003 marker, exact current navigation, company-isolated report history, reset preservation of survey state, stable Survey/Tree routing, and unchanged Leaflet/generic behavior for the other companies.
+
 ## Verification record
 
 The current increment passed the following gates on 2026-08-09:

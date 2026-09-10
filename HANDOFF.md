@@ -3,32 +3,40 @@
 ## Current state
 
 - Repository: `D:\drone-mapping\oil-palm-1.5-gui`; upstream: <https://github.com/vjk7989/oil-palm-1.5-gui>; branch: `main`.
-- Mapped POC contains exactly Survey Areas 001, 002, and 003. Areas 004–005 remain retired.
-- Survey Area 003 now starts empty: zero active trees, zero pins, an empty selector, and 64 black cells in its 8×8 grid. Its capacity records are inactive `TREE-0201…TREE-0264` layout records; there are no Area 003 copied captures or fixed markers.
-- After its rectangle is explicitly saved, Area 003 accepts up to 64 independently saved Red/Infected, Yellow/Suspected, or Green/Healthy markers. The editor retains add/remove, undo, cancel, atomic save, containment protection, lowest-ID reuse, synchronized map/grid/selector/details, and status-specific deterministic scores.
-- Area 003 Infected and Suspected additions may use the nearest repository-owned Area 001 image with the non-exact-tree disclosure; Healthy additions show no image. Area 001 and Area 002 data, editors, and browser state remain unchanged.
-- Browser-local state is version 9. Migration preserves valid Area 001/002 state and deliberately clears all legacy Area 003 markers and geofence state so Area 003 begins empty.
-- Fresh Mapped POC state contains 62 fixed Infected trees; full capacity remains 192 trees across the three surveys.
-- Automated and manual acceptance gates are green. This increment is still pending commit, push, and successful GitHub Pages deployment.
+- Mapped POC contains exactly Survey Areas 001, 002, and 003. Areas 004–005 are retired. Fresh browser state has 62 trees: 27 fixed Infected trees in Area 001, 35 fixed Infected trees in Area 002, and an empty Area 003. Browser-local marker edits can change the active total, so every page derives counts from current state rather than assuming 62.
+- Browser-local survey state remains version 9. Area 001 and Area 002 retain their independent saved geofences and optional markers; Area 003 starts with 64 inactive capacity records (`TREE-0201…TREE-0264`) and creates trees only from saved markers.
+- The Mapped POC overview now uses the existing restricted Google Maps JavaScript API integration in Satellite mode. It draws each current geofence and current survey totals, combines colocated Areas 001 and 003 into one marker with separate open actions, and retains the accessible survey list and Table view when Google Maps is unavailable.
+- All Mapped POC sidebar routes now use the active three-survey portfolio. Other companies retain their existing AP farm behavior.
+- Automated and manual acceptance gates for this increment are green. The current increment is pending commit, push, GitHub Pages workflow verification, and live-site verification.
+
+## Route behavior
+
+- **Overview:** live metrics, Google Satellite survey map, current geofences, combined Area 001/003 choice, separate Area 002 marker, current survey list/table, and existing survey/tree navigation.
+- **Survey Areas** (the Mapped POC label for the existing `New Farm` route): lists the three current survey workspaces with live Infected, Suspected, Healthy, and total counts; opens the selected survey editor and deliberately does not create a fourth area.
+- **Alerts:** derives one alert from each currently flagged survey area, supports read/read-all state, and opens the exact current tree selected for that alert. Healthy-only or empty areas produce no alert.
+- **Reports:** six report/export views are derived from current areas, markers, statuses, coordinates, cases, and treatments. The printable survey summary and company-scoped browser-local export history use current totals.
+- **Cases & Treatments:** derives one stable workflow per currently flagged survey area, links to an active tree, and preserves the existing role-authorized browser-local case/treatment transitions. Workflows disappear when an area has no flagged active tree.
+- **Administration:** shows current survey-area and active-tree access totals, current accounts, and direct links to each survey; existing account activation/reset actions remain browser-local.
+- **Settings:** shows current Mapped POC access totals and preferences. Reset clears workflow preferences, read alerts, case actions, account changes, and report history while preserving saved geofences and tree markers.
 
 ## Authoritative references
 
-Use these artifacts instead of reconstructing the change from scattered files:
+Use these artifacts instead of reconstructing decisions from scattered files:
 
-- Decisions, constraints, migration, and verification: `docs/ARCHITECTURE_RECORD.md`.
-- Runtime behavior and browser-local state: `index.html`.
-- Deterministic capacity data: `data/mapped-poc-data.js`.
-- Snapshot derivation and invariants: `scripts/build_mapped_poc_snapshot.py`.
+- Decisions, constraints, data semantics, and verification: `docs/ARCHITECTURE_RECORD.md`.
+- Runtime behavior, Google overview, routes, and browser-local state: `index.html`.
 - Executable regression contract: `tests/static-check.mjs`.
+- Deterministic survey data: `data/mapped-poc-data.js` and `data/survey-002-farm-data.js`.
+- Snapshot derivation and invariants: `scripts/build_mapped_poc_snapshot.py`.
 - Persistent delivery rules: `docs/architecture/0001-project-context-and-agent-workflow.md`.
 - GitHub Pages deployment: `.github/workflows/deploy-pages.yml`.
 
-## Release handoff
+## Working tree and release handoff
 
-- Preserve unrelated user work and confirm the intended patch with `git status` and `git diff`.
-- Rerun `npm test`, `npm run build`, and `git diff --check`, then scan the tracked patch for credentials without printing any secret values.
-- Commit the verified Area 003/version-9 increment, push `main`, and verify both the Pages workflow and live behavior before calling it released.
-- Never commit, document, log, or repeat the Google Maps key. Local development uses ignored `config/maps.local.js`; hosted builds receive the key from the repository secret.
+- Expected feature patch: `index.html` and `tests/static-check.mjs`, plus context updates to `docs/ARCHITECTURE_RECORD.md` and this file when the context agents finish. Inspect `git status` because those agents may complete asynchronously.
+- Do not rewrite or discard unrelated user changes. Review the final patch, then run `npm test`, `npm run build`, and `git diff --check` once more before release if any file changed after the green gate.
+- Scan the tracked patch for credentials without printing secret values. Never commit, document, log, or repeat the Google Maps key. Local development uses ignored `config/maps.local.js`; hosted builds receive the key from the repository secret.
+- Commit the verified increment, push `main`, verify the Pages workflow, then verify the live overview and at least one navigation route before calling it released.
 
 ## Continuation rules
 
@@ -38,16 +46,16 @@ Use these artifacts instead of reconstructing the change from scattered files:
 - Use separate subagents for test authoring and independent execution. If a gate fails, obtain a minimal repair plan from a separate failure-analysis agent before changing code, and continue only when the affected gate is green.
 - After green verification, update the architecture record and this handoff with separate context agents.
 - Preserve the distinction between user-designated status, modelled Ganoderma score, operational marker coordinates, confirmed diagnosis, and surveyed/legal boundaries.
-- Keep Tree IDs globally unique. Area 003 no longer permits duplicate capture UUIDs because it contains no copied-capture records.
-- Do not modify or delete external imagery. Healthy trees show no image; any nearest-image association for Infected or Suspected additions must retain its disclosure.
+- Keep Tree IDs globally unique. Healthy trees show no image; any nearest-image association for an Infected or Suspected added marker must retain its disclosure.
+- Preserve Google failure fallbacks and the existing editors while changing overview or route code. Workflow reset must continue to preserve survey geofences and markers.
 
 ## Suggested skills
 
-- `understand-anything:understand-chat` for targeted graph-backed codebase questions.
-- `understand-anything:understand-explain` for the version-9 migration or marker-only Area 003 flow.
+- `understand-anything:understand-chat` for graph-backed questions about route/data flow.
+- `understand-anything:understand-explain` for browser-state migration, map initialization, or derived workflow records.
 - `understand-anything:understand-diff` for pre-release regression review.
-- `impeccable` for map-editor accessibility and responsive UI work.
-- `computer-use:computer-use` for Google Maps and live Pages acceptance testing.
+- `impeccable` for dashboard, responsive, and accessibility changes.
+- `computer-use:computer-use` for Google Maps and live GitHub Pages acceptance testing.
 - `spreadsheets:Spreadsheets` only when workbook-derived risk data changes.
 
 ## Next session
