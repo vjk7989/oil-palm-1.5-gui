@@ -100,7 +100,9 @@ function extractDemoModel(source) {
     companyAreaRows: typeof COMPANY_AREA_ROWS !== "undefined" ? COMPANY_AREA_ROWS : undefined,
     companyPortfolios: typeof COMPANY_PORTFOLIOS !== "undefined" ? COMPANY_PORTFOLIOS : undefined,
     areaOnePlaceholderTreeIds: typeof AREA_ONE_PLACEHOLDER_TREE_IDS !== "undefined" ? AREA_ONE_PLACEHOLDER_TREE_IDS : undefined,
-    deterministicAreaOneRiskScore: typeof deterministicAreaOneRiskScore !== "undefined" ? deterministicAreaOneRiskScore : undefined
+    deterministicAreaOneRiskScore: typeof deterministicAreaOneRiskScore !== "undefined" ? deterministicAreaOneRiskScore : undefined,
+    areaTwoPlaceholderTreeIds: typeof AREA_TWO_PLACEHOLDER_TREE_IDS !== "undefined" ? AREA_TWO_PLACEHOLDER_TREE_IDS : undefined,
+    deterministicAreaTwoRiskScore: typeof deterministicAreaTwoRiskScore !== "undefined" ? deterministicAreaTwoRiskScore : undefined
   };`)(mappedPocData, surveyTwoData, flattenFarms);
 }
 
@@ -302,7 +304,9 @@ const {
   companyAreaRows,
   companyPortfolios,
   areaOnePlaceholderTreeIds,
-  deterministicAreaOneRiskScore
+  deterministicAreaOneRiskScore,
+  areaTwoPlaceholderTreeIds,
+  deterministicAreaTwoRiskScore
 } = extractDemoModel(html);
 const reportDefinitions = extractArrayConstant(html, "reportDefinitions");
 const caseActionsByRole = extractObjectConstant(html, "CASE_ACTIONS_BY_ROLE");
@@ -784,11 +788,11 @@ assert.match(initAreaTwoGoogleMapBody, /loadGoogleMapsApi\s*\(/, "Survey Area 00
 assert.match(initAreaTwoGoogleMapBody, /google\.maps\.Map\s*\(/, "Survey Area 002 must initialize a Google map");
 assert.match(initAreaTwoGoogleMapBody, /mapTypeId\s*:\s*["']satellite["']|MapTypeId\.SATELLITE/, "Survey Area 002 must use Google Satellite imagery");
 assert.match(initAreaTwoGoogleMapBody, /google\.maps\.Polygon\s*\(/, "Survey Area 002 must render its camera-footprint geofence as a Google polygon");
-assert.match(initAreaTwoGoogleMapBody, /paths?\s*:\s*(?:farm\.)?geofence|farm\.geofence[^]*paths?\s*:/, "Survey Area 002 Google polygon must use the repository snapshot geofence");
-assert.match(initAreaTwoGoogleMapBody, /clickable\s*:\s*false/, "Survey Area 002 read-only geofence must not intercept tree-marker clicks");
-assert.doesNotMatch(initAreaTwoGoogleMapBody, /setOptions\s*\([^}]*editable\s*:\s*true|setEditable\s*\(\s*true\s*\)/, "Survey Area 002 must not enable polygon editing");
+assert.match(initAreaTwoGoogleMapBody, /paths?\s*:\s*(?:getAreaTwoGeofencePolygon\s*\(\s*\)|initialPolygon|areaTwoGeofenceDraft|(?:farm\.)?geofence)/, "Survey Area 002 Google polygon must use the validated saved, draft, or repository polygon");
+assert.match(initAreaTwoGoogleMapBody, /editable\s*:\s*(?:state\.)?areaTwoGeofenceEditing|setOptions\s*\([^}]*editable\s*:\s*true|setEditable\s*\(\s*true\s*\)/, "Survey Area 002 must support Google polygon editing");
+assert.match(initAreaTwoGoogleMapBody, /draggable\s*:\s*(?:state\.)?areaTwoGeofenceEditing|setOptions\s*\([^}]*draggable\s*:\s*true/, "Survey Area 002 geofence must support whole-polygon dragging during editing");
 assert.match(initAreaTwoGoogleMapBody, /google\.maps\.LatLngBounds\s*\(/, "Survey Area 002 must compute one Google viewport from its mapped geometry");
-assert.match(initAreaTwoGoogleMapBody, /farm\.geofence[^]*(?:forEach|map)[^]*\.extend\s*\(/, "Survey Area 002 viewport must include every geofence point");
+assert.match(initAreaTwoGoogleMapBody, /(?:farm\.geofence|getAreaTwoGeofencePolygon\s*\(\s*\)|areaTwoGeofenceDraft)[^]*(?:forEach|map)[^]*\.extend\s*\(/, "Survey Area 002 viewport must include every active geofence point");
 assert.match(initAreaTwoGoogleMapBody, /farm\.observations[^]*(?:forEach|map)[^]*\.extend\s*\(/, "Survey Area 002 viewport must include all 35 observation positions");
 assert.match(initAreaTwoGoogleMapBody, /fitBounds\s*\(/, "Survey Area 002 must fit the Google viewport to its geofence and observations");
 assert.match(initAreaTwoGoogleMapBody, /farm\.observations[^]*(?:forEach|map)\s*\(/, "Survey Area 002 markers must be derived from the existing repository snapshot observations");
@@ -799,7 +803,7 @@ assert.match(initAreaTwoGoogleMapBody, /marker\.addListener\s*\(\s*["']click["']
 assert.match(initAreaTwoGoogleMapBody, /catch\s*\(\s*error\s*\)[^]*googleMapsFailureMessage\s*\(\s*error\?\.code\s*\)/, "Survey Area 002 must preserve the shared specific Google failure diagnostics");
 assert.match(initAreaTwoGoogleMapBody, /Google Satellite map unavailable/i, "Survey Area 002 must show an explicit Google Satellite fallback");
 assert.match(initAreaTwoGoogleMapBody, /(?:tree|survey) grid remains available/i, "Survey Area 002 Google failure must leave its 8 x 8 tree grid usable");
-assert.doesNotMatch(initAreaTwoGoogleMapBody, /editAreaOneGeofence|saveAreaOneGeofence|areaOneMarkerPlacement|areaOneTreePositions/, "Survey Area 002 must not inherit Area 001 editing or browser-state behavior");
+assert.doesNotMatch(initAreaTwoGoogleMapBody, /editAreaOneGeofence|saveAreaOneGeofence|areaOneMarkerPlacement|areaOneTreePositions/, "Survey Area 002 must use isolated Area 002 editing and browser-state behavior");
 
 const initMappedPocAreaMapBody = functionBody(html, "initMappedPocAreaMap");
 assert.match(initMappedPocAreaMapBody, /L\.map\s*\(/, "Survey Areas 003-005 must retain their Leaflet map");
@@ -1877,7 +1881,7 @@ assert.match(renderIndicatorBody, /aria-describedby=["']\$\{indicator\.id\}-help
 // the active route must not write farm/tree records or widen AP scope.
 const versionMatch = /const\s+DEMO_STATE_VERSION\s*=\s*(\d+)/.exec(html);
 assert.ok(versionMatch, "Browser-local demo state must publish a numeric schema version");
-assert.equal(Number(versionMatch[1]), 6, "Three-colour Area 001 marker positions must use demo-state schema version 6");
+assert.equal(Number(versionMatch[1]), 7, "Editable Area 002 polygon and marker positions must use demo-state schema version 7");
 assert.match(html, /const\s+DEFAULT_FARM_DRAFT\s*=/, "New Farm must publish deterministic draft defaults");
 
 const areaOneDefaultBounds = extractObjectConstant(html, "AREA_ONE_DEFAULT_GEOFENCE_BOUNDS");
@@ -1922,7 +1926,7 @@ assert.match(getAreaOneGeofenceBoundsBody, /validAreaOneGeofenceBounds/, "Stored
 
 const saveAreaOneGeofenceBody = functionBody(html, "saveAreaOneGeofence");
 assert.match(saveAreaOneGeofenceBody, /validAreaOneGeofenceBounds/, "Saving must reject invalid rectangle bounds");
-assert.match(saveAreaOneGeofenceBody, /geofenceOverrides\s*=\s*\{\s*\[\s*AREA_ONE_ID\s*\]\s*:/, "Saving must write only the computed Area 001 geofence override");
+assert.match(saveAreaOneGeofenceBody, /geofenceOverrides\s*=\s*\{[^]*\.\.\.\s*\(?\s*demoState\.geofenceOverrides|(?:const\s+previous[^]*geofenceOverrides\s*=\s*\{[^]*\.\.\.\s*\(?\s*previous)/, "Saving Area 001 must merge its computed override without discarding Area 002 state");
 assert.match(saveAreaOneGeofenceBody, /saveDemoState\s*\(/, "Valid Area 001 bounds must persist through browser-local demo state");
 assert.doesNotMatch(saveAreaOneGeofenceBody, /MPOC-SURVEY-00[2-5]/, "Saving Area 001 must never modify Areas 002-005");
 
@@ -1931,7 +1935,7 @@ assert.match(cancelAreaOneGeofenceBody, /areaOneGeofenceDraft[^]*getAreaOneGeofe
 assert.doesNotMatch(cancelAreaOneGeofenceBody, /saveDemoState|geofenceOverrides\s*=/, "Cancel must not persist or mutate geofence overrides");
 
 const resetAreaOneGeofenceBody = functionBody(html, "resetAreaOneGeofence");
-assert.match(resetAreaOneGeofenceBody, /geofenceOverrides\s*=\s*\{\s*\}/, "Reset must clear the sole supported Area 001 override");
+assert.match(resetAreaOneGeofenceBody, /delete\s+[^;]*\[\s*AREA_ONE_ID\s*\][^]*geofenceOverrides\s*=|Object\.fromEntries[^]*AREA_ONE_ID/, "Reset must remove only the Area 001 override while preserving Area 002 state");
 assert.match(resetAreaOneGeofenceBody, /AREA_ONE_DEFAULT_GEOFENCE_BOUNDS|getAreaOneGeofenceBounds/, "Reset must restore the exact default rectangle");
 assert.match(resetAreaOneGeofenceBody, /saveDemoState\s*\(/, "Reset must persist removal of the Area 001 override");
 assert.doesNotMatch(resetAreaOneGeofenceBody, /MPOC-SURVEY-00[2-5]/, "Reset must leave Areas 002-005 unchanged");
@@ -1950,7 +1954,7 @@ assert.equal(Math.max(...areaOneAddedRiskScores), 95, "The deterministic added-t
 // Area 001 marker classification is an explicit three-colour workflow. Red is
 // the safe default for existing v5 positions; every saved marker carries the
 // canonical display status used consistently by map, grid, and tree details.
-assert.match(html, /const\s+DEMO_STATE_VERSION\s*=\s*6\b/, "The three-colour marker schema must advance browser-local state to version 6");
+assert.match(html, /const\s+DEMO_STATE_VERSION\s*=\s*7\b/, "The Area 002 editor schema must advance browser-local state to version 7");
 assert.match(renderMappedPocFarmBody, /(?:role=["'](?:radiogroup|group)["']|<fieldset)[^]*(?:Red)[^]*(?:Yellow)[^]*(?:Green)/i, "Marker placement must expose an accessible Red, Yellow, and Green classification toolbar");
 assert.match(renderMappedPocFarmBody, /(?:aria-label|aria-labelledby|<legend)[^]*(?:marker|tree|status|classification)/i, "The colour toolbar must have an accessible group label");
 for (const status of ["Infected", "Suspected", "Healthy"]) {
@@ -2175,11 +2179,156 @@ assert.doesNotMatch(`${renderMappedPocFarmBody}\n${renderTreeMappedBody}`, /\bmo
 assert.doesNotMatch(renderMappedPocFarmBody, /roles\[state\.role\]|state\.role\s*===?/, "Every built-in role must receive the Area 001 editor controls");
 assert.doesNotMatch(saveAreaOneGeofenceBody, /roles\[state\.role\]|state\.role\s*===?/, "Every built-in role must be allowed to save a valid Area 001 rectangle");
 
+// Survey Area 002 extends the same deterministic browser-local editing model
+// to its repository-backed camera-footprint polygon. Its 35 source trees stay
+// immutable and first in sequence; at most 29 user-positioned trees follow.
+const expectedAreaTwoPlaceholderTreeIds = Array.from({ length: 29 }, (_, index) => `TREE-${String(index + 172).padStart(4, "0")}`);
+assert.deepEqual(areaTwoPlaceholderTreeIds, expectedAreaTwoPlaceholderTreeIds, "Area 002 must reserve exactly TREE-0172 through TREE-0200 for added positions");
+assert.equal(new Set([...expectedAreaTwoTreeIds, ...areaTwoPlaceholderTreeIds]).size, 64, "Area 002 fixed and optional identities must exactly fill the 64-cell capacity without collisions");
+assert.equal(typeof deterministicAreaTwoRiskScore, "function", "Area 002 added markers must have an inspectable deterministic score function");
+for (const [displayStatus, minimum, maximum] of [["Infected", 66, 95], ["Suspected", 35, 65], ["Healthy", 10, 34]]) {
+  const scores = areaTwoPlaceholderTreeIds.map((treeId) => deterministicAreaTwoRiskScore(treeId, displayStatus));
+  assert.deepEqual(scores, areaTwoPlaceholderTreeIds.map((treeId) => deterministicAreaTwoRiskScore(treeId, displayStatus)), `${displayStatus} Area 002 scores must be stable across repeated evaluation`);
+  assert.ok(scores.every((score) => Number.isFinite(score) && score >= minimum && score <= maximum), `${displayStatus} Area 002 scores must remain inside ${minimum}-${maximum}%`);
+  assert.equal(deterministicAreaTwoRiskScore(areaTwoPlaceholderTreeIds[0], "Unknown"), null, "Unknown Area 002 marker statuses must not receive a score");
+}
+
+const normalizeAreaTwoGeofencePolygonBody = functionBody(html, "normalizeAreaTwoGeofencePolygon");
+assert.match(normalizeAreaTwoGeofencePolygonBody, /Number\s*\([^)]*(?:latitude|lat)/, "Area 002 polygon normalization must coerce latitude values explicitly");
+assert.match(normalizeAreaTwoGeofencePolygonBody, /Number\s*\([^)]*(?:longitude|lng)/, "Area 002 polygon normalization must coerce longitude values explicitly");
+assert.match(normalizeAreaTwoGeofencePolygonBody, /Array\.isArray/, "Area 002 polygon normalization must reject non-array inputs");
+const areaTwoPolygonSelfIntersectsBody = functionBody(html, "areaTwoPolygonSelfIntersects");
+assert.match(areaTwoPolygonSelfIntersectsBody, /segments|intersect|orientation|cross/i, "Area 002 polygon validation must detect crossing non-adjacent edges");
+const validAreaTwoGeofencePolygonBody = functionBody(html, "validAreaTwoGeofencePolygon");
+assert.match(validAreaTwoGeofencePolygonBody, /length\s*<\s*3|length\s*>=?\s*3/, "A valid Area 002 polygon must contain at least three vertices");
+assert.match(validAreaTwoGeofencePolygonBody, /Number\.isFinite/, "Every Area 002 polygon coordinate must be finite");
+assert.match(validAreaTwoGeofencePolygonBody, /AP_BOUNDS|12\.55[^]*19\.25[^]*76\.70[^]*84\.85/, "Every Area 002 polygon vertex must remain inside Andhra Pradesh");
+assert.match(validAreaTwoGeofencePolygonBody, /areaTwoPolygonSelfIntersects/, "Self-intersecting Area 002 polygons must be rejected");
+assert.match(validAreaTwoGeofencePolygonBody, /area|shoelace|signed/i, "Zero-area Area 002 polygons must be rejected");
+assert.ok(areaTwo.geofence.length >= 3, "The repository Area 002 polygon fixture must remain available as the default editor geometry");
+
+const getAreaTwoGeofencePolygonBody = functionBody(html, "getAreaTwoGeofencePolygon");
+assert.match(getAreaTwoGeofencePolygonBody, /geofenceOverrides\?\.\[\s*AREA_TWO_ID\s*\]/, "Area 002 must read only its own saved polygon override");
+assert.match(getAreaTwoGeofencePolygonBody, /validAreaTwoGeofencePolygon/, "Stored Area 002 polygons must be validated before display");
+assert.match(getAreaTwoGeofencePolygonBody, /(?:SURVEY_TWO_FARM_DATA\.area\.geofence|farm\.geofence|AREA_TWO_DEFAULT_GEOFENCE)/, "Missing Area 002 state must fall back to the repository camera-footprint polygon");
+const areaTwoPositionsInsidePolygonBody = functionBody(html, "areaTwoPositionsInsidePolygon");
+assert.match(areaTwoPositionsInsidePolygonBody, /every\s*\([^]*pointInsideAreaTwoPolygon/, "All fixed and saved Area 002 positions must be inside a candidate polygon");
+assert.match(areaTwoPositionsInsidePolygonBody, /source|farm\.observations|SURVEY_TWO_FARM_DATA/i, "Area 002 containment checks must include the 35 immutable source positions");
+assert.match(areaTwoPositionsInsidePolygonBody, /areaTwoTreePositions|getAreaTwoTreePositions|Object\.values\s*\(\s*positions/, "Area 002 containment checks must include the supplied saved added positions");
+
+const saveAreaTwoGeofenceBody = functionBody(html, "saveAreaTwoGeofence");
+assert.match(saveAreaTwoGeofenceBody, /validAreaTwoGeofencePolygon/, "Area 002 Save must reject malformed, empty, crossing, or out-of-AP polygons");
+assert.match(saveAreaTwoGeofenceBody, /areaTwoPositionsInsidePolygon/, "Area 002 Save must reject a polygon that excludes a fixed or saved tree");
+assert.match(saveAreaTwoGeofenceBody, /geofenceOverrides\s*=\s*\{[^]*AREA_TWO_ID/, "Area 002 Save must persist its polygon under the stable Area 002 key");
+assert.match(saveAreaTwoGeofenceBody, /\.\.\.\s*\(?\s*(?:demoState\.geofenceOverrides|previous)|Object\.assign/, "Saving Area 002 must preserve the existing Area 001 geofence override, directly or through a rollback snapshot");
+assert.equal((saveAreaTwoGeofenceBody.match(/saveDemoState\s*\(/g) || []).length, 1, "Area 002 geofence Save must use one atomic browser-state write");
+const cancelAreaTwoGeofenceBody = functionBody(html, "cancelAreaTwoGeofenceEdit");
+assert.match(cancelAreaTwoGeofenceBody, /areaTwoGeofenceDraft[^]*getAreaTwoGeofencePolygon/, "Area 002 Cancel must restore the last saved or default polygon");
+assert.doesNotMatch(cancelAreaTwoGeofenceBody, /saveDemoState|demoState\.geofenceOverrides\s*=/, "Area 002 Cancel must not persist its draft");
+const resetAreaTwoGeofenceBody = functionBody(html, "resetAreaTwoGeofence");
+assert.match(resetAreaTwoGeofenceBody, /areaTwoPositionsInsidePolygon/, "Area 002 Reset must refuse the repository default when it would exclude a saved marker");
+assert.match(resetAreaTwoGeofenceBody, /AREA_TWO_ID/, "Area 002 Reset must remove only the Area 002 override");
+assert.match(resetAreaTwoGeofenceBody, /saveDemoState\s*\(/, "Area 002 Reset must persist removal of its override");
+assert.match(resetAreaTwoGeofenceBody, /\.\.\.demoState\.geofenceOverrides|Object\.(?:fromEntries|assign)|delete/, "Area 002 Reset must preserve an Area 001 override");
+
+for (const controlId of ["editAreaTwoGeofence", "saveAreaTwoGeofence", "cancelAreaTwoGeofence", "resetAreaTwoGeofence", "areaTwoGeofenceCoordinates"]) {
+  assert.match(renderMappedPocFarmBody, new RegExp(`id=["']${controlId}["']`), `Area 002 editor must render ${controlId}`);
+}
+const areaTwoPolygonLabelBody = functionBody(html, "areaTwoPolygonLabel");
+assert.match(areaTwoPolygonLabelBody, /(?:Vertices|vertices)[^]*(?:North|north)[^]*(?:South|south)[^]*(?:East|east)[^]*(?:West|west)/, "The Area 002 polygon label helper must show live vertex count and directional extent");
+assert.match(renderMappedPocFarmBody, /areaTwoGeofenceCoordinates[^]*areaTwoPolygonLabel\s*\(/, "Area 002 must render the polygon label helper into its coordinate summary");
+assert.match(renderMappedPocFarmBody, /id=["']areaTwoGeofenceCoordinates["'][^>]*(?:aria-label|aria-live|role=)/, "The Area 002 polygon coordinate summary must have an accessible label or live status role");
+assert.match(initAreaTwoGoogleMapBody, /(?:insert_at|remove_at|set_at|dragend)[^]*updateAreaTwoGeofence/i, "Area 002 polygon vertex and drag changes must refresh the live draft coordinates");
+
+const normalizeAreaTwoTreePositionsBody = functionBody(html, "normalizeAreaTwoTreePositions");
+assert.match(normalizeAreaTwoTreePositionsBody, /AREA_TWO_PLACEHOLDER_TREE_IDS/, "Area 002 position normalization must reject IDs outside TREE-0172 through TREE-0200");
+assert.match(normalizeAreaTwoTreePositionsBody, /AREA_TWO_MARKER_STATUSES|Infected[^]*Suspected[^]*Healthy/, "Area 002 positions must retain only canonical Red, Yellow, or Green statuses");
+assert.match(normalizeAreaTwoTreePositionsBody, /latitude[^]*longitude[^]*displayStatus/, "Every normalized Area 002 marker must persist coordinates and status together");
+const validAreaTwoTreePositionsBody = functionBody(html, "validAreaTwoTreePositions");
+assert.match(validAreaTwoTreePositionsBody, /length\s*>\s*29|AREA_TWO_PLACEHOLDER_TREE_IDS\.length/, "Area 002 state must reject more than 29 added positions");
+assert.match(`${validAreaTwoTreePositionsBody}\n${normalizeAreaTwoTreePositionsBody}`, /pointInsideAreaTwoPolygon/, "Area 002 state validation, directly or through its authoritative normalizer, must reject positions outside the saved polygon");
+assert.match(validAreaTwoTreePositionsBody, /Set|duplicate|some\s*\([^]*findIndex/i, "Area 002 state must reject duplicate coordinates or identities");
+assert.match(`${validAreaTwoTreePositionsBody}\n${normalizeAreaTwoTreePositionsBody}`, /Number\.isFinite/, "Area 002 state validation, directly or through its authoritative normalizer, must reject non-finite coordinates");
+
+const beginAreaTwoMarkerPlacementBody = functionBody(html, "beginAreaTwoMarkerPlacement");
+assert.match(beginAreaTwoMarkerPlacementBody, /geofenceOverrides\?\.\[\s*AREA_TWO_ID\s*\]|geofenceOverrides\s*\[\s*AREA_TWO_ID\s*\]/, "Area 002 Add Marker must require an explicitly saved valid geofence");
+assert.match(beginAreaTwoMarkerPlacementBody, /areaTwoMarkerDraft[^]*(?:structuredClone|map|normalizeAreaTwoTreePositions|getAreaTwoTreePositions)/, "Area 002 editing must begin from a detached copy of saved added positions");
+assert.match(beginAreaTwoMarkerPlacementBody, /areaTwoMarker(?:Status|DisplayStatus)\s*=\s*["']Infected["']/, "Every Area 002 placement session must default to Red / Infected");
+const nextAreaTwoTreeIdBody = functionBody(html, "nextAreaTwoTreeId");
+assert.match(nextAreaTwoTreeIdBody, /AREA_TWO_PLACEHOLDER_TREE_IDS\.find[^]*areaTwoMarkerDraft/, "Area 002 placement must assign the lowest unused stable ID");
+const nextAreaTwoTreeId = Function("AREA_TWO_PLACEHOLDER_TREE_IDS", "state", `return function nextAreaTwoTreeId(){${nextAreaTwoTreeIdBody}};`)(areaTwoPlaceholderTreeIds, { areaTwoMarkerDraft: [{ treeId: "TREE-0172" }, { treeId: "TREE-0174" }] });
+assert.equal(nextAreaTwoTreeId(), "TREE-0173", "Deleting an Area 002 marker must make its stable ID available for reuse");
+
+assert.match(initAreaTwoGoogleMapBody, /activeMap\.addListener\s*\(\s*["']click["'][^]*areaTwoMarkerPlacement[^]*pointInsideAreaTwoPolygon/, "Area 002 map clicks must add positions only during marker mode and inside the saved polygon");
+assert.match(initAreaTwoGoogleMapBody, /nextAreaTwoTreeId\s*\(\s*\)/, "Each accepted Area 002 map click must allocate the lowest available stable ID");
+assert.match(initAreaTwoGoogleMapBody, /displayStatus\s*:\s*state\.areaTwoMarker(?:Status|DisplayStatus)/, "Each accepted Area 002 map click must copy the selected Red, Yellow, or Green status");
+assert.match(initAreaTwoGoogleMapBody, /querySelectorAll\s*\(\s*["'][^"']*area-two-marker-status[^"']*["']\s*\)[^]*addEventListener\s*\(\s*["']click["']/, "Area 002 must bind an explicit three-colour marker toolbar");
+assert.doesNotMatch(initAreaTwoGoogleMapBody, /filter\s*\(\s*observation\s*=>\s*observation\.displayStatus\s*===?\s*["'](?:Infected|Suspected)["']/, "Area 002 permanent map must display all saved marker statuses");
+const renderAreaTwoDraftMarkersBody = functionBody(html, "renderAreaTwoDraftMarkers");
+assert.match(renderAreaTwoDraftMarkersBody, /point\.displayStatus/, "Area 002 draft markers must retain their own selected colour");
+assert.match(renderAreaTwoDraftMarkersBody, /addListener\s*\(\s*["']click["'][^]*removeAreaTwoDraftMarker\s*\(\s*point\.treeId/, "Clicking an added Area 002 draft marker must remove only that marker");
+const removeAreaTwoDraftMarkerBody = functionBody(html, "removeAreaTwoDraftMarker");
+assert.match(removeAreaTwoDraftMarkerBody, /findIndex[^]*treeId[^]*(?:splice|filter)|filter\s*\([^]*treeId/, "Area 002 removal must target the clicked added tree ID");
+assert.match(removeAreaTwoDraftMarkerBody, /type\s*:\s*["']remove["'][^]*point/, "Area 002 removal must retain the complete marker for Undo");
+assert.doesNotMatch(initAreaTwoGoogleMapBody, /origin\s*===?\s*["']source-folder["'][^]*(?:splice|filter|delete)/, "The 35 Area 002 source-backed markers must never be removable or recolourable");
+
+const undoAreaTwoMarkerPlacementBody = functionBody(html, "undoAreaTwoMarkerPlacement");
+assert.match(undoAreaTwoMarkerPlacementBody, /(?:areaTwoMarkerHistory|areaTwoMarkerActions|areaTwoMarkerUndo)[^]*(?:pop|slice)/, "Area 002 Undo must reverse the most recent complete add or remove operation");
+assert.doesNotMatch(undoAreaTwoMarkerPlacementBody, /saveDemoState|demoState\.areaTwoTreePositions\s*=/, "Area 002 Undo must never persist a partial draft");
+const cancelAreaTwoMarkerPlacementBody = functionBody(html, "cancelAreaTwoMarkerPlacement");
+assert.match(cancelAreaTwoMarkerPlacementBody, /areaTwoMarkerDraft\s*=\s*(?:\[\s*\]|\{\s*\})/, "Area 002 Cancel must discard the complete editing draft");
+assert.doesNotMatch(cancelAreaTwoMarkerPlacementBody, /saveDemoState|demoState\.areaTwoTreePositions\s*=/, "Area 002 Cancel must leave saved positions unchanged");
+const saveAreaTwoTreePositionsBody = functionBody(html, "saveAreaTwoTreePositions");
+assert.match(saveAreaTwoTreePositionsBody, /validAreaTwoTreePositions/, "Area 002 Save markers must revalidate the complete batch");
+assert.match(saveAreaTwoTreePositionsBody, /demoState\.areaTwoTreePositions\s*=\s*[^;]*(?:normalizeAreaTwoTreePositions|map|structuredClone|slice)/, "Area 002 Save markers must replace the saved batch atomically");
+assert.equal((saveAreaTwoTreePositionsBody.match(/saveDemoState\s*\(/g) || []).length, 1, "Area 002 Save markers must use one atomic browser-state write");
+
+for (const controlId of ["addAreaTwoMarkers", "undoAreaTwoMarker", "cancelAreaTwoMarkers", "saveAreaTwoMarkers", "areaTwoMarkerCounter"]) {
+  assert.match(renderMappedPocFarmBody, new RegExp(`id=["']${controlId}["']`), `Area 002 marker workflow must render ${controlId}`);
+}
+assert.match(renderMappedPocFarmBody, /(?:role=["'](?:radiogroup|group)["']|<fieldset)[^]*(?:Red)[^]*(?:Yellow)[^]*(?:Green)/i, "Area 002 placement mode must expose accessible Red, Yellow, and Green controls");
+assert.match(renderMappedPocFarmBody, /areaTwoMarkerCounter[^]*(?:35|source)[^]*(?:64|added|positioned)/i, "Area 002 must expose a live count reconciling 35 fixed and at most 29 added trees");
+
+const syncAreaTwoTreePositionsBody = functionBody(html, "syncAreaTwoTreePositions");
+assert.match(syncAreaTwoTreePositionsBody, /source-folder/, "Area 002 synchronization must always retain its 35 immutable source observations");
+assert.match(syncAreaTwoTreePositionsBody, /getAreaTwoTreePositions|areaTwoTreePositions/, "Area 002 synchronization must activate only saved added positions");
+assert.match(syncAreaTwoTreePositionsBody, /sort\s*\([^]*(?:localeCompare|treeId)/, "Added Area 002 observations must follow fixed observations in stable Tree-ID order");
+assert.match(syncAreaTwoTreePositionsBody, /farm\.trees|trees\s*=/, "Area 002 total trees must be recalculated after every save");
+assert.match(syncAreaTwoTreePositionsBody, /farm\.infected|farm\.suspected|farm\.healthy|displayStatus/, "Area 002 infected, suspected, and healthy totals must be recalculated from active statuses");
+assert.match(syncAreaTwoTreePositionsBody, /COMPANY_PORTFOLIOS\.mappedpoc|mappedpoc\.subtitle|syncMappedPocPortfolioSubtitle\s*\(/, "Mapped POC portfolio totals must refresh after Area 002 marker saves, directly or through the shared subtitle synchronizer");
+assert.doesNotMatch(syncAreaTwoTreePositionsBody, /areaOneTreePositions\s*=|AREA_ONE_ID[^]*(?:delete|splice)/, "Area 002 synchronization must not mutate Area 001 state");
+
+for (const totalTrees of [35, 50, 64]) {
+  const activeIds = [...expectedAreaTwoTreeIds, ...expectedAreaTwoPlaceholderTreeIds.slice(0, totalTrees - 35)];
+  const fixtureFarm = { ...areaTwoFarm, trees: totalTrees, observations: activeIds.map((treeId) => observationsByTreeId.get(treeId) || { treeId, displayStatus: "Infected" }) };
+  const cells = mappedCellsFor(fixtureFarm, 1);
+  assert.equal(cells.length, 64, `${totalTrees} Area 002 trees must retain the exact 8 x 8 capacity`);
+  assert.equal(cells.filter((cell) => cell.occupied).length, totalTrees, `${totalTrees} Area 002 trees must produce exactly ${totalTrees} occupied grid cells`);
+  assert.deepEqual(cells.filter((cell) => cell.occupied).map((cell) => cell.id), activeIds, "Area 002 grid order must match fixed then stable added marker identity");
+}
+assert.match(initAreaTwoGoogleMapBody, /areaTwoTreeSelect[^]*addEventListener\s*\(\s*["']change["'][^]*updateAreaTwoTreeSelection/, "Area 002's accessible selector must use the same exact tree-selection path as map markers");
+assert.match(initAreaTwoGoogleMapBody, /marker\.addListener\s*\(\s*["']click["'][^]*state\.treeId\s*=\s*observation\.treeId[^]*render\s*\(/i, "Every Area 002 map marker must open its exact corresponding tree page");
+assert.match(renderMappedPocFarmBody, /data-tree=["']\$\{cell\.id\}["']/, "Every Area 002 grid cell must navigate using the same exact tree ID");
+assert.match(renderTreeMappedBody, /observation\.latitude[^]*observation\.longitude/, "Area 002 added-tree details must display the selected marker's exact coordinates");
+assert.match(renderTreeMappedBody, /observation\.displayStatus/, "Area 002 tree details must display the same Red, Yellow, or Green status used by map and grid");
+
+const nearestAreaTwoEvidenceBody = functionBody(html, "nearestAreaTwoEvidence");
+assert.match(nearestAreaTwoEvidenceBody, /latitude[^]*longitude[^]*(?:Math\.hypot|distance|reduce|sort)/i, "Added Red and Yellow Area 002 records must choose the nearest repository-backed Area 002 image by coordinates");
+assert.match(nearestAreaTwoEvidenceBody, /source-folder|SURVEY_TWO_FARM_DATA|AREA_TWO_ID/, "Nearest-image selection must be limited to repository-backed Area 002 source records");
+assert.match(renderTreeMappedBody, /AREA_TWO_ID[^]*(?:(?:Infected|Suspected)[^]*nearestAreaTwoEvidence|displayStatus\s*!==?\s*["']Healthy["'][^]*nearestAreaTwoEvidence)/, "Added non-Healthy Area 002 tree pages must use the nearest Area 002 source image");
+assert.match(renderTreeMappedBody, /Healthy[^]*(?:null|false)|displayStatus\s*!==?\s*["']Healthy["']/, "Added Green Area 002 tree pages must not show an image");
+assert.match(renderTreeMappedBody, /nearest|not the exact tree|reference image|closest/i, "A reused Area 002 image must disclose that it is not exact-tree evidence");
+assert.match(renderTreeMappedBody, /isSourceBacked[^]*displayEvidence\?\.treeId\s*===?\s*observation\.treeId/, "The original 35 Area 002 records must retain exact one-to-one images");
+assert.doesNotMatch(`${html}\n${mappedPocDataSource}\n${surveyTwoDataSource}`, /D:[\\/]frm02(?:[\\/]|\b)/i, "Area 002 runtime and UI must not read from D:\\frm02");
+assert.doesNotMatch(initMappedPocAreaMapBody, /areaTwoTreePositions|areaTwoMarkerDraft|beginAreaTwoMarkerPlacement|saveAreaTwoTreePositions/, "Areas 003-005 must remain isolated on their unchanged Leaflet path");
+assert.doesNotMatch(`${saveAreaTwoGeofenceBody}\n${saveAreaTwoTreePositionsBody}\n${syncAreaTwoTreePositionsBody}`, /demoState\.areaOneTreePositions\s*=|geofenceOverrides\s*=\s*\{\s*\[\s*AREA_TWO_ID\s*\]\s*:/, "Area 002 writes must preserve all valid Area 001 browser state");
+
 const defaultDemoStateV2Body = functionBody(html, "defaultDemoState");
-assert.match(defaultDemoStateV2Body, /localFarms\s*:\s*\[\s*\]/, "Fresh v6 demo state must retain an empty browser-local farm list");
+assert.match(defaultDemoStateV2Body, /localFarms\s*:\s*\[\s*\]/, "Fresh v7 demo state must retain an empty browser-local farm list");
 assert.match(defaultDemoStateV2Body, /version\s*:\s*DEMO_STATE_VERSION/, "Fresh demo state must carry the current schema version");
-assert.match(defaultDemoStateV2Body, /geofenceOverrides\s*:\s*\{\s*\}/, "Fresh v6 demo state must start with no geofence overrides");
-assert.match(defaultDemoStateV2Body, /areaOneTreePositions\s*:\s*(?:\[\s*\]|\{\s*\})/, "Fresh v6 demo state must activate no optional Area 001 marker positions");
+assert.match(defaultDemoStateV2Body, /geofenceOverrides\s*:\s*\{\s*\}/, "Fresh v7 demo state must start with no geofence overrides");
+assert.match(defaultDemoStateV2Body, /areaOneTreePositions\s*:\s*(?:\[\s*\]|\{\s*\})/, "Fresh v7 demo state must activate no optional Area 001 marker positions");
+assert.match(defaultDemoStateV2Body, /areaTwoTreePositions\s*:\s*(?:\[\s*\]|\{\s*\})/, "Fresh v7 demo state must activate no optional Area 002 marker positions");
 
 const migrateDemoStateBody = functionBody(html, "migrateDemoState");
 assert.doesNotMatch(migrateDemoStateBody, /saved\.version\s*!==?\s*DEMO_STATE_VERSION[^]*return\s+fallback/i, "Migration must not discard the previous v1 state solely because its version differs");
@@ -2187,8 +2336,9 @@ assert.match(migrateDemoStateBody, /localFarms[^]*(?:Array\.isArray|\?)[^]*:\s*\
 assert.match(migrateDemoStateBody, /accounts|cases|treatments|administration|reportHistory|preferences/, "Migration must preserve existing browser-local operational preferences and actions");
 assert.match(migrateDemoStateBody, /geofenceOverrides\?\.\[\s*AREA_ONE_ID\s*\][^]*validAreaOneGeofenceBounds[^]*\{\s*\[\s*AREA_ONE_ID\s*\]\s*:/, "Migration must read and preserve only a valid computed Area 001 rectangle override");
 assert.match(migrateDemoStateBody, /areaOneTreePositions[^]*validAreaOneTreePositions/, "State migration must validate saved Area 001 marker entries");
-assert.match(migrateDemoStateBody, /migrated\.areaOneTreePositions\s*=\s*validAreaOneTreePositions\s*\(\s*saved\.areaOneTreePositions[^]*normalizeAreaOneTreePositions\s*\(\s*saved\.areaOneTreePositions/, "The v6 migration must preserve valid v5 positions and normalize missing status to Infected");
-assert.doesNotMatch(migrateDemoStateBody, /MPOC-SURVEY-00[2-5]/, "Migration must not introduce editable geofences for Areas 002-005");
+assert.match(migrateDemoStateBody, /migrated\.areaOneTreePositions\s*=\s*validAreaOneTreePositions\s*\(\s*saved\.areaOneTreePositions[^]*normalizeAreaOneTreePositions\s*\(\s*saved\.areaOneTreePositions/, "The v7 migration must preserve valid Area 001 positions and their saved status");
+assert.match(migrateDemoStateBody, /geofenceOverrides\?\.\[\s*AREA_TWO_ID\s*\][^]*validAreaTwoGeofencePolygon/, "The v7 migration must validate an existing Area 002 polygon override");
+assert.match(migrateDemoStateBody, /areaTwoTreePositions[^]*validAreaTwoTreePositions[^]*normalizeAreaTwoTreePositions/, "The v7 migration must validate and normalize Area 002 marker entries");
 assert.match(migrateDemoStateBody, /DEMO_STATE_VERSION/, "Migrated state must be stamped with the current version");
 const loadDemoStateV2Body = functionBody(html, "loadDemoState");
 assert.match(loadDemoStateV2Body, /migrateDemoState\s*\(/, "Loading browser state must pass persisted data through the v2 migration");
